@@ -32,7 +32,7 @@ import sys
 
 
 inp = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/HOOK_DATE_TIME/HOOK_FILE_IN"
-out =  f"/scratch/pahwagne/flatNano/HOOK_DATE_TIME/HOOK_FILE_OUT"
+out =  f"/scratch/pahwagne/HOOK_DATE_TIME/HOOK_FILE_OUT"
 
 #load it into root file to get all branch names
 rootFile = ROOT.TFile.Open(inp)
@@ -62,7 +62,7 @@ names    = [branch.GetName() for branch in branches]
 # remove the last few branches (f.e. fixedGridRhoFastjetAll) 
 # Do we need them ? otherwise I have to adapt the shape as below
 # Where do these Muon branches come from?? I have to find and remove
-  names = [name for name in names if not (name.startswith("fixed") or name == "nMuon" or name.startswith("Muon")) ] 
+names = [name for name in names if not (name.startswith("fixed") or name == "nMuon" or name.startswith("Muon")) ] 
   
 #Bs mass
 bsMass_ = 5.36688
@@ -83,7 +83,7 @@ nfDir["n"]               = np.array([np.array([n]    *len(nfDir[names[-1]][ev]))
 
   
 #now we loop over the events and select the good candidates
-for ev in range(1): #nEntries):
+for ev in range(nEntries): #nEntries):
   
   #get the nr of candidates in the event
   nCand = len(nfDir[names[-1]][ev])

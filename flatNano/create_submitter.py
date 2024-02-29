@@ -41,13 +41,13 @@ for fin in inputfiles:
   fout = f"{args.channel}_flatChunk_{chunkNr}.root"  
 
   for line in temp:
-    if   "HOOK_DATE_TIME" in line: cfg.write(line.replace("HOOK_DATE_TIME", args.date_time))
-    elif "HOOK_FILE_IN" in line: cfg.write(line.replace("HOOK_FILE_IN", fin))
-    elif "HOOK_FILE_OUT" in line: cfg.write(line.replace("HOOK_FILE_OUT", fout))
-    elif "HOOK_CHUNK" in line: cfg.write(line.replace("HOOK_CHUNK", chunkNr))
-    elif "HOOK_CHUNK" in line: cfg.write(line.replace("HOOK_CHANNEL", args.channel))
+    if "HOOK_DATE_TIME" in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
+    if "HOOK_FILE_IN" in line: line = line.replace("HOOK_FILE_IN", fin)
+    if "HOOK_FILE_OUT" in line: line = line.replace("HOOK_FILE_OUT", fout)
+    if "HOOK_CHUNK" in line: line = line.replace("HOOK_CHUNK", chunkNr)
+    if "HOOK_CHANNEL" in line: line = line.replace("HOOK_CHANNEL", args.channel)
 
-    else: cfg.write(line)
+    cfg.write(line)
 
   temp.close()
   cfg.close()
@@ -57,10 +57,11 @@ for fin in inputfiles:
          'cd /work/pahwagne/RDsTools/flatNano',
          'eval "$(conda shell.bash hook)"',
          'conda activate /work/pahwagne/environments/hammer3p8',
-         f'mkdir -p /scratch/pahwagne/flatNano/{args.date_time}',
-         'python {args.date_time}/{cfg}',
-         f'xrdcp /scratch/pahwagne/flatNano/{args.date_time}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/flatNano/{args.date_time}/{fout}',
-         f'rm /scratch/pahwagne/flatNano/{args.date_time}/{fout}',
+         f'cp nanoframe.py {args.date_time}/nanoframe.py',
+         f'mkdir -p /scratch/pahwagne/{args.date_time}',
+         f'python {args.date_time}/cfg_chunk_{chunkNr}.py',
+         f'xrdcp /scratch/pahwagne/{args.date_time}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/{fout}',
+         f'rm /scratch/pahwagne/{args.date_time}/{fout}',
          '',
      ])
 
@@ -75,8 +76,8 @@ for fin in inputfiles:
         '--account=t3',
         f'-o {args.date_time}/logs/chunk_{chunkNr}.log',
         f'-e {args.date_time}/errs/chunk_{chunkNr}.err',
-        '--mem=2500M',
-        f'--job-name=FLAT_{chunkNr}',
+        '--mem=1000M',
+        f'--job-name=FLAT_{chunkNr}_{args.channel}',
         f'--time={time}',
         f'{args.date_time}/submitter_chunk_{chunkNr}.sh',
      ])
