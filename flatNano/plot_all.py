@@ -117,7 +117,7 @@ def multiVar(variables, bins, begin, end, name, norm = True, xLabel = "[GeV]", y
 
   print("Start filling " + name + " histogram; Events to fill: " + str(nEntries))
 
-  for i in range(100):
+  for i in range(nEntries):
     if (i%20000 == 0):
       print(" ==> Processing " + str(i) + "th Event")
     chain.GetEntry(i)
@@ -268,6 +268,124 @@ def multiSig(var, bins, begin, end, name, signals = sigs, norm = True, xLabel = 
   #saving
   canvas.SaveAs("./plots/" + name + ".png")
 
+################################################################################################
+#function which plots the desired signals into one canvas 
+def testFit(variables, bins, begin, end, name, signals = sigs, norm = True, xLabel = r" p_{T}(#mu) [GeV]", yLabel = "a.u.", color = colors):
+
+  """
+  variables        = [before,after,gen]
+  begin, en d      = floats, begin and end of range
+  bins             = int, nr of bins
+  name             = str, the name under which the plot should be saved (name.png)
+  norm             = bool, tells if we normalize the histograms
+  xLabel, yLabel   = strings, axis labels
+  """
+
+  #holds histograms
+  histos = {}
+  addresses = {}
+
+  fitTestNames = {"before": "Before Fit", "after": "After Fit", "gen": "Gen"}
+  
+  #define histograms
+  for i,key in enumerate(["before","after","gen"]):
+    histos[key] = ROOT.TH1F(key,key,bins,begin,end)
+    histos[key].SetLineColor(color[i])
+    histos[key].SetLineWidth(2)
+
+  #fill all histograms
+
+  print("Start filling " + key + " histogram; Events to fill: " + str(nEntries))
+
+  for i in range(200000):
+    if (i%20000 == 0):
+      print(" ==> Processing " + str(i) + "th Event")
+    chain.GetEntry(i)
+    histos["before"].Fill(getattr(chain,variables[0]))
+    histos["after"].Fill(getattr(chain,variables[1]))
+    histos["gen"].Fill(getattr(chain,variables[2]))
+
+  #scale histograms
+  if norm:
+    for key in ["before","after","gen"]:
+      histos[key].Scale(1/histos[key].Integral())
+
+  #get maximumm of y axis 
+  yMax = max([histos[key].GetMaximum() for key in ["before","after","gen"] ]) 
+
+  #Draw histos
+  canvas = ROOT.TCanvas("canvas", "Canvas", 800, 800)
+
+  canvas.Divide(1, 2)
+  canvas.cd(1)
+
+  ROOT.gPad.SetPad(0, 0.25, 1, 1)
+
+  legend = ROOT.TLegend(0.7, 0.7, 0.9, 0.9); # Specify legend coordinates (x1, y1, x2, y2)
+  legend.SetTextSize(0.03)
+  legend.SetBorderSize(0)
+  legend.SetFillStyle(0)
+
+  for i,key in enumerate(["before","after","gen"]):
+
+    #multiVar
+    if i == 0:
+      histos[key].SetMaximum(yMax*1.2)
+      histos[key].GetYaxis().SetTitle(yLabel)
+      #histos[key].GetXaxis().SetTitle(xLabel)
+      #h1.GetXaxis().SetTickLength(0)
+      histos[key].GetXaxis().SetLabelSize(0)
+
+      histos[key].Draw("HIST")
+    else:
+      histos[key].Draw("HIST SAME")
+
+    #legend
+    legend.AddEntry(histos[key], fitTestNames[key], "l")
+
+  legend.Draw("SAME")
+ 
+  canvas.cd(2)
+  ROOT.gPad.SetPad(0, 0.05, 1, 0.31)
+  #ROOT.gPad.SetTopMargin(0.03) 
+  ROOT.gPad.SetBottomMargin(0.15)
+  ratio1 = histos["before"].Clone()
+  ratio1.Add(histos["gen"],-1)
+  ratio2 = histos["after"].Clone()
+  ratio2.Add(histos["gen"],-1)
+
+  for i in range(bins):
+
+    if (histos["before"].GetBinContent(i+1) != 0):
+      ratio1.SetBinContent(i+1,ratio1.GetBinContent(i+1) / np.sqrt(histos["before"].GetBinContent(i+1))) 
+    if (histos["after"].GetBinContent(i+1) != 0): 
+      ratio2.SetBinContent(i+1,ratio2.GetBinContent(i+1) / np.sqrt(histos["after"].GetBinContent(i+1))) 
+
+  ratio1.GetXaxis().SetTitle(xLabel)
+  ratio1.GetXaxis().SetTitleSize(0.08)
+  ratio1.GetXaxis().SetTickLength(0.1)
+  ratio1.GetYaxis().SetLabelSize(0.08)
+
+  ratio1.GetYaxis().SetTitle(r"Diff. to Gen")
+  ratio1.GetYaxis().SetTitleSize(0.08)
+  ratio1.GetYaxis().SetLabelSize(0.08)
+  ratio1.GetYaxis().SetTitleOffset(0.5)
+  ratio1.GetYaxis().SetNdivisions(10)
+  ratio1.GetYaxis().CenterTitle() 
+
+  ratio1.SetMarkerStyle(8)
+  ratio2.SetMarkerColor(color[0])
+
+  ratio2.SetMarkerStyle(8)
+  ratio2.SetMarkerColor(color[1])
+
+  ratio1.Draw("EP")
+  ratio2.Draw("SAME EP")
+
+  #saving
+  canvas.SaveAs("./plots/" + name + ".png")
+
+
 
 
 
@@ -290,8 +408,8 @@ def multiSig(var, bins, begin, end, name, signals = sigs, norm = True, xLabel = 
 ### bs momentum comparison
 
 #multiVar(["bs_pt_coll", "bs_pt_lhcb", "bs_pt_lhcb_alt", "bs_pt_reco_1", "bs_pt_reco_2", "bs_gen_pt"], 50,0.0,150.0, "bsPtComparison")
-multiVar(["q2_coll", "q2_lhcb", "q2_lhcb_alt", "q2_reco_1", "q2_reco_2", "q2_gen"], 50,0.0,20.0, "q2Comparison",xLabel = r"Q^{2} [GeV^{2}]")
-multiVar(["m2_miss_coll", "m2_miss_lhcb", "m2_miss_lhcb_alt", "m2_miss_reco_1", "m2_miss_reco_2", "m2_miss_gen"], 50,0.0,10.0, "m2MissComparison", xLabel = r" m^{2}_{miss} [GeV^{2}]")
+#multiVar(["q2_coll", "q2_lhcb", "q2_lhcb_alt", "q2_reco_1", "q2_reco_2", "q2_gen"], 50,0.0,20.0, "q2Comparison",xLabel = r"Q^{2} [GeV^{2}]")
+#multiVar(["m2_miss_coll", "m2_miss_lhcb", "m2_miss_lhcb_alt", "m2_miss_reco_1", "m2_miss_reco_2", "m2_miss_gen"], 50,0.0,10.0, "m2MissComparison", xLabel = r" m^{2}_{miss} [GeV^{2}]")
 
 #multiVar(["bs_eta_coll", "bs_eta_lhcb", "bs_eta_lhcb_alt", "bs_eta_reco_1", "bs_eta_reco_2", "bs_gen_eta"], 50,-3,3.0, "bsEtaComparison")
 #multiVar(["bs_phi_coll", "bs_phi_lhcb", "bs_phi_lhcb_alt", "bs_phi_reco_1", "bs_phi_reco_2", "bs_gen_phi"], 50,-3.2,3.2, "bsPhiComparison")
@@ -300,20 +418,26 @@ multiVar(["m2_miss_coll", "m2_miss_lhcb", "m2_miss_lhcb_alt", "m2_miss_reco_1", 
 #multiVar(["bs_boost_coll_eta", "bs_boost_lhcb_eta", "bs_boost_lhcb_alt_eta", "bs_boost_reco_1_eta", "bs_boost_reco_2_eta", "bs_boost_gen_eta"], 50,-3,3, "bsEtaBoostComparison")
 #multiVar(["bs_boost_coll_phi", "bs_boost_lhcb_phi", "bs_boost_lhcb_alt_phi", "bs_boost_reco_1_phi", "bs_boost_reco_2_phi", "bs_boost_gen_phi"], 50,-3.2,3.2, "bsPhiBoostComparison")
 
+#test the fitter
+#testFit(["mu_pt", "mu_refitted_pt", "mu_gen_pt"], 50,7,30, "fitTestMuPt",xLabel = "p_{T}(#mu) [GeV]") 
+#testFit(["phiPi_pt", "ds_fitted_pt", "ds_gen_pt"], 50,0,30, "fitTestDsPt",xLabel = "p_{T}(#D_{s}) [GeV]") 
+#testFit(["kk_pt", "phi_fitted_pt", "phi_gen_pt"], 50,0,30, "fitTestPhiPt",xLabel = "p_{T}(#phi) [GeV]") 
+testFit(["pi_pt", "pi_refitted_pt", "pi_gen_pt"], 50,0,30, "fitTestPiPt",xLabel = "p_{T}(#phi) [GeV]") 
+testFit(["k1_pt", "k1_refitted_pt", "k1_gen_pt"], 50,0,30, "fitTestK1Pt",xLabel = "p_{T}(#phi) [GeV]") 
 
 #hel angles
 
 #collinear approx spoils this distribution as it ds mu system is back to back in bs rest frame --> dont plot it
 #multiVar(["cosMuWLhcb", "cosMuWLhcbAlt", "cosMuWReco1", "cosMuWReco2", "cosMuWGen", "cosMuWGenLhcb", "cosMuWGenReco1", "cosMuWGenReco2"], 30,-1,1, "cosMuWComparison",xLabel = "cos(#mu W)", color = colors[1:-1]) 
-multiVar(["cosMuWLhcb", "cosMuWLhcbAlt", "cosMuWReco1", "cosMuWReco2", "cosMuWGen"], 30,-1,1, "cosMuWComparison",xLabel = "cos(#mu W)", color = colors[1:-1]) 
+#multiVar(["cosMuWLhcb", "cosMuWLhcbAlt", "cosMuWReco1", "cosMuWReco2", "cosMuWGen"], 30,-1,1, "cosMuWComparison",xLabel = "cos(#mu W)", color = colors[1:-1]) 
 
 #multiVar(["cosMuWGen", "cosMuWGenLhcb", "cosMuWGenReco1", "cosMuWGenReco2"], 30,-1,1, "cosMuWGenComparison",norm = False, xLabel = "") 
 
 
-multiVar(["cosPhiDsColl","cosPhiDsLhcb", "cosPhiDsLhcbAlt", "cosPhiDsReco1", "cosPhiDsReco2", "cosPhiDsGen"], 50,-1,1, "cosPhiDsComparison",xLabel = r"cos(#phi D_{s})") 
+#multiVar(["cosPhiDsColl","cosPhiDsLhcb", "cosPhiDsLhcbAlt", "cosPhiDsReco1", "cosPhiDsReco2", "cosPhiDsGen"], 50,-1,1, "cosPhiDsComparison",xLabel = r"cos(#phi D_{s})") 
 #multiVar(["cosPiDsLhcb", "cosPiDsLhcbAlt", "cosPiDsReco1", "cosPiDsReco2", "cosPiDsGen", "cosPiDsGenLhcb"], 50,-1,1, "cosPiDsComparison",xLabel = "") 
-multiVar(["cosPlaneBsColl","cosPlaneBsLhcb", "cosPlaneBsLhcbAlt", "cosPlaneBsReco1", "cosPlaneBsReco2", "cosPlaneBsGen"], 30,-1,1, "cosPlaneBs",xLabel = "cos Plane 1")
-multiVar(["cosPlaneDsColl","cosPlaneDsLhcb", "cosPlaneDsLhcbAlt", "cosPlaneDsReco1", "cosPlaneDsReco2", "cosPlaneDsGen"], 30,-1,1, "cosPlaneDs",xLabel = "cos Plane 2")
+#multiVar(["cosPlaneBsColl","cosPlaneBsLhcb", "cosPlaneBsLhcbAlt", "cosPlaneBsReco1", "cosPlaneBsReco2", "cosPlaneBsGen"], 30,-1,1, "cosPlaneBs",xLabel = "cos Plane 1")
+#multiVar(["cosPlaneDsColl","cosPlaneDsLhcb", "cosPlaneDsLhcbAlt", "cosPlaneDsReco1", "cosPlaneDsReco2", "cosPlaneDsGen"], 30,-1,1, "cosPlaneDs",xLabel = "cos Plane 2")
 
 #multiVar(["cosPiK1","cosPiK1Gen"],30,-1,1,"cosPiK1", xLabel = "")
 
