@@ -35,9 +35,11 @@ chain.Add(files)
 names = [branch.GetName() for branch in chain.GetListOfBranches()]
 
 #get number of entries
-nEntries = chain.GetEntries("bs_pt_reco_1 == bs_pt_reco_1");
-nEntriesMu  = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (sig == 0 || sig == 5)");
-nEntriesTau = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (sig == 1 || sig == 6)");
+nEntries = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (dsMu_mass < 5.36688)");
+nEntriesMu  = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (sig == 0 || sig == 5) && (dsMu_mass < 5.36688)");
+nEntriesTau = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (sig == 1 || sig == 6) && (dsMu_mass < 5.36688)");
+nEntriesDs  = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (sig == 0 || sig == 1) && (dsMu_mass < 5.36688)");
+nEntriesDsStar = chain.GetEntries("(bs_pt_reco_1 == bs_pt_reco_1) && (sig == 5 || sig == 6) && (dsMu_mass < 5.36688)");
 
 #colors to multiVar
 colors = [
@@ -143,7 +145,7 @@ def multiVar(variables, bins, begin, end, name, norm = True, xLabel = "[GeV]", y
     for var in variables:
       if "cosMuW" in var: 
         sign = -1
-      if (getattr(chain,"sig") == 0):
+      if ((getattr(chain,"sig") == 0) and (getattr(chain,"dsMu_mass") < 5.36688)):
         #if not (math.isnan(getattr(chain,"bs_pt_reco_1"))):
           histos[var].Fill(sign*getattr(chain,var))
 
@@ -156,8 +158,8 @@ def multiVar(variables, bins, begin, end, name, norm = True, xLabel = "[GeV]", y
       if ("reco_2" in var) or ("Reco2" in var): reco2Str = var
       if ("gen" in var) or ("Gen" in var): genStr = var 
   
-  reco1Solved = chain.GetEntries("abs(" + reco1Str + "-" + genStr + ") < abs(" + reco2Str + "-" +genStr + ") && (bs_pt_reco_1 == bs_pt_reco_1)")
-  print(f"Reco 1 was the best solution {reco1Solved/nEntries} of the time, reco2 solved it {1-reco1Solved/nEntries} of the time")
+  reco1Solved = chain.GetEntries("abs(" + reco1Str + "-" + genStr + ") < abs(" + reco2Str + "-" +genStr + ") && (bs_pt_reco_1 == bs_pt_reco_1) && (sig == 0 || sig == 5)")
+  print(f"Reco 1 was the best solution {reco1Solved/nEntriesMu} of the time, reco2 solved it {1-reco1Solved/nEntriesMu} of the time")
 
   """
     if (reco1Val == reco1Val) and (reco2Val == reco2Val):
@@ -170,17 +172,18 @@ def multiVar(variables, bins, begin, end, name, norm = True, xLabel = "[GeV]", y
       reco2Solved += np.argmin(diffs) # increase counter if reco2 solved it
   """
   #print(f"Reco 1 was the best solution {1 - reco2Solved/nEntries} of the time, reco2 solved it {reco2Solved/nEntries} of the time")
-  
+
+
   # Fillt histo with the better solution 
   for var in variables:
     if ("reco_1" in var) or ("Reco1" in var):
       hDummy1 = histos[var].Clone()
       #reco1 is the better solution 95% of the time
-      histos["best"].Add(hDummy1, reco1Solved/nEntries * 1/histos[var].Integral())
+      histos["best"].Add(hDummy1, reco1Solved/nEntriesMu * 1/histos[var].Integral())
     if ("reco_2" in var) or ("Reco2" in var):
       hDummy2 = histos[var].Clone()
       #reco2 is the better soltuion 5% of the time
-      histos["best"].Add(hDummy2, 1-reco1Solved/nEntries * 1/histos[var].Integral())
+      histos["best"].Add(hDummy2, (1-reco1Solved/nEntriesMu) * 1/histos[var].Integral())
 
  
   #scale histograms
@@ -216,6 +219,7 @@ def multiVar(variables, bins, begin, end, name, norm = True, xLabel = "[GeV]", y
     #multiVar
     if i == 0:
       histos[var].SetMaximum(yMax*1.4)
+      histos[var].SetMinimum(0)
       histos[var].GetYaxis().SetTitle(yLabel)
       histos[var].GetXaxis().SetTitle(xLabel)
       histos[var].GetXaxis().SetTitleOffset(1.3)
@@ -237,14 +241,16 @@ def multiVar(variables, bins, begin, end, name, norm = True, xLabel = "[GeV]", y
 
     legend.AddEntry(histos[var], varLegend, "l")
 
-   
-  histos["best"].Draw("HIST SAME") ##CHANGE
-  legend.AddEntry(histos["best"], "Weighted Math Sol.", "l")
+  if not ("m2_miss" in variables[0]):   
+    print("I am also here")
+    #histos["best"].Draw("HIST SAME") ##CHANGE
+    #legend.AddEntry(histos["best"], "Weighted Math Sol.", "l")
+
   legend.SetTextSize(0.04)
   legend.Draw("SAME")
 
   #saving
-  canvas.SaveAs("./plots/" + name + "_weighted.pdf")
+  canvas.SaveAs("./plots/" + name + ".pdf")
 
 
 
@@ -458,8 +464,11 @@ def compareFamilies(var, bins, begin, end, name, gen1 = [0,5], gen2 = [1,6], gen
   addresses = {}
 
   generations = [1,2]
-  colors = [ROOT.kAzure, ROOT.kPink] 
- 
+  if gen1 == [0,5]:
+    colors = [ROOT.kAzure, ROOT.kPink] #mutau
+  else:
+    colors = [ROOT.kMagenta - 4, ROOT.kGreen + 3] #dsstar 
+
   #define histograms
   for i,sig in enumerate(generations):
 
@@ -486,15 +495,15 @@ def compareFamilies(var, bins, begin, end, name, gen1 = [0,5], gen2 = [1,6], gen
   if "cosMuW" in var[0]: sign = -1
   
   if len(var) == 1:
-    for i in range(1000):
+    for i in range(nEntries):
       if (i%20000 == 0):
         print(" ==> Processing " + str(i) + "th Event")
       chain.GetEntry(i)
 
            
-      if getattr(chain,"sig") in gen1:
+      if (getattr(chain,"sig") in gen1) and (getattr(chain,"dsMu_mass") < 5.36688):
         histos["1"].Fill(sign*getattr(chain,var[0]))
-      else:
+      if (getattr(chain,"sig") in gen2) and (getattr(chain,"dsMu_mass") < 5.36688):
         histos["2"].Fill(sign*getattr(chain,var[0]))
  
       #scale histograms
@@ -504,19 +513,19 @@ def compareFamilies(var, bins, begin, end, name, gen1 = [0,5], gen2 = [1,6], gen
  
   else:
     #reco case
-    for i in range(1000):
+    for i in range(nEntries):
       if (i%20000 == 0):
         print(" ==> Processing " + str(i) + "th Event")
 
       chain.GetEntry(i)
 
-      if getattr(chain,"sig") in gen1:
+      if (getattr(chain,"sig") in gen1) and (getattr(chain,"dsMu_mass") < 5.36688):
           #first generation, fill with reco 1,2
           histos["1reco1"].Fill(sign*getattr(chain,var[0]))
           histos["1reco2"].Fill(sign*getattr(chain,var[1]))
           #histos["gen1"].Fill(sign*getattr(chain,var[2]))
 
-      else:
+      if (getattr(chain,"sig") in gen2) and (getattr(chain,"dsMu_mass") < 5.36688):
           #second generation gill with reco 1,2
           histos["2reco1"].Fill(sign*getattr(chain,var[0])) 
           histos["2reco2"].Fill(sign*getattr(chain,var[1])) 
@@ -537,7 +546,16 @@ def compareFamilies(var, bins, begin, end, name, gen1 = [0,5], gen2 = [1,6], gen
 
       nEntriesGen["1"] = nEntriesMu
       nEntriesGen["2"] = nEntriesTau
-     
+    
+    else:
+
+      reco1Solved["1"] = chain.GetEntries("abs(" + reco1Str + "-" + genStr + ") < abs(" + reco2Str + "-" +genStr + ") && (bs_pt_reco_1 == bs_pt_reco_1) && ((sig == 0) || (sig == 1)) ") #ds
+      reco1Solved["2"] = chain.GetEntries("abs(" + reco1Str + "-" + genStr + ") < abs(" + reco2Str + "-" +genStr + ") && (bs_pt_reco_1 == bs_pt_reco_1) && ((sig == 5)  || (sig == 6)) ") #ds star
+
+      nEntriesGen["1"] = nEntriesDs
+      nEntriesGen["2"] = nEntriesDsStar
+
+ 
       #print(f"gen1: Reco 1 was the best solution {reco1Solved[\"1\"]/nEntries} of the time, reco2 solved it {1-reco1Solved[\"1\"]/nEntries} of the time")
       #print(f"gen2: Reco 1 was the best solution {reco1Solved[\"2\"]/nEntries} of the time, reco2 solved it {1-reco1Solved[\"2\"]/nEntries} of the time")
 
@@ -562,40 +580,57 @@ def compareFamilies(var, bins, begin, end, name, gen1 = [0,5], gen2 = [1,6], gen
   if len(var) == 1:
 
     #calculate gini coeff
-    gini_tot = histos["1"].Integral() + histos["2"].Integral()
+    gini_tot = 0
     area_1 = 0
     area_2 = 0
   
     for i in range(bins):
-      #for the first histogram
+      gini_tot += histos["1"].GetBinContent(i+1)
+      gini_tot += histos["2"].GetBinContent(i+1)
+      #if first histo is larger than 2nd
       if (histos["1"].GetBinContent(i+1) > histos["2"].GetBinContent(i+1)):
         area_1 += histos["1"].GetBinContent(i+1)-histos["2"].GetBinContent(i+1) 
-        area_2 += histos["2"].GetBinContent(i+1) 
+        #area_2 += histos["2"].GetBinContent(i+1) 
   
-      else: 
-        area_1 += histos["1"].GetBinContent(i+1) 
+      #2nd histo is larger
+      if (histos["1"].GetBinContent(i+1) < histos["2"].GetBinContent(i+1)) :
+        #area_1 += histos["1"].GetBinContent(i+1) 
         area_2 += histos["2"].GetBinContent(i+1)-histos["1"].GetBinContent(i+1) 
+
+      #if (histos["1"].GetBinContent(i+1) == histos["2"].GetBinContent(i+1)):
+
+      #  area_1 += histos["1"].GetBinContent(i+1) 
+      #  area_2 += histos["2"].GetBinContent(i+1)
+
 
   else:
 
     #calculate gini coeff
-    gini_tot = histos["1best"].Integral() + histos["2best"].Integral()
+    gini_tot = 0 
     area_1 = 0
     area_2 = 0
   
     for i in range(bins):
+      gini_tot += histos["1best"].GetBinContent(i+1)
+      gini_tot += histos["2best"].GetBinContent(i+1)
+
       #for the first histogram
       if (histos["1best"].GetBinContent(i+1) > histos["2best"].GetBinContent(i+1)):
         area_1 += histos["1best"].GetBinContent(i+1)-histos["2best"].GetBinContent(i+1) 
-        area_2 += histos["2best"].GetBinContent(i+1) 
+        #area_2 += histos["2best"].GetBinContent(i+1) 
   
-      else: 
-        area_1 += histos["1best"].GetBinContent(i+1) 
+      if (histos["1best"].GetBinContent(i+1) < histos["2best"].GetBinContent(i+1)): 
+        #area_1 += histos["1best"].GetBinContent(i+1) 
         area_2 += histos["2best"].GetBinContent(i+1)-histos["1best"].GetBinContent(i+1) 
   
+      #if (histos["1best"].GetBinContent(i+1) == histos["2best"].GetBinContent(i+1)):
+      #  area_1 += histos["1"].GetBinContent(i+1) 
+      #  area_2 += histos["2"].GetBinContent(i+1)
+
+
   gini_coeff = round((area_1 + area_2)/gini_tot,2)
   giniText = ROOT.TPaveText(0.2, 0.8, 0.5, 0.9, 'nbNDC')
-  giniText.AddText(f'Gini Coeff = {gini_coeff}')
+  giniText.AddText(f'Gini Coeff. = {gini_coeff}')
   giniText.SetTextFont(42)
   giniText.SetTextSize(0.04)
   giniText.SetFillColor(0)
@@ -692,9 +727,11 @@ def testFit(variables, bins, begin, end, name, signals = sigs, norm = True, xLab
     if (i%20000 == 0):
       print(" ==> Processing " + str(i) + "th Event")
     chain.GetEntry(i)
-    histos["before"].Fill(getattr(chain,variables[0]))
-    histos["after"].Fill(getattr(chain,variables[1]))
-    histos["gen"].Fill(getattr(chain,variables[2]))
+    if (getattr(chain,"dsMu_mass") < 5.36688):
+
+      histos["before"].Fill(getattr(chain,variables[0]))
+      histos["after"].Fill(getattr(chain,variables[1]))
+      histos["gen"].Fill(getattr(chain,variables[2]))
 
   #scale histograms
   if norm:
@@ -827,9 +864,12 @@ def fitVtx(variables, bins, begin, end, name, labelVtx, signals = sigs, norm = T
   for i in range(nEntries):
     if (i%20000 == 0):
       print(" ==> Processing " + str(i) + "th Event")
+    
     chain.GetEntry(i)
-    histos["fit"].Fill(getattr(chain,variables[0]))
-    histos["gen"].Fill(getattr(chain,variables[1]))
+    if (getattr(chain,"dsMu_mass") < 5.36688):
+
+      histos["fit"].Fill(getattr(chain,variables[0]))
+      histos["gen"].Fill(getattr(chain,variables[1]))
 
   #scale histograms
   if norm:
@@ -945,15 +985,35 @@ recoColors = colors[0:4] + 4*[colors[5]]
 #multiSig(["bs_pt_reco_1","bs_gen_pt","bs_pt_reco_2"]  ,50,0,100 ,"multiSigBsPtReco"      ,xLabel = "p_{T}(B_{s}) [GeV]", color = recoColors,title = "Math. Sol. on all signals")
 #multiSig(["bs_pt_lhcb_alt","bs_gen_pt"]  ,50,0,100 ,"multiSigBsPtLhcbAlt" ,xLabel = "p_{T}(B_{s}) [GeV]", color = recoColors, title = "LHCb method on all signals")
 
+"""
 # mu vs tau plots (default)
-compareFamilies(["q2_lhcb_alt"]  ,50,0,12,"muVsTauQ2LhcbAlt" ,xLabel = r"Q^{2} [GeV]")
-compareFamilies(["q2_lhcb"]  ,50,0,12,"muVsTauQ2Lhcb" ,xLabel = r"Q^{2} [GeV]")
-compareFamilies(["q2_reco_1"]  ,50,0,12,"muVsTauQ2Reco1" ,xLabel = r"Q^{2} [GeV]")
-compareFamilies(["q2_reco_2"]  ,50,0,12,"muVsTauQ2Reco2" ,xLabel = r"Q^{2} [GeV]")
-compareFamilies(["q2_reco_1","q2_reco_2","q2_gen"]  ,50,0,12,"muVsTauQ2RecoWeighted" ,xLabel = r"Q^{2} [GeV]")
+compareFamilies(["q2_coll"]  ,50,0,12,"muVsTauQ2Coll" ,xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_lhcb_alt"]  ,50,0,12,"muVsTauQ2LhcbAlt" ,xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_lhcb"]  ,50,0,12,"muVsTauQ2Lhcb" ,xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_reco_1"]  ,50,0,12,"muVsTauQ2Reco1" ,xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_reco_2"]  ,50,0,12,"muVsTauQ2Reco2" ,xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_reco_1","q2_reco_2","q2_gen"]  ,50,0,12,"muVsTauQ2RecoWeighted" ,xLabel = r"Q^{2} [GeV^{2}]")
+
+compareFamilies(["bs_pt_coll"]  ,50,0,100,"muVsTauBsPtColl" ,xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_lhcb_alt"]  ,50,0,100,"muVsTauBsPtLhcbAlt" ,xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_lhcb"]  ,50,0,100,"muVsTauBsPtLhcb" ,xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_reco_1"]  ,50,0,100,"muVsTauBsPtReco1" ,xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_reco_2"]  ,50,0,100,"muVsTauBsPtReco2" ,xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_reco_1","bs_pt_reco_2","bs_gen_pt"]  ,50,0,100,"muVsTauBsPtRecoWeighted" ,xLabel = r"p_{T}(B_{s}) [GeV]")
+
+compareFamilies(["cosMuWColl"]  ,50,-1,1,"muVsTauCosMuWColl" ,xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWLhcbAlt"]  ,50,-1,1,"muVsTauCosMuWLhcbAlt" ,xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWLhcb"]  ,50,-1,1,"muVsTauCosMuWLhcb" ,xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWReco1"]  ,50,-1,1,"muVsTauCosMuWReco1" ,xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWReco2"]  ,50,-1,1,"muVsTauCosMuWReco2" ,xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWReco1","cosMuWReco2","cosMuWGen"]  ,50,-1,1,"muVsTauCosMuWRecoWeighted" ,xLabel = r"cos(#theta_{1})")
+
+compareFamilies(["m2_miss_lhcb_alt"]  ,50,0,8.0,"muVsTauM2MissLhcbAlt" ,xLabel = r"m^{2}_{miss} [GeV^{2}]")
+compareFamilies(["m2_miss_lhcb"]  ,50,0,8.0,"muVsTauM2MissLhcb" ,xLabel = r"m^{2}_{miss} [GeV^{2}]")
+compareFamilies(["m2_miss_coll"]  ,50,0,8.0,"muVsTauM2MissColl" ,xLabel = r"m^{2}_{miss} [GeV^{2}]")
+
 
 #compareFamilies("q2_coll"  ,50,0,12,"muVsTauQ2Coll" ,xLabel = r"Q^{2} [GeV]")
-
 #compareFamilies("bs_pt_lhcb_alt"  ,50,0,100,"muVsTauBsPt" ,xLabel = "p_{T}(B_{s}) [GeV]")
 #compareFamilies("bs_boost_lhcb_alt"  ,50,0.9,1,"muVsTauBsBoost" ,xLabel = r"#beta(B_{s})")
 #compareFamilies("dxy_mu_sig"  ,50,0,20,"muVsTauIPSigmu" ,xLabel = r"IP^{xy}_{sig} (#mu)")
@@ -966,6 +1026,32 @@ compareFamilies(["q2_reco_1","q2_reco_2","q2_gen"]  ,50,0,12,"muVsTauQ2RecoWeigh
 
 # ds vs ds star plots
 #compareFamilies("bs_pt_lhcb_alt"  ,50,0,100,"dsVsStarBsPt" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"] ,xLabel = r" p_{T}(B_{s}) [GeV]")
+
+compareFamilies(["q2_coll"]  ,50,0,12,"dsVsStarQ2Coll" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_lhcb_alt"]  ,50,0,12,"dsVsStarQ2LhcbAlt" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_lhcb"]  ,50,0,12,"dsVsStarQ2Lhcb" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_reco_1"]  ,50,0,12,"dsVsStarQ2Reco1" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_reco_2"]  ,50,0,12,"dsVsStarQ2Reco2" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"Q^{2} [GeV^{2}]")
+compareFamilies(["q2_reco_1","q2_reco_2","q2_gen"]  ,50,0,12,"dsVsStarQ2RecoWeighted" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"Q^{2} [GeV^{2}]")
+
+compareFamilies(["bs_pt_coll"]  ,50,0,100,"dsVsStarBsPtColl" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_lhcb_alt"]  ,50,0,100,"dsVsStarBsPtLhcbAlt" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_lhcb"]  ,50,0,100,"dsVsStarBsPtLhcb" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_reco_1"]  ,50,0,100,"dsVsStarBsPtReco1" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_reco_2"]  ,50,0,100,"dsVsStarBsPtReco2" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"p_{T}(B_{s}) [GeV]")
+compareFamilies(["bs_pt_reco_1","bs_pt_reco_2","bs_gen_pt"]  ,50,0,100,"dsVsStarBsPtRecoWeighted" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"p_{T}(B_{s}) [GeV]")
+
+compareFamilies(["cosMuWColl"]  ,50,-1,1,"dsVsStarCosMuWColl" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWLhcbAlt"]  ,50,-1,1,"dsVsStarCosMuWLhcbAlt" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWLhcb"]  ,50,-1,1,"dsVsStarCosMuWLhcb" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWReco1"]  ,50,-1,1,"dsVsStarCosMuWReco1" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWReco2"]  ,50,-1,1,"dsVsStarCosMuWReco2" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"cos(#theta_{1})")
+compareFamilies(["cosMuWReco1","cosMuWReco2","cosMuWGen"]  ,50,-1,1,"dsVsStarCosMuWRecoWeighted" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"cos(#theta_{1})")
+compareFamilies(["m2_miss_lhcb_alt"]  ,50,0,8.0,"dsVsStarM2MissLhcbAlt" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"m^{2}_{miss} [GeV^{2}]")
+compareFamilies(["m2_miss_lhcb"]  ,50,0,8.0,"dsVsStarM2MissLhcb" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"m^{2}_{miss} [GeV^{2}]")
+"""
+#compareFamilies(["m2_miss_coll"]  ,50,0,8.0,"dsVsStarM2MissColl" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"],xLabel = r"m^{2}_{miss} [GeV^{2}]")
+
 #compareFamilies("ds_fitted_pt"  ,50,0,50,"dsVsStarDsPt" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"] ,xLabel = r" p_{T}(D_{s}) [GeV]")
 #compareFamilies("ds_fitted_boost"  ,50,0.9,1,"dsVsStarDsBoost" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"] ,xLabel = "#beta(D_{s})")
 #compareFamilies("lxy_ds"  ,50,0,1,"dsVsStarLxyDs" ,gen1 = [0,1], gen2 = [5,6], genName = ["D_{s} - signals", "D_{s}* - signals"] ,xLabel = "L_{xy}  [cm]", log = True)
@@ -987,28 +1073,27 @@ compareFamilies(["q2_reco_1","q2_reco_2","q2_gen"]  ,50,0,12,"muVsTauQ2RecoWeigh
 #testFit(["mu_pt", "mu_refitted_pt", "mu_gen_pt"], 50,7,30, "fitTestMuPt",xLabel = "p_{T}(#mu) [GeV]",zoom = True) 
 #testFit(["phiPi_pt", "ds_fitted_pt", "ds_gen_pt"], 50,0,30, "fitTestDsPt",xLabel = "p_{T}(D_{s}) [GeV]",zoom = True) 
 #testFit(["kk_pt", "phi_fitted_pt", "phi_gen_pt"], 50,0,20, "fitTestPhiPt",xLabel = "p_{T}(#phi) [GeV]",zoom = True) 
-#testFit(["pi_pt", "pi_refitted_pt", "pi_gen_pt"], 50,0,30, "fitTestPiPt",xLabel = "p_{T}(#phi) [GeV]",zoom = True) 
-#testFit(["k1_pt", "k1_refitted_pt", "k1_gen_pt"], 50,0,30, "fitTestK1Pt",xLabel = "p_{T}(#phi) [GeV]",zoom = True) 
+#testFit(["pi_pt", "pi_refitted_pt", "pi_gen_pt"], 50,0,30, "fitTestPiPt",xLabel = "p_{T}(#pi) [GeV]",zoom = True) 
+#testFit(["k1_pt", "k1_refitted_pt", "k1_gen_pt"], 50,0,30, "fitTestK1Pt",xLabel = "p_{T}(K_{1}) [GeV]",zoom = True) 
 #testFit(["mu_pt", "mu_refitted_pt", "mu_gen_pt"], 50,7,30, "fitTestMuPt",xLabel = "p_{T}(#mu) [GeV]") 
-#testFit(["phiPi_pt", "ds_fitted_pt", "ds_gen_pt"], 50,0,30, "fitTestDsPt",xLabel = "p_{T}(D_{s}) [GeV]",zoom = True) 
-#testFit(["kk_pt", "phi_fitted_pt", "phi_gen_pt"], 50,0,20, "fitTestPhiPt",xLabel = "p_{T}(#phi) [GeV]",zoom = True) 
-#testFit(["pi_pt", "pi_refitted_pt", "pi_gen_pt"], 50,0,30, "fitTestPiPt",xLabel = "p_{T}(#phi) [GeV]",zoom = True) 
-#testFit(["k1_pt", "k1_refitted_pt", "k1_gen_pt"], 50,0,30, "fitTestK1Pt",xLabel = "p_{T}(#phi) [GeV]",zoom = True) 
+#testFit(["phiPi_pt", "ds_fitted_pt", "ds_gen_pt"], 50,0,30, "fitTestDsPt",xLabel = "p_{T}(D_{s}) [GeV]") 
+#testFit(["kk_pt", "phi_fitted_pt", "phi_gen_pt"], 50,0,20, "fitTestPhiPt",xLabel = "p_{T}(#phi) [GeV]") 
+#testFit(["pi_pt", "pi_refitted_pt", "pi_gen_pt"], 50,0,30, "fitTestPiPt",xLabel = "p_{T}(#pi) [GeV]") 
+#testFit(["k1_pt", "k1_refitted_pt", "k1_gen_pt"], 50,0,30, "fitTestK1Pt",xLabel = "p_{T}(K_{1}) [GeV]") 
 #hel angles
 #collinear approx spoils this distribution as it ds mu system is back to back in bs rest frame --> dont plot it
 #multiVar(["cosMuWLhcb", "cosMuWLhcbAlt", "cosMuWReco1", "cosMuWReco2", "cosMuWGen"], 30,-1,1, "cosMuWComparison",xLabel = r"cos(#theta_{1})", color = colors[1:-1]) 
 #multiVar(["cosMuWLhcb", "cosMuWLhcbAlt", "cosMuWReco1", "cosMuWReco2", "cosMuWGen"], 30,-1,1, "cosMuWComparison",xLabel = "cos(#mu W)", color = colors[1:-1]) 
 #multiVar(["cosMuWGen", "cosMuWGenLhcb", "cosMuWGenReco1", "cosMuWGenReco2"], 30,-1,1, "cosMuWGenComparison",norm = False, xLabel = "") 
 
-#multiVar(["cosPhiDsColl","cosPhiDsLhcb", "cosPhiDsLhcbAlt", "cosPhiDsReco1", "cosPhiDsReco2", "cosPhiDsGen"], 50,-1,1, "cosPhiDsComparison",xLabel = r"cos(#theta_{2})") 
+multiVar(["cosPhiDsColl","cosPhiDsLhcb", "cosPhiDsLhcbAlt", "cosPhiDsReco1", "cosPhiDsReco2", "cosPhiDsGen"], 50,-1,1, "cosPhiDsComparison",xLabel = r"cos(#theta_{2})") 
 #multiVar(["cosPiDsLhcb", "cosPiDsLhcbAlt", "cosPiDsReco1", "cosPiDsReco2", "cosPiDsGen", "cosPiDsGenLhcb"], 50,-1,1, "cosPiDsComparison",xLabel = "") 
-#multiVar(["cosPlaneBsColl","cosPlaneBsLhcb", "cosPlaneBsLhcbAlt", "cosPlaneBsReco1", "cosPlaneBsReco2", "cosPlaneBsGen"], 30,-1,1, "cosPlaneBs",xLabel = r"cos(#theta_{3})")
+#multiVar(["cosPlaneBsColl","cosPlaneBsLhcb", "cosPlaneBsLhcbAlt", "cosPlaneBsReco1", "cosPlaneBsReco2", "cosPlaneBsGen"], 50,-1,1, "cosPlaneBs",xLabel = r"cos(#chi)")
 #multiVar(["cosPlaneDsColl","cosPlaneDsLhcb", "cosPlaneDsLhcbAlt", "cosPlaneDsReco1", "cosPlaneDsReco2", "cosPlaneDsGen"], 30,-1,1, "cosPlaneDs",xLabel = "cos Plane 2")
-"""
-multiVar(["cosPiK1","cosPiK1Gen"],30,-1,1,"cosPiK1", xLabel = r"cos(#theta_{4})",color = [ROOT.kBlack, ROOT.kMagenta])
+#multiVar(["cosPiK1","cosPiK1Gen"],30,-1,1,"cosPiK1", xLabel = r"cos(#theta_{4})",color = [ROOT.kBlack, ROOT.kMagenta])
 
 #compare prefit, postfit and gen momenta
-
+"""
 fitVtx(["pv_x",    "pv_x_gen"],                     50,0.0,0.02, "pv_x","Selected Vtx", xLabel = r"(PV)_{x} [cm]", color = [ROOT.kGray + 5,ROOT.kMagenta])
 fitVtx(["pv_y",    "pv_y_gen"],                     50,0.02,0.06, "pv_y","Selected Vtx", xLabel = r"(PV)_{y} [cm]",color = [ROOT.kGray + 5,ROOT.kMagenta])
 fitVtx(["pv_z",    "pv_z_gen"],                     50,-5,5, "pv_z","Selected Vtx", xLabel = r"(PV)_{z} [cm]",color = [ROOT.kGray + 5,ROOT.kMagenta])
@@ -1024,7 +1109,6 @@ fitVtx(["tv_z",    "tv_z_gen"],                     50,-5,5, "tv_z", "Fitted Vtx
 fitVtx(["fv_x",    "fv_x_gen"],                     50,-1,1, "fv_x", "Fitted Vtx",xLabel = r"(FV)_{x} [cm]",color = [ROOT.kGray + 5,ROOT.kMagenta])
 fitVtx(["fv_y",    "fv_y_gen"],                     50,-1,1, "fv_y", "Fitted Vtx",xLabel = r"(FV)_{y} [cm]",color = [ROOT.kGray + 5,ROOT.kMagenta])
 fitVtx(["fv_z",    "fv_z_gen"],                     50,-5,5, "fv_z", "Fitted Vtx",xLabel = r"(FV)_{z} [cm]",color = [ROOT.kGray + 5,ROOT.kMagenta])
-
 #multiVar(["k1_pt",    "k1_refitted_pt",    "k1_gen_pt"],                     30,0,30, "pre_vs_postfit_k1")
 #multiVar(["k2_pt",    "k2_refitted_pt",    "k2_gen_pt"],                     30,0,30, "pre_vs_postfit_k2")
 #multiVar(["pi_pt",    "pi_refitted_pt",    "pi_gen_pt"],                     50,0,30, "pre_vs_postfit_pi")
@@ -1040,4 +1124,3 @@ fitVtx(["fv_z",    "fv_z_gen"],                     50,-5,5, "fv_z", "Fitted Vtx
 #multiVar(["phiPi_eta", "ds_refitted_eta",    "ds_gen_eta", "ds_fitted_eta"],   50,-3,3, "pre_vs_postfit_ds_eta", color = [ ROOT.kTeal + 6,ROOT.kAzure + 6,ROOT.kMagenta,ROOT.kViolet + 6])
 #multiVar(["phiPi_phi", "ds_refitted_phi",    "ds_gen_phi", "ds_fitted_phi"],   50,-8,8, "pre_vs_postfit_ds_phi", color = [ ROOT.kTeal + 6,ROOT.kAzure + 6,ROOT.kMagenta,ROOT.kViolet + 6])
 """
-
