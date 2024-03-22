@@ -22,19 +22,35 @@ from array import array
 import os
 import sys
 
+import argparse
+parser = argparse.ArgumentParser(
+                     prog='ProgramName',
+                     description='What the program does',
+                     epilog='Text at the bottom of help')
+ 
+parser.add_argument('filename')
+parser.add_argument('channel')
+
+args = parser.parse_args()
+
 #Single File
 #fileName = "/work/pahwagne/test/multi_instances.root" 
 #load it into root file to get all branch names
 #rootFile = ROOT.TFile.Open(fileName)
 #rootTree = rootFile.Get("Events")
 
+#before we put the bs reconstruction methods into functions
+#inp = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/11_02_2024_21_56_13/"
+#and after
 
-inp = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/11_02_2024_21_56_13/"
-out =  "/scratch/pahwagne/flatNano"  
-#out = "/work/pahwagne/test/flatNano" #used for local testy only
+
+inp = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{args.filename}/"
+
+out =  f"/scratch/pahwagne/flatNano2"
+#out = f"/work/pahwagne/test/flatNano/{args.channel}/" #used for local testy only
 
 files = os.listdir(inp)
-#files = files[0:3]
+files = files[0:1]
 
 for f in files:
   fileName = inp + f
@@ -60,7 +76,7 @@ for f in files:
   #dictionary which holds selected candidates
   cands = {}
   #dictionary which holds final candidate
-  finalCand = {}
+  toSave = {}
   
   #branches and names
   branches = rootTree.GetListOfBranches()
@@ -78,7 +94,7 @@ for f in files:
     #Define all your branches
     nfDir[name] = nf[name]
     cands[name] = [] #lets take lists because its less painful 
-    finalCand[name] = []
+    toSave[name] = []
   
   
   #adapt these shapes to the nr of candidates in every event
@@ -89,36 +105,66 @@ for f in files:
 
   
   #now we loop over the events and select the good candidates
-  for ev in range(nEntries):
+  for ev in range(1): #nEntries):
   
-    # for every event build a flag based on the selections
-    # the flag will tell which candidates to drop *per event*, flag = np.array([True,False,True,...])
+    #get the nr of candidates in the event
+    nCand = len(nfDir[names[-1]][ev])
+
+    #collect all candidates per event in a list
+    allCandidates = []
+
+    #test = [] # for debugging
+
+    for iCand in range(nCand):
+      # define empty list for every candidate
+      dummy = []
+      #dummy2 = [] # for debugging
+      for i,name in enumerate(names):
+        dummy.append(nfDir[name][ev][iCand]) 
+        # keep important indices for sorting
+        if (name == "mu_charge"): iMuCharge = i    
+        if (name == "pi_charge"): iPiCharge = i    
+        if (name == "k1_charge"): iK1Charge = i    
+        if (name == "k2_charge"): iK2Charge = i    
+        if (name == "dsMu_mass"): iDsMuMass = i    
+        if (name == "dsMu_pt")  : iDsMuPt   = i    
+     
+      allCandidates.append(dummy)
+
+      #dummy2.append(dummy[iMuCharge]) #for debugging
+      #dummy2.append(dummy[iPiCharge])
+      #dummy2.append(dummy[iK1Charge])
+      #dummy2.append(dummy[iK2Charge])
+      #dummy2.append(dummy[iDsMuMass])
+      #dummy2.append(dummy[iDsMuPt])
+      #test.append(dummy2) 
+     
+    # sort the candidates according to:
+    # 1. we want opposite pi mu charge (priority)
+    # 2. we want opposite kk charge (2nd priority)
+    # 3. we want the dsMu mass to be physical (lower than Bs mass)
+    # 4. we sort after dsMu pt
+
+    # The logic goes as follows: if we have two candidates, one has the correct dsMu charge
+    # assignment but low dsMu pt, we still keep this event over wrong charge candidates with
+    # high pt, according to the priority list above. We do not throw away events! Worst case
+    # scenario is that we have only wrong charge candidates and take the one with highest pt
+   
  
-    # To discuss: what else?
-    flag = ((nfDir["kk_charge"][ev]        == 0) * #future samples: k_k_charge < 0 
-            (nfDir["gen_match_success"][ev] > 0) *
-            (nfDir["dsMu_mass"][ev]         < bsMass_ ))
-            # (nfDir["pi_mu_charge"] > 0 )
- 
-    print(flag) 
-    for name in names:
-      cands[name].append(nfDir[name][ev][flag]) 
-    
-    # decide to pick the candidate with highest dsMu pt -> discuss
+    allCandidates.sort(key = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuMass] < bsMass_, x[iDsMuPt]) ), reverse = True) 
+
+    # the best candidate is the first one
+    bestCandidate = allCandidates[0]
+
+    # save the best candidate
+    for i,name in enumerate(names):
+        toSave[name].append(bestCandidate[i])
   
-    #check if not empty (if one var is empty, all of them are)
-    if (cands["dsMu_pt"][ev].size > 0 ):
-      # get max pt
-      maxPtFlag = np.argmax(cands["dsMu_pt"][ev])
-      # select the final candidate
-      for name in names:
-        finalCand[name].append(cands[name][ev][maxPtFlag])
-  
-  # events which survived (take one column)
-  nFinal = len(finalCand[names[-1]])
+  # events which survived (take one column) should be the same -> checked
+  nFinal = len(toSave[names[-1]])
   
   # output file
-  output_file = ROOT.TFile( out + f"/flatNano_chunk_{chunkNr}.root", "RECREATE")
+  output_file = ROOT.TFile( out + f"/{args.channel}_flatNano_chunk_{chunkNr}.root", "RECREATE")
   
   # crate tree
   tree = ROOT.TTree("tree", "tree")
@@ -136,7 +182,7 @@ for f in files:
   # fill the branch 
   for i in range(nFinal):
     for name in names:
-      containers[name][0] = finalCand[name][i]
+      containers[name][0] = toSave[name][i]
   
     # very important to call Fill() outside the name loop!
     tree.Fill()

@@ -7,12 +7,16 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('date_time')
-parser.add_argument('channel')
+parser.add_argument('channel') # sig or hb
 args = parser.parse_args()
 
 queue = 'short' 
 time = 60
 nevents = -1
+
+#naming
+if args.channel == 'sig': naming = 'all_signals'
+else:                     naming = 'hb_inclusive'
 
 #load nanos
 directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{args.date_time}/"
@@ -27,6 +31,8 @@ os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_t
 os.makedirs(f"{args.date_time}/logs")
 os.makedirs(f"{args.date_time}/errs")
 
+
+
 for fin in inputfiles:
 
   chunkNr = fin[-7:-5]
@@ -38,14 +44,14 @@ for fin in inputfiles:
   #file to write to
   cfg = open(f"{args.date_time}/cfg_chunk_{chunkNr}.py","wt")
   #file to save things
-  fout = f"{args.channel}_flatChunk_{chunkNr}.root"  
+  fout = f"{naming}_flatChunk_{chunkNr}.root"  
 
   for line in temp:
     if "HOOK_DATE_TIME" in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
     if "HOOK_FILE_IN" in line: line = line.replace("HOOK_FILE_IN", fin)
     if "HOOK_FILE_OUT" in line: line = line.replace("HOOK_FILE_OUT", fout)
     if "HOOK_CHUNK" in line: line = line.replace("HOOK_CHUNK", chunkNr)
-    if "HOOK_CHANNEL" in line: line = line.replace("HOOK_CHANNEL", args.channel)
+    if "HOOK_CHANNEL" in line: line = line.replace("HOOK_CHANNEL", naming)
 
     cfg.write(line)
 
@@ -77,7 +83,7 @@ for fin in inputfiles:
         f'-o {args.date_time}/logs/chunk_{chunkNr}.log',
         f'-e {args.date_time}/errs/chunk_{chunkNr}.err',
         '--mem=1000M',
-        f'--job-name=FLAT_{chunkNr}_{args.channel}',
+        f'--job-name=FLAT_{chunkNr}_{naming}',
         f'--time={time}',
         f'{args.date_time}/submitter_chunk_{chunkNr}.sh',
      ])
