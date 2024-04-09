@@ -61,8 +61,7 @@ branches = rootTree.GetListOfBranches()
 names    = [branch.GetName() for branch in branches]
 # remove the last few branches (f.e. fixedGridRhoFastjetAll) 
 # Do we need them ? otherwise I have to adapt the shape as below
-# Where do these Muon branches come from?? I have to find and remove
-names = [name for name in names if not (name.startswith("fixed") or name == "nMuon" or name.startswith("Muon")) ] 
+names = [name for name in names if not (name.startswith("fixed") or name == "nmuon" or name.startswith("muon")) ] 
   
 #Bs mass
 bsMass_ = 5.36688
@@ -80,7 +79,8 @@ nfDir["run"]             = np.array([np.array([run]  *len(nfDir[names[-1]][ev]))
 nfDir["luminosityBlock"] = np.array([np.array([lumi] *len(nfDir[names[-1]][ev])) for ev,lumi in enumerate(nfDir["luminosityBlock"]) ], dtype=object)
 nfDir["event"]           = np.array([np.array([evt]  *len(nfDir[names[-1]][ev])) for ev,evt  in enumerate(nfDir["event"]) ],           dtype=object)
 nfDir["n"]               = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["n"]) ],               dtype=object)
-
+try: nfDir["ngen"]       = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["ngen"]) ],            dtype=object)
+except: pass
   
 #now we loop over the events and select the good candidates
 for ev in range(nEntries): #nEntries):
@@ -94,10 +94,12 @@ for ev in range(nEntries): #nEntries):
   #test = [] # for debugging
 
   for iCand in range(nCand):
+    
     # define empty list for every candidate
     dummy = []
     #dummy2 = [] # for debugging
     for i,name in enumerate(names):
+      print(name)
       dummy.append(nfDir[name][ev][iCand]) 
       # keep important indices for sorting
       if (name == "mu_charge"): iMuCharge = i    

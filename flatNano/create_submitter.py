@@ -16,8 +16,8 @@ nevents = -1
 
 #naming
 if args.channel == 'sig': naming = 'all_signals'
-else:                     naming = 'hb_inclusive'
-
+elif args.channel == 'hb': naming = 'hb_inclusive'
+else: naming = 'data'
 #load nanos
 directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{args.date_time}/"
 

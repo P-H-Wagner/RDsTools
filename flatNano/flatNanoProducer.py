@@ -46,8 +46,8 @@ args = parser.parse_args()
 
 inp = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{args.filename}/"
 
-out =  f"/scratch/pahwagne/flatNano2"
-#out = f"/work/pahwagne/test/flatNano/{args.channel}/" #used for local testy only
+#out =  f"/scratch/pahwagne/flatNano2"
+out = f"/work/pahwagne/test/flatNano/{args.channel}/" #used for local testy only
 
 files = os.listdir(inp)
 files = files[0:1]
@@ -83,30 +83,30 @@ for f in files:
   names    = [branch.GetName() for branch in branches]
   # remove the last few branches (f.e. fixedGridRhoFastjetAll) 
   # Do we need them ? otherwise I have to adapt the shape as below
-  # Where do these Muon branches come from?? I have to find and remove
-  names = [name for name in names if not (name.startswith("fixed") or name == "nMuon" or name.startswith("Muon")) ] 
+  names = [name for name in names if not (name.startswith("fixed") or name == "nmuon" or name.startswith("muon")) ] 
   
   #Bs mass
   bsMass_ = 5.36688
 
+  print(f"We take over the shape from: {names[-1]}")
+
   for name in names:
-  
     #Define all your branches
     nfDir[name] = nf[name]
     cands[name] = [] #lets take lists because its less painful 
     toSave[name] = []
-  
   
   #adapt these shapes to the nr of candidates in every event
   nfDir["run"]             = np.array([np.array([run]  *len(nfDir[names[-1]][ev])) for ev,run  in enumerate(nfDir["run"]) ],             dtype=object)
   nfDir["luminosityBlock"] = np.array([np.array([lumi] *len(nfDir[names[-1]][ev])) for ev,lumi in enumerate(nfDir["luminosityBlock"]) ], dtype=object)
   nfDir["event"]           = np.array([np.array([evt]  *len(nfDir[names[-1]][ev])) for ev,evt  in enumerate(nfDir["event"]) ],           dtype=object)
   nfDir["n"]               = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["n"]) ],               dtype=object)
+  try: nfDir["ngen"]       = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["ngen"]) ],            dtype=object)
+  except: pass
 
-  
   #now we loop over the events and select the good candidates
-  for ev in range(1): #nEntries):
-  
+  for ev in range(2): #nEntries):
+     
     #get the nr of candidates in the event
     nCand = len(nfDir[names[-1]][ev])
 
@@ -120,6 +120,8 @@ for f in files:
       dummy = []
       #dummy2 = [] # for debugging
       for i,name in enumerate(names):
+        print(name)
+        print("evt nr:", ev, "cand nr:", iCand)
         dummy.append(nfDir[name][ev][iCand]) 
         # keep important indices for sorting
         if (name == "mu_charge"): iMuCharge = i    
@@ -162,7 +164,7 @@ for f in files:
   
   # events which survived (take one column) should be the same -> checked
   nFinal = len(toSave[names[-1]])
-  
+  """ 
   # output file
   output_file = ROOT.TFile( out + f"/{args.channel}_flatNano_chunk_{chunkNr}.root", "RECREATE")
   
@@ -186,10 +188,10 @@ for f in files:
   
     # very important to call Fill() outside the name loop!
     tree.Fill()
-  
+
   # Write the TTree to the ROOT file
   output_file.Write()
   # Close the ROOT file
   output_file.Close()
-
+  """
 

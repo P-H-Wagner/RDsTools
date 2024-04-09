@@ -19,25 +19,27 @@ ROOT.gROOT.SetBatch(True)
 ## INPUT                               ##
 #########################################
 
-sig = "22_03_2024_17_34_45" #old signals 
-hb  = "22_03_2024_17_34_53" #old inclusive
-
+sig  = "09_04_2024_18_02_43"  #"22_03_2024_17_34_45" #old signals 
+hb   = "09_04_2024_18_44_36"  #"22_03_2024_17_34_53" #old inclusive
+data = "" #data -> apply SB method
 #########################################
 ## SELECTIONS                          ##
 #########################################
 
 #selections
-selBasic        = f"(bs_pt_reco_1 == bs_pt_reco_1) && (dsMu_mass < {bsMass})"  # bs cut and reco are not nan
+selBasic        = f"(disc_is_negative == 0) && (dsMu_mass < {bsMass})"                    # bs cut and disc not neg
+selBasic        = f"dsMu_mass < {bsMass}"
+selBasicHb      = selBasic + "&& (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6)"    # exlude signals from hb
 
-selDsMu         = selBasic + "&& (sig == 0)"                                              # select Ds  Mu 
-selDsTau        = selBasic + "&& (sig == 1)"                                              # select Ds  Tau 
-selDsStarMu     = selBasic + "&& (sig == 5)"                                              # select Ds* Mu
-selDsStarTau    = selBasic + "&& (sig == 6)"                                              # select Ds* Tau
+selDsMu         = selBasic + "&& (gen_sig == 0)"                                              # select Ds  Mu 
+selDsTau        = selBasic + "&& (gen_sig == 1)"                                              # select Ds  Tau 
+selDsStarMu     = selBasic + "&& (gen_sig == 5)"                                              # select Ds* Mu
+selDsStarTau    = selBasic + "&& (gen_sig == 6)"                                              # select Ds* Tau
 
-selMu           = selBasic + "&& (sig == 0 || sig == 5)"                                  # select mu  signals
-selTau          = selBasic + "&& (sig == 1 || sig == 6)"                                  # select tau signals
-selDs           = selBasic + "&& (sig == 0 || sig == 1)"                                  # select Ds signals
-selDsStar       = selBasic + "&& (sig == 5 || sig == 6)"                                  # select Ds star signals
+selMu           = selBasic + "&& (gen_sig == 0 || gen_sig == 5)"                                  # select mu  signals
+selTau          = selBasic + "&& (gen_sig == 1 || gen_sig == 6)"                                  # select tau signals
+selDs           = selBasic + "&& (gen_sig == 0 || gen_sig == 1)"                                  # select Ds signals
+selDsStar       = selBasic + "&& (gen_sig == 5 || gen_sig == 6)"                                  # select Ds star signals
 
 #########################################
 ## CREATE RDF FROM TREE                ##
@@ -71,16 +73,21 @@ def getColorAndLabel(var):
 
   "Colors for simple plot of signgle histograms, default" 
 
-  if   "gen"      in var: color,label = ROOT.kMagenta, "Gen"
-  elif "coll"     in var: color,label = ROOT.kBlack,   "Coll."
-  elif "lhcb_alt" in var: color,label = ROOT.kBlue,    "LHCb xyz"
-  elif "lhcb"     in var: color,label = ROOT.kRed,     "LHCb z"
-  elif "reco_1"   in var: color,label = ROOT.kGreen,   "Reco 1"
-  elif "reco_2"   in var: color,label = ROOT.kOrange,  "Reco 2"
+  if   "gen"      in var: color,label = ROOT.kMagenta,    "Gen"
+  elif "coll"     in var: color,label = ROOT.kCyan,       "Coll."
+  elif "lhcb_alt" in var: color,label = ROOT.kViolet,     "LHCb xyz"
+  elif "lhcb"     in var: color,label = ROOT.kBlue,       "LHCb z"
+  elif "reco_1"   in var: color,label = ROOT.kGreen,      "Reco 1"
+  elif "reco_2"   in var: color,label = ROOT.kOrange,     "Reco 2"
+  elif "weighted" in var: color,label = ROOT.kYellow + 2, "Reco Weighted"
 
-  else:                   color,label = ROOT.kGray+2,  "Reco"
+  else:                   color,label = ROOT.kBlack,   "Reco"
 
   return (color,label)
+
+def getHbColorAndLabel():
+  return (ROOT.kGray + 2, "Hb")
+
 
 def getColorAndLabelSignalDistinction(key):
 
@@ -99,11 +106,12 @@ def getColorAndLabelSignalDistinction(key):
 
   elif "allsignals" in key:      
     labels.append(r"D_{s} #mu"); labels.append(r"D_{s} #tau"); labels.append(r"D*_{s} #mu");   labels.append(r"D*_{s} #tau")
-    colors.append(ROOT.kAzure);  colors.append(ROOT.kPink);    colors.append(ROOT.kAzure + 8); colors.append(ROOT.kPink + 5)
+    colors.append(ROOT.kAzure);  colors.append(ROOT.kPink);    colors.append(ROOT.kMagenta - 4); colors.append(ROOT.kGreen + 3)
 
   if "hb" in key:
-    labels.append("Hb")
-    colors.append(ROOT.kGray + 2)
+    hbColor,hbLabel = getHbColorAndLabel()
+    labels.append(hbLabel)
+    colors.append(hbColor)
 
   return (colors,labels)
 
@@ -128,6 +136,8 @@ def getLegend(x0 = 0.5, y0 = 0.8, x1 = 0.9, y1 = 0.9, nColumns = 1):
 #########################################
 
 def getYMax(histos, norm = True):
+ 
+  if not isinstance(histos, list): histos = [histos]
 
   maxis = []
   for hist in histos:
@@ -144,7 +154,7 @@ def getYMax(histos, norm = True):
 def getReco1Scale(selection, name,chain = chainSig):
 
   ntot   = chain.GetEntries(selection)
-  nReco1 = chain.GetEntries(selection + f"&& (abs({name}_reco_1 - {name}_gen) < abs({name}_reco_2 - {name}_gen)) ")
+  nReco1 = chain.GetEntries(selection + f"&& (abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) ")
     
   return nReco1 / ntot 
 
@@ -177,9 +187,9 @@ def getWeightedReco(histos, name, selection, norm = True):
 
 def getGini(histos,key):
 
-  if key == "mutau": label = r"Gini #mu vs. #tau"
-  else:              label = "D_{s} vs. D*_{s}" 
-
+  if "mutau" in key: label    = r"Gini #mu vs. #tau"
+  if "dsdsstar" in key: label = r"Gini D_{s} vs. D*_{s}" 
+  if "sighb" in key:  label   = r"Gini Sig. vs. Hb"
   areaTot, area1, area2 = 0,0,0
 
   for i in range(histos[0].GetNbinsX()):
@@ -237,26 +247,41 @@ def createHistos(selection,rdf):
 ########################################
 # Simple, plots all histo models
 
-def simpleDraw(histos):
+def simpleDraw(histos, var, norm = True, key="simple"):
 
   #only makes directory if not already existing
-  os.system(f"mkdir -p ./simpleDraw/")
+  os.system(f"mkdir -p ./{key}/")
 
-  for var in  histos.keys():
-   
-    canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
-    legend = getLegend()
-    canvas.cd()
+  yMax = getYMax(histos)
 
-    # get default labels
-    _,label = getColorAndLabel(var)
+  canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
+  legend = getLegend(nColumns = 2)
+  canvas.cd()
 
-    histos[var].Draw("HIST")
+  # get default labels
+  _,label = getColorAndLabel(var)
 
-    legend.AddEntry(histos[var].GetValue(),label, "l")
-    legend.Draw("SAME")
+  if norm: histos[0].Scale(1/histos[0].Integral())
 
-    canvas.SaveAs(f"./simpleDraw/{var}.png")  
+  histos[0].SetMaximum(1.3*yMax)
+  histos[0].Draw("HIST")
+  try: legend.AddEntry(histos[0].GetValue(),label, "l")
+  except: legend.AddEntry(histos[0],label, "l")
+
+  if "hb" in key: 
+      
+     giniText = getGini(histos, key = "sighb")
+     giniText.Draw("EP SAME")
+
+     if norm: histos[1].Scale(1/histos[1].Integral())
+     hbColor,hbLabel = getHbColorAndLabel()
+     histos[1].SetLineColor(hbColor)
+     histos[1].Draw("SAME HIST")
+     try: legend.AddEntry(histos[1].GetValue(),hbLabel, "l")
+     except: legend.AddEntry(histos[1],hbLabel, "l")
+  legend.Draw("SAME")
+
+  canvas.SaveAs(f"./{key}/{key}_{var}.png")  
 
 ########################################
 # Plots signal distinction according to key 
@@ -295,8 +320,9 @@ def signalDistinction(histos,var,key,norm = True):
     legend.Draw("SAME")
  
     #get gini coefficietna as separation power
-    giniText = getGini(histos[0:2], key)
-    giniText.Draw("EP SAME")
+    if len(histos) < 4:
+      giniText = getGini(histos[0:2], key)
+      giniText.Draw("EP SAME")
   
   canvas.SaveAs(f"./{key}/{key}_{var}.png")  
 
@@ -345,29 +371,69 @@ def methodDistinction(histos,name, selection,norm = True):
   canvas.SaveAs(f"./method_dist/method_dist_{name}.png")  
   print(f"DONE")
 
-def callSignalDistinction(histoType1, histoType2, selection):
+def callSignalDistinction(histos, selections, key):
   
   for var in models.keys():
+ 
+    if len(histos) == 3:
+      # we compare 2 types only
+
+      #type1 type2 only
+      signalDistinction([histos[0][var],  histos[1][var]],                        var, key)
+      #inclduing hb
+      signalDistinction([histos[0][var],  histos[1][var], histos[2][var]],    var, key+"hb")
+      #weighted reco method
+    
+      if "reco_1" in var:
+    
+        name  = var[:-7]
+        reco1 = var
+        reco2 = name + "_reco_2" 
+    
+        weightedMu  = getWeightedReco({reco1: histos[0][reco1],      reco2: histos[0][reco2]},      name, selections[0])
+        weightedTau = getWeightedReco({reco1: histos[1][reco1],      reco2: histos[1][reco2]},      name, selections[0])
+        weightedHb  = getWeightedReco({reco1: histos[2][reco1],      reco2: histos[2][reco2]},      name, selections[1])
+    
+        signalDistinction([weightedMu, weightedTau],             name + "_reco_weighted", key)
+        signalDistinction([weightedMu, weightedTau, weightedHb], name + "_reco_weighted", key+"hb")
+
+    else:
+      #all signals
+      signalDistinction([histos[0][var],  histos[1][var], histos[2][var], histos[3][var], histos[4][var]],    var, key+"hb")
+
+      if "reco_1" in var:
+    
+        name  = var[:-7]
+        reco1 = var
+        reco2 = name + "_reco_2" 
+    
+        weightedDsMu       = getWeightedReco({reco1: histos[0][reco1],      reco2: histos[0][reco2]},      name, selections[0])
+        weightedDsTau      = getWeightedReco({reco1: histos[1][reco1],      reco2: histos[1][reco2]},      name, selections[0])
+        weightedDsStarMu   = getWeightedReco({reco1: histos[2][reco1],      reco2: histos[2][reco2]},      name, selections[0])
+        weightedDsStarTau  = getWeightedReco({reco1: histos[3][reco1],      reco2: histos[3][reco2]},      name, selections[0])
+        weightedHb         = getWeightedReco({reco1: histos[4][reco1],      reco2: histos[4][reco2]},      name, selections[1])
+
+
+        signalDistinction([weightedDsMu, weightedDsTau, weightedDsStarMu, weightedDsStarTau, weightedHb],             name + "_reco_weighted", key+"hb")
+
   
-    #mu tau only
-    signalDistinction([histoType1[var],  histoType2[var]],                        var, "mutau")
-    #mu tau and hb
-    signalDistinction([histoType1[var],  histoType2[var], histosBasicHb[var]],    var, "mutauhb")
-    #weighted reco method
-  
+def callSimpleDraw(histosSig,histosHb, selection,selectionHb):
+
+  for var in models.keys():
+ 
+    simpleDraw([histosSig[var], histosHb[var]], var, key = "sighb")
+
     if "reco_1" in var:
   
       name  = var[:-7]
       reco1 = var
       reco2 = name + "_reco_2" 
   
-      weightedMu  = getWeightedReco({reco1: histoType1[reco1],      reco2: histoType1[reco2]},      name, selection)
-      weightedTau = getWeightedReco({reco1: histoType2[reco1],      reco2: histoType2[reco2]},      name, selection)
-      weightedHb  = getWeightedReco({reco1: histosBasicHb[reco1],   reco2: histosBasicHb[reco2]},   name, selection)
+      weightedMu  = getWeightedReco({reco1: histosSig[reco1],       reco2: histosSig[reco2]},       name, selection)
+      weightedHb  = getWeightedReco({reco1: histosHb[reco1],        reco2: histosHb[reco2]},        name, selectionHb)
   
-      signalDistinction([weightedMu, weightedTau],             "reco_weighted", "mutau")
-      signalDistinction([weightedMu, weightedTau, weightedHb], "reco_weighted", "mutauhb")
-  
+      simpleDraw([weightedMu, weightedHb], name + "_reco_weighted", key = "sighb")
+
 
 
 #########################################
@@ -378,34 +444,36 @@ def callSignalDistinction(histoType1, histoType2, selection):
 print(f" ===> Start creating histograms")
 
 #Signal
-histosBasic     = createHistos(selBasic,  rdfSig)
-histosMu        = createHistos(selMu,     rdfSig)
-histosTau       = createHistos(selTau,    rdfSig)
-histosDs        = createHistos(selDs,     rdfSig)
-histosDsStar    = createHistos(selDsStar, rdfSig)
+#histosBasic     = createHistos(selBasic,  rdfSig)
+#histosMu        = createHistos(selMu,     rdfSig)
+#histosTau       = createHistos(selTau,    rdfSig)
+#histosDs        = createHistos(selDs,     rdfSig)
+#histosDsStar    = createHistos(selDsStar, rdfSig)
 
 #Hb
-histosBasicHb     = createHistos(selBasic,  rdfHb)
+histosBasicHb     = createHistos(selBasicHb,  rdfHb)
 
 
 print(f" ===> Basic, Mu, Tau, Ds, DsStar DONE")
 
-#histosDsMu      = createHistos(selDsMu)
-#histosDsTau     = createHistos(selDsTau)
-#histosDsStarMu  = createHistos(selDsStarMu)
-#histosDsStarTau = createHistos(selDsStarTau)
+histosDsMu      = createHistos(selDsMu,      rdfSig)
+histosDsTau     = createHistos(selDsTau,     rdfSig)
+histosDsStarMu  = createHistos(selDsStarMu,  rdfSig)
+histosDsStarTau = createHistos(selDsStarTau, rdfSig)
 print(f" ===> Single Signals DONE")
 
+# Simple Plots 
+#callSimpleDraw(histosBasic,histosBasicHb, selBasic,selBasicHb)
 
 # Plot Mu vs Tau
-callSignalDistinction(histosMu, histosTau,    selBasic)
+#callSignalDistinction( [histosMu, histosTau, histosBasicHb],    [selBasic,selBasicHb], "mutau")
 # Plot Ds vs Ds star
-callSignalDistinction(histosDs, histosDsStar, selBasic)
-
+#callSignalDistinction( [histosDs, histosDsStar, histosBasicHb], [selBasic,selBasicHb], "dsdsstar")
+# Plot all signals
+callSignalDistinction( [histosDsMu, histosDsTau, histosDsStarMu, histosDsStarTau, histosBasicHb], [selBasic,selBasicHb], "allsignals")
 #Method comparison
 
 #prefix = ["q2","m2_miss","cosMuW","cosPhiDs","cosPlaneBs","bs_pt"]
-prefix = ["q2","m2_miss"]
 """
 for name in prefix:
   print(f" ===> Compare Bs reco methods for {name}")
