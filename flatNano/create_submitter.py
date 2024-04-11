@@ -3,6 +3,7 @@ from glob import glob
 from datetime import datetime
 import sys 
 import argparse
+import re #for pattern matchin
 
 parser = argparse.ArgumentParser()
 
@@ -35,8 +36,12 @@ os.makedirs(f"{args.date_time}/errs")
 
 for fin in inputfiles:
 
-  chunkNr = fin[-7:-5]
-  if '_' in chunkNr: chunkNr = chunkNr[-1]
+  #get chunk nr
+  pattern = r'([^_]+)_chunk_(\d+)\.root'
+  match = re.search(pattern, fin)
+  if match: chunkNr = match.group(2)
+
+  #if '_' in chunkNr: chunkNr = chunkNr[-1]
 
   print(chunkNr)
   #template
