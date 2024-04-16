@@ -21,6 +21,8 @@ import math
 from array import array
 import os
 import sys
+import timeit
+
 
 import argparse
 parser = argparse.ArgumentParser(
@@ -62,6 +64,7 @@ for f in files:
 
   # nr of events
   nEntries = rootTree.GetEntries()
+  nEntries = 100
   print(f" ==> Start flatteing {nEntries} Events of chunk {chunkNr}")
   
   ##################
@@ -73,6 +76,8 @@ for f in files:
   
   #dictionary which holds everything
   nfDir = {}
+  #list which holds number of candidates in every event
+  nCands = []
   #dictionary which holds selected candidates
   cands = {}
   #dictionary which holds final candidate
@@ -90,12 +95,34 @@ for f in files:
 
   print(f"We take over the shape from: {names[-1]}")
 
-  for name in names:
+  for i,name in enumerate(names):
+
     #Define all your branches
     nfDir[name] = nf[name]
     cands[name] = [] #lets take lists because its less painful 
     toSave[name] = []
+
+    # keep important indices for sorting
+    if (name == "mu_charge"): iMuCharge = i    
+    if (name == "pi_charge"): iPiCharge = i    
+    if (name == "k1_charge"): iK1Charge = i    
+    if (name == "k2_charge"): iK2Charge = i    
+    if (name == "dsMu_mass"): iDsMuMass = i    
+    if (name == "dsMu_pt")  : iDsMuPt   = i    
+
+  # sort the candidates according to:
+  # 1. we want opposite pi mu charge (priority)
+  # 2. we want opposite kk charge (2nd priority)
+  # 3. we want the dsMu mass to be physical (lower than Bs mass)
+  # 4. we sort after dsMu pt
   
+  # The logic goes as follows: if we have two candidates, one has the correct dsMu charge
+  # assignment but low dsMu pt, we still keep this event over wrong charge candidates with
+  # high pt, according to the priority list above. We do not throw away events! Worst case
+  # scenario is that we have only wrong charge candidates and take the one with highest pt
+  
+  mySorting = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuMass] < bsMass_, x[iDsMuPt]) )
+
   #adapt these shapes to the nr of candidates in every event
   nfDir["run"]             = np.array([np.array([run]  *len(nfDir[names[-1]][ev])) for ev,run  in enumerate(nfDir["run"]) ],             dtype=object)
   nfDir["luminosityBlock"] = np.array([np.array([lumi] *len(nfDir[names[-1]][ev])) for ev,lumi in enumerate(nfDir["luminosityBlock"]) ], dtype=object)
@@ -104,42 +131,37 @@ for f in files:
   try: nfDir["ngen"]       = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["ngen"]) ],            dtype=object)
   except: pass
 
-  #now we loop over the events and select the good candidates
-  for ev in range(2): #nEntries):
-     
-    #get the nr of candidates in the event
-    nCand = len(nfDir[names[-1]][ev])
+  #start timing
+  start = timeit.timeit()
+   
 
-    #collect all candidates per event in a list
-    allCandidates = []
+  # Lets rewrite the nfDir in the following shape and sort at the same time to avoid an extra loop:
+  #          [        [ [this is one cand with all its variables pt, mass, m2miss, .... ]        #and we dump all candidates in an array]  sort this!                                # for each event]          
+  allCands = [ sorted([ [nfDir[name][ev][nCand] for name in names                       ] for nCand in range(len(nfDir[names[-1]][ev])) ], key = mySorting, reverse = True) for ev in range(nEntries)]
 
-    #test = [] # for debugging
+  # Lets sort them for each event (each element in allCands, as this is the outermost index (see above) and pick the best (index 0)
+  bestCands = np.array([ listOfCands[0] for listOfCands in allCands ]) 
+ 
+  ## For saving, we have to slice after the name rather than event
+  for i,name in enumerate(names):
+    toSave[name] = bestCands[:,i]
 
-    for iCand in range(nCand):
-      # define empty list for every candidate
-      dummy = []
-      #dummy2 = [] # for debugging
-      for i,name in enumerate(names):
-        print(name)
-        print("evt nr:", ev, "cand nr:", iCand)
-        dummy.append(nfDir[name][ev][iCand]) 
-        # keep important indices for sorting
-        if (name == "mu_charge"): iMuCharge = i    
-        if (name == "pi_charge"): iPiCharge = i    
-        if (name == "k1_charge"): iK1Charge = i    
-        if (name == "k2_charge"): iK2Charge = i    
-        if (name == "dsMu_mass"): iDsMuMass = i    
-        if (name == "dsMu_pt")  : iDsMuPt   = i    
-     
-      allCandidates.append(dummy)
+  outfile = uproot.recreate("example.root")
+  outfile["tree"] = pd.DataFrame(toSave)
 
-      #dummy2.append(dummy[iMuCharge]) #for debugging
-      #dummy2.append(dummy[iPiCharge])
-      #dummy2.append(dummy[iK1Charge])
-      #dummy2.append(dummy[iK2Charge])
-      #dummy2.append(dummy[iDsMuMass])
-      #dummy2.append(dummy[iDsMuPt])
-      #test.append(dummy2) 
+  """ 
+  #loop over the variable names
+  for name in names:
+    #collect all candidates per event in a list (a list per event!)
+    allCands[name]       = [ list(nf[name][ev])  for ev in range(nEntries)] 
+    #sort the candidates for each event (sorted list per event!)
+  
+
+  allCandsSorted[name] = [ candList.sort(key = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuMass] < bsMass_, x[iDsMuPt]) ), reverse = True) for candList in allCandidates ]
+    #pick the best candidate per event (one nr per event!)
+    bestCandidates      = [ candList[0] for candList in allCandidatesSorted]
+    #save the best candidates
+    toSave[name]        = bestCandidates 
      
     # sort the candidates according to:
     # 1. we want opposite pi mu charge (priority)
@@ -151,19 +173,12 @@ for f in files:
     # assignment but low dsMu pt, we still keep this event over wrong charge candidates with
     # high pt, according to the priority list above. We do not throw away events! Worst case
     # scenario is that we have only wrong charge candidates and take the one with highest pt
-   
- 
-    allCandidates.sort(key = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuMass] < bsMass_, x[iDsMuPt]) ), reverse = True) 
+  stop = timeit.timeit() 
 
-    # the best candidate is the first one
-    bestCandidate = allCandidates[0]
-
-    # save the best candidate
-    for i,name in enumerate(names):
-        toSave[name].append(bestCandidate[i])
-  
+  print(f"used time: {stop - start}")
   # events which survived (take one column) should be the same -> checked
   nFinal = len(toSave[names[-1]])
+  """
   """ 
   # output file
   output_file = ROOT.TFile( out + f"/{args.channel}_flatNano_chunk_{chunkNr}.root", "RECREATE")
