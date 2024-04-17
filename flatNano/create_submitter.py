@@ -12,7 +12,7 @@ parser.add_argument('channel') # sig or hb
 args = parser.parse_args()
 
 queue = 'short' 
-time = 60
+#time = 60
 nevents = -1
 
 #naming
@@ -32,7 +32,7 @@ os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_t
 os.makedirs(f"{args.date_time}/logs")
 os.makedirs(f"{args.date_time}/errs")
 
-
+#inputfiles = inputfiles[0:1]
 
 for fin in inputfiles:
 
@@ -87,9 +87,9 @@ for fin in inputfiles:
         '--account=t3',
         f'-o {args.date_time}/logs/chunk_{chunkNr}.log',
         f'-e {args.date_time}/errs/chunk_{chunkNr}.err',
-        '--mem=1000M',
+        #'--mem=6000M',
         f'--job-name=FLAT_{chunkNr}_{naming}',
-        f'--time={time}',
+        #f'--time={time}',
         f'{args.date_time}/submitter_chunk_{chunkNr}.sh',
      ])
 
