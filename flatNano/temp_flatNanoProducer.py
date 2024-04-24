@@ -39,8 +39,8 @@ rootFile = ROOT.TFile.Open(inp)
 rootTree = rootFile.Get("Events")
 
 # nr of events
-nEntries = rootTree.GetEntries()
-print(f" ==> Start flatteing {nEntries} Events of chunk HOOK_CHUNK")
+#nEntries = rootTree.GetEntries()
+#print(f" ==> Start flatteing {nEntries} Events of chunk HOOK_CHUNK")
   
 ##################
 ### Flattening  ##
@@ -50,7 +50,7 @@ print(f" ==> Start flatteing {nEntries} Events of chunk HOOK_CHUNK")
 nf = NanoFrame(inp, ) 
 
 #dictionary which holds everything
-nfDir = {}
+#nfDir = {}
 #dictionary which holds final candidate and their types
 toSave = {}
 typesToSave = {}
@@ -66,18 +66,8 @@ names = [name for name in names if not (name.startswith("fixed") or name == "nmu
 #Bs mass
 bsMass_ = 5.36688
 
-for i,name in enumerate(names):
-  
-  #Define all your branches
-  nfDir[name] = nf[name]
- 
-  # keep important indices for sorting
-  if (name == "mu_charge"): iMuCharge = i    
-  if (name == "pi_charge"): iPiCharge = i    
-  if (name == "k1_charge"): iK1Charge = i    
-  if (name == "k2_charge"): iK2Charge = i    
-  if (name == "dsMu_m"   ): iDsMuMass = i    
-  if (name == "dsMu_pt"  )  : iDsMuPt   = i    
+#chekc if not empty
+emptyFlag = nf["mu_pt"].any()
 
 # sort the candidates according to:
 # 1. we want opposite pi mu charge (priority)
@@ -94,25 +84,40 @@ mySorting = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charg
  
   
 #adapt these shapes to the nr of candidates in every event
-nfDir["run"]             = np.array([np.array([run]  *len(nfDir[names[-1]][ev])) for ev,run  in enumerate(nfDir["run"]) ],             dtype=object)
-nfDir["luminosityBlock"] = np.array([np.array([lumi] *len(nfDir[names[-1]][ev])) for ev,lumi in enumerate(nfDir["luminosityBlock"]) ], dtype=object)
-nfDir["event"]           = np.array([np.array([evt]  *len(nfDir[names[-1]][ev])) for ev,evt  in enumerate(nfDir["event"]) ],           dtype=object)
-nfDir["n"]               = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["n"]) ],               dtype=object)
-try: nfDir["ngen"]       = np.array([np.array([n]    *len(nfDir[names[-1]][ev])) for ev,n    in enumerate(nfDir["ngen"]) ],            dtype=object)
+nf["run"]             = np.array([np.array([run]  *len(nf[names[-1]][ev])) for ev,run  in enumerate(nf["run"]) ],             dtype=object)
+nf["luminosityBlock"] = np.array([np.array([lumi] *len(nf[names[-1]][ev])) for ev,lumi in enumerate(nf["luminosityBlock"]) ], dtype=object)
+nf["event"]           = np.array([np.array([evt]  *len(nf[names[-1]][ev])) for ev,evt  in enumerate(nf["event"]) ],           dtype=object)
+nf["n"]               = np.array([np.array([n]    *len(nf[names[-1]][ev])) for ev,n    in enumerate(nf["n"]) ],               dtype=object)
+try: nf["ngen"]       = np.array([np.array([n]    *len(nf[names[-1]][ev])) for ev,n    in enumerate(nf["ngen"]) ],            dtype=object)
 except: pass
  
+
+for i,name in enumerate(names):
+  
+  #Define all your branches
+  nf[name] = nf[name][emptyFlag]
+ 
+  # keep important indices for sorting
+  if (name == "mu_charge"): iMuCharge = i    
+  if (name == "pi_charge"): iPiCharge = i    
+  if (name == "k1_charge"): iK1Charge = i    
+  if (name == "k2_charge"): iK2Charge = i    
+  if (name == "dsMu_m"   ): iDsMuMass = i    
+  if (name == "dsMu_pt"  )  : iDsMuPt   = i    
+
+nEntries = len(nf[names[-1]])
+print("flattening {nEntries} events!")
+
 # Lets rewrite the nfDir in the following shape and sort at the same time to avoid an extra loop:
-#          [        [ [this is one cand with all its variables pt, mass, m2miss, .... ]        #and we dump all candidates in an array]  sort this!                                # for each event]          
-allCands = [ sorted([ [nfDir[name][ev][nCand] for name in names                       ] for nCand in range(len(nfDir[names[-1]][ev])) ], key = mySorting, reverse = True) for ev in range(nEntries)]
+#                   [        [ [this is one cand with all its variables pt, mass, m2miss, .... ]        #and we dump all candidates in an array]  sort this!                                # for each event]          
+bestCands = np.array([ sorted([ [nf[name][ev][nCand] for name in names                       ] for nCand in range(len(nf[names[-1]][ev])) ], key = mySorting, reverse = True)[0] for ev in range(nEntries)])
 
 # Lets sort them for each event (each element in allCands, as this is the outermost index (see above) and pick the best (index 0)
-bestCands = np.array([ listOfCands[0] for listOfCands in allCands ]) 
-
+#bestCands = np.array([ listOfCands[0] for listOfCands in allCands ]) 
 ## For saving, we have to slice after the name rather than event
 for i,name in enumerate(names):
   toSave[name] = bestCands[:,i]
   typesToSave[name] = type(toSave[name][0]) #take one element of to Save and get type
-
 outfile = uproot.recreate(out)
 outfile["tree"] = uproot.newtree(typesToSave)
 outfile["tree"].extend(toSave)
