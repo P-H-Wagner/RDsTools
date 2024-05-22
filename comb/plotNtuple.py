@@ -22,13 +22,21 @@ ROOT.TH1.SetDefaultSumw2()
 ## INPUT                               ##
 #########################################
 
-sig  = "26_04_2024_16_28_22" #"10_04_2024_00_22_57"#"09_04_2024_18_02_43"  #"22_03_2024_17_34_45" #old signals 
-hb   = "26_04_2024_16_28_58" #"10_04_2024_00_32_53"#"09_04_2024_18_44_36"  #"22_03_2024_17_34_53" #old inclusive
-data = "26_04_2024_18_08_15" #data -> apply SB method
+sig   = "13_05_2024_14_39_06"                      #"26_04_2024_16_28_22" #old MC 
+hb    = "26_04_2024_16_28_58" #"10_04_2024_00_32_53"#"09_04_2024_18_44_36"  #"22_03_2024_17_34_53" #old inclusive
+data  = "26_04_2024_18_08_15" #data -> apply SB method
+bs    = "21_05_2024_20_27_35"
+bplus = "21_05_2024_20_27_47"
+b0    = "21_05_2024_19_58_59"
+lambdab    = "21_05_2024_20_28_00"
 
-n    = 5 #how many sigma until the sb
+nSignalRegion    = 3 #how many sigma until the signal region stops
+nSidebands     = 5 #how many sigma until the sb starts
+sbWidth = 1 # sb width
+
 dsMass_ = 1.96834
 bsMass_ = 5.36688
+phiMass_ = 1.019461
 #########################################
 ## SELECTIONS                          ##
 #########################################
@@ -67,6 +75,36 @@ f'(dsMu_m < {bsMass_})',
 '(fv_prob > 0.1)'
 ])
 
+addOn1 = ' & '.join([
+'(bs_pt_reco_2 > 10)',
+'(cosMuW_lhcb_alt > -0.5)',
+'((cosPiK1 < -0.6) || (cosPiK1 > 0.6))',
+'(e_star_reco_2 < 2.5)'
+])
+
+addOn2 = ' & '.join([
+'(pt_miss_lhcb_alt < 25)',
+'(m2_miss_lhcb_alt > -2)',
+f'(abs(kk_m - {phiMass_}) < 0.010 )',
+])
+
+addOn3 = ' & '.join([
+'(m2_miss_lhcb_alt > -2)',
+'(e_star_reco_weighted < 1.7)',
+'(bs_pt_reco_2 > 20)',
+'((cosPiK1 < -0.4) || (cosPiK1 > 0.4))',
+])
+
+bkg = ' & '.join([
+f'dsMu_m > {bsMass_}',
+#'mu_rel_iso_03 > 0.3'
+])
+
+
+#baseline = baseline #+ '&' + addOn1 + '&' + addOn2
+baseline = baseline + '&' + addOn3
+
+
 baselineHb =        baseline + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6) & (gen_match_success ==1 ) "
 baselineDsMu =      baseline + " && (gen_sig == 0)" 
 baselineDsTau =     baseline + " && (gen_sig == 1)"
@@ -77,10 +115,15 @@ baselineDsStarTau = baseline + " && (gen_sig == 6)"
 ## CREATE RDF FROM TREE                ##
 #########################################
 
-def getRdf(dateTime, debug = False):
+def getRdf(dateTime, debug = False, skimmed = ""):
 
-  #access the flat ntuples
-  files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
+  if skimmed != "":
+    files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_{skimmed}_{dateTime}.root" #data skimmed with selection 'skimmed'
+    #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for closure
+    print("taking skimmed file ...", files)
+  else:
+    #access the flat ntuples
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
 
   if debug:
     print("picking only one file for debugging ...")
@@ -99,9 +142,11 @@ def getRdf(dateTime, debug = False):
 
 # Create rdf from tree
 print(f" ===> Start creating RDataFrames")
-chainSig, rdfSig   = getRdf(sig)#, debug = True)
-chainHb,  rdfHb    = getRdf(hb)#, debug = True)
-chainData,rdfData  = getRdf(data)#, debug = True)
+chainSigSB, rdfSigSB   = getRdf(sig, skimmed = "baseline"   ) # FOR SB FIT
+chainSig, rdfSig   = getRdf(sig, skimmed = "baseline"   )#,  debug = True)
+chainHb,  rdfHb    = getRdf(hb,  skimmed = "baseline"    )#,   debug = True)
+#chainData,rdfData  = getRdf(data)#, debug = True)
+chainData,rdfData  = getRdf(data,skimmed = "baseline")  #skimmed = "baseline") #pick already skimmed file!
 
 #########################################
 ## COLOR SCHEME                        ##
@@ -151,13 +196,13 @@ def getColorAndLabelSignalDistinction(key):
     colors = {}
    
     labels.append(r"D_{s} #mu"); labels.append(r"D_{s} #tau"); labels.append(r"D*_{s} #mu");   labels.append(r"D*_{s} #tau"); labels.append(r"H_{b}"); labels.append(r"Data");
-    colors = {"dsMu":   ROOT.kAzure,
-              "dsTau":  ROOT.kPink,
-              "dsStarMu":   ROOT.kMagenta - 4,
-              "dsStarTau":  ROOT.kGreen + 3,
+    colors = {"dsMu":   ROOT.kBlue - 2,
+              "dsTau":  ROOT.kGreen,
+              "dsStarMu":   ROOT.kCyan,
+              "dsStarTau":  ROOT.kOrange,
               "hb":         ROOT.kRed,
-              "combL":      ROOT.kGray,
-              "combR":      ROOT.kGray,
+              "combL":      ROOT.kGray+1,
+              "combR":      ROOT.kGray+1,
               "data":       ROOT.kBlack}
 
   if "hb" in key:
@@ -212,7 +257,9 @@ def getYMax(histos, norm = True):
 def getReco1Scale(name, selection, start, stop, chain = chainSig):
 
   ntot   = chain.GetEntries(selection + f"&&      ({name}_reco_1 > {start}) && ({name}_reco_1 < {stop}) && (gen_{name} > {start}) && (gen_{name} < {stop}) && ({name}_reco_1 == {name}_reco_1)")
-  nReco1 = chain.GetEntries(selection + f"&& (abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && ({name}_reco_1 == {name}_reco_1)")
+  #ntot   = chain.GetEntries( f" (gen_match_success == 1)  && ({name}_reco_1 == {name}_reco_1)")
+  nReco1 = chain.GetEntries(selection + f"&& ({name}_reco_1 > {start}) && ({name}_reco_1 < {stop}) && (gen_{name} > {start}) && (gen_{name} < {stop}) && (abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && ({name}_reco_1 == {name}_reco_1)")
+  #nReco1 = chain.GetEntries( f" (gen_match_success == 1) && (abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && ({name}_reco_1 == {name}_reco_1)")
     
   return nReco1 / ntot 
 
@@ -283,18 +330,32 @@ def getGini(histos,key):
 ## CREATE DEFAULT HISTOS               ##
 #########################################
 
-def createHistos(selection,rdf, linewidth = 2):
+def createHistos(selection,rdf, linewidth = 2, gen = True):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
 
   histos = {}
    
   for var,model in models.items(): 
+      print("Filling for variable ", var)
+      if "gen" in var and not gen:
+        #skip gen variables
+        print("This is a gen variable... skip!")
+        continue
 
-      histos[var] = rdf.Filter(selection).Histo1D(model[0], var)
+      tofill = var
+
+      print("I am filling the histo")
+      if var == "phiPi_m":
+        tofill = f"(run==1) * 0.9995* phiPi_m + (run!=1) * phiPi_m"
+        print("correcting phiPi mass..")
+        histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr")
+      else:
+        histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
+
       histos[var].GetXaxis().SetTitle(model[1])
       histos[var].SetMaximum(1.2 * histos[var].GetMaximum())
-
+      
       #get default colors 
       color,_ = getColorAndLabel(var)
       histos[var].SetLineColor(color)
@@ -303,255 +364,6 @@ def createHistos(selection,rdf, linewidth = 2):
   print(f"      Selection: {selection} DONE")
 
   return histos
-
-#########################################
-## DRAWING FUNCTIONS                   ##
-#########################################
-
-########################################
-# Simple, plots all histo models
-
-def simpleDraw(histos, var, norm = True, key="simple"):
-
-  #only makes directory if not already existing
-  os.system(f"mkdir -p ./{key}/")
-
-  yMax = getYMax(histos)
-
-  canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
-  legend = getLegend("simple", nColumns = 2)
-  canvas.cd()
-
-  # get default labels
-  _,label = getColorAndLabel(var)
-
-  if norm: histos[0].Scale(1/histos[0].Integral())
-
-  histos[0].SetMaximum(1.3*yMax)
-  histos[0].Draw("HIST")
-  try: legend.AddEntry(histos[0].GetValue(),label, "l")
-  except: legend.AddEntry(histos[0],label, "l")
-
-  if "hb" in key: 
-      
-     giniText = getGini(histos, key = "sighb")
-     giniText.Draw("EP SAME")
-
-     if norm: histos[1].Scale(1/histos[1].Integral())
-     hbColor,hbLabel = getHbColorAndLabel()
-     histos[1].SetLineColor(hbColor)
-     histos[1].Draw("SAME HIST")
-     try: legend.AddEntry(histos[1].GetValue(),hbLabel, "l")
-     except: legend.AddEntry(histos[1],hbLabel, "l")
-  legend.Draw("SAME")
-
-  canvas.SaveAs(f"./{key}/{key}_{var}.png")  
-
-########################################
-# Plots signal distinction according to key 
-
-def signalDistinction(histos,var,key,norm = True):
-
-  "Histos is a LIST!"
-
-  #only makes directory if not already existing
-  os.system(f"mkdir -p ./{key}/")
-
-  # get new colors and labels for distinction
-  colors, labels = getColorAndLabelSignalDistinction(key) 
-  print(key)
-  canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
-  legend = getLegend(key, nColumns = 2)
-  canvas.cd()
-
-  # get maximum
-  yMax = getYMax(histos,norm)
-
-  for i, hist in enumerate(histos):
-    
-    hist.SetLineColor(colors[i]) #adapt color
-    if norm: 
-      hist.Scale(1/hist.Integral())
-      hist.GetYaxis().SetTitle("a.u.")
-    hist.SetMaximum(1.3*yMax)
-
-    # draw 
-    if i == 0: hist.Draw("HIST")
-    else:      hist.Draw("HIST SAME")
-
-    try:    legend.AddEntry(hist,            labels[i],"l")
-    except: legend.AddEntry(hist.GetValue(), labels[i],"l")
-    legend.Draw("SAME")
- 
-    #get gini coefficietna as separation power
-    if len(histos) < 4:
-      giniText = getGini(histos[0:2], key)
-      giniText.Draw("EP SAME")
-  
-  canvas.SaveAs(f"./{key}/{key}_{var}.png")  
-
-########################################
-# Plots bs reconstruction method distinction 
-
-def methodDistinction(histos,name, selection,norm = True):
-
-  "Histos is a DICTIONARY!"
-
-  #only makes directory if not already existing
-  os.system(f"mkdir -p ./method_dist/")
-
-  canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
-  legend = getLegend("method",nColumns = 3)
-  canvas.cd()
-
-  yMax = getYMax([histos[var] for var in list(histos.keys())],norm)
-
-  #recreate the weighted combination
-  recoAvailable = name + "_reco_1" in models.keys() #check that recos are available 
-    
-  for i, var in enumerate(list(histos.keys())):
-
-    hist = histos[var]
-
-    if norm: 
-      hist.Scale(1/hist.Integral())
-      hist.GetYaxis().SetTitle("a.u.")
-
-    hist.SetMaximum(1.3*yMax)    
-    _,label = getColorAndLabel(var)
-
-    # draw 
-    if (i == 0): hist.Draw("HIST")
-    else:        hist.Draw("HIST SAME")
-
-    legend.AddEntry(hist.GetValue(),label,"l")
-    
-  if recoAvailable: 
-    weightedReco = getWeightedReco(histos,name,selection,norm)
-    
-    weightedReco.Draw("HIST SAME") 
-    weightedReco.SetMaximum(1.3*yMax)
-    col,label = getColorAndLabel("weighted_reco")
-    weightedReco.SetLineColor(col)
-
-    legend.AddEntry(weightedReco,label,"l")
-
-  legend.Draw("SAME")
-  canvas.SaveAs(f"./method_dist/method_dist_{name}.png")  
-  print(f"DONE")
-
-def callSignalDistinction(histos, selections, key):
-  
-  for var in models.keys():
- 
-    if len(histos) == 3:
-      # we compare 2 types only
-
-      #type1 type2 only
-      signalDistinction([histos[0][var],  histos[1][var]],                        var, key)
-      #inclduing hb
-      signalDistinction([histos[0][var],  histos[1][var], histos[2][var]],    var, key+"hb")
-      #weighted reco method
-    
-      if "reco_1" in var:
-    
-        name  = var[:-7]
-        reco1 = var
-        reco2 = name + "_reco_2" 
-    
-        weightedMu  = getWeightedReco({reco1: histos[0][reco1],      reco2: histos[0][reco2]},      name, selections[0])
-        weightedTau = getWeightedReco({reco1: histos[1][reco1],      reco2: histos[1][reco2]},      name, selections[0])
-        weightedHb  = getWeightedReco({reco1: histos[2][reco1],      reco2: histos[2][reco2]},      name, selections[1])
-    
-        signalDistinction([weightedMu, weightedTau],             name + "_reco_weighted", key)
-        signalDistinction([weightedMu, weightedTau, weightedHb], name + "_reco_weighted", key+"hb")
-
-    else:
-      #all signals
-      signalDistinction([histos[0][var],  histos[1][var], histos[2][var], histos[3][var], histos[4][var]],    var, key+"hb")
-
-      if "reco_1" in var:
-    
-        name  = var[:-7]
-        reco1 = var
-        reco2 = name + "_reco_2" 
-    
-        weightedDsMu       = getWeightedReco({reco1: histos[0][reco1],      reco2: histos[0][reco2]},      name, selections[0])
-        weightedDsTau      = getWeightedReco({reco1: histos[1][reco1],      reco2: histos[1][reco2]},      name, selections[0])
-        weightedDsStarMu   = getWeightedReco({reco1: histos[2][reco1],      reco2: histos[2][reco2]},      name, selections[0])
-        weightedDsStarTau  = getWeightedReco({reco1: histos[3][reco1],      reco2: histos[3][reco2]},      name, selections[0])
-        weightedHb         = getWeightedReco({reco1: histos[4][reco1],      reco2: histos[4][reco2]},      name, selections[1])
-
-
-        signalDistinction([weightedDsMu, weightedDsTau, weightedDsStarMu, weightedDsStarTau, weightedHb],             name + "_reco_weighted", key+"hb")
-
-  
-def callSimpleDraw(histosSig,histosHb, selection,selectionHb):
-
-  for var in models.keys():
- 
-    simpleDraw([histosSig[var], histosHb[var]], var, key = "sighb")
-
-    if "reco_1" in var:
-  
-      name  = var[:-7]
-      reco1 = var
-      reco2 = name + "_reco_2" 
-  
-      weightedMu  = getWeightedReco({reco1: histosSig[reco1],       reco2: histosSig[reco2]},       name, selection)
-      weightedHb  = getWeightedReco({reco1: histosHb[reco1],        reco2: histosHb[reco2]},        name, selectionHb)
-  
-      simpleDraw([weightedMu, weightedHb], name + "_reco_weighted", key = "sighb")
-
-
-
-#########################################
-## MAIN                                ##
-#########################################
-
-# Create histos for different selections
-print(f" ===> Start creating histograms")
-
-#Signal
-#histosBasic     = createHistos(selBasic,  rdfSig)
-#histosMu        = createHistos(selMu,     rdfSig)
-#histosTau       = createHistos(selTau,    rdfSig)
-#histosDs        = createHistos(selDs,     rdfSig)
-#histosDsStar    = createHistos(selDsStar, rdfSig)
-
-#Hb
-#histosBasicHb       = createHistos(selBasicHb,  rdfHb)
-
-print(f" ===> Basic, Mu, Tau, Ds, DsStar DONE")
-
-#histosDsMu      = createHistos(selDsMu,      rdfSig)
-#histosDsTau     = createHistos(selDsTau,     rdfSig)
-#histosDsStarMu  = createHistos(selDsStarMu,  rdfSig)
-#histosDsStarTau = createHistos(selDsStarTau, rdfSig)
-print(f" ===> Single Signals DONE")
-
-# Simple Plots 
-#callSimpleDraw(histosBasic,histosBasicHb, selBasic,selBasicHb)
-"""
-# Plot Mu vs Tau
-callSignalDistinction( [histosMu, histosTau, histosBasicHb],    [selBasic,selBasicHb], "mutau")
-# Plot Ds vs Ds star
-callSignalDistinction( [histosDs, histosDsStar, histosBasicHb], [selBasic,selBasicHb], "dsdsstar")
-# Plot all signals
-callSignalDistinction( [histosDsMu, histosDsTau, histosDsStarMu, histosDsStarTau, histosBasicHb], [selBasic,selBasicHb], "allsignals")
-
-#Method comparison
-prefix = ["q2","m2_miss","cosMuW","cosPhiDs","cosPlaneBs","bs_pt", "e_star"]
-for name in prefix:
-  print(f" ===> Compare Bs reco methods for {name}")
-  # for all prefixes get the variables, f.e. m2_miss_gen, m2_miss_coll , ...
-  histos = {var: histosDsMu[var] for var in models.keys() if name in var}
-  methodDistinction(histos,name,selDsMu)
-
-#########################################
-## Prepare stacked plots (do SB fit)    #
-#########################################
-"""
 
 def getHbScale(selHb, selMu):
 
@@ -569,62 +381,27 @@ def getHbScale(selHb, selMu):
   chainHb.Project("pureMu", "phiPi_m", selMu + f" & (phiPi_m > {start} ) & (phiPi_m < {stop} )")
   chainSig.Project("muNew",    "phiPi_m", selMu + f" & (phiPi_m > {start} ) & (phiPi_m < {stop} )" )
 
-  scale_hb = muNew.Integral() * pureHb.Integral() / pureMu.Integral()
+  if (pureHb.Integral() == 0): 
+    #avoid dividing by zero (probably muons are also empty!)
+    scale_hb = 0
+  else:
+    scale_hb = muNew.Integral() * pureHb.Integral() / pureMu.Integral()
   print( "#Hb events for MC sample is:", scale_hb)
   return scale_hb
 
-
-
-sigma, h          = getSigma(rdfSig, "phiPi_m", baseline + "& gen_sig == 0")
-#A, B, C, S        = getABCS( data, rdfData, selection , "phiPi_m", sigma, h, bins = 15)
-A = 24158.821588264094; B = 226543.39752377832; C = 21219.183790935822; S = 19829.186060030886; #use for debugging (faster) 
-
-tresh = n * sigma
-mlow = dsMass_ - tresh
-mlow2 = mlow - 1*sigma
-mhigh = dsMass_ + tresh
-mhigh2 = mhigh + 1*sigma
-
-signalRegion = f"& ({mlow} < phiPi_m) & (phiPi_m < {mhigh})"
-leftSB       = f"& ({mlow2} < phiPi_m) & (phiPi_m < {mlow})"
-rightSB      = f"& ({mhigh} < phiPi_m) & (phiPi_m < {mhigh2})"
-
-# get fakemass histo
-fakemass = np.genfromtxt('mass_bincontent.csv', delimiter=',')
-
-#create histos returns a dictionary !:)
-
-#for all variables expect mass plot only signal region (indicated with 'S')
-baselineSDsMu      = createHistos(baselineDsMu      + signalRegion, rdfSig)
-baselineSDsTau     = createHistos(baselineDsTau     + signalRegion, rdfSig)
-baselineSDsStarMu  = createHistos(baselineDsStarMu  + signalRegion, rdfSig)
-baselineSDsStarTau = createHistos(baselineDsStarTau + signalRegion, rdfSig)
-
-baselineSHb        = createHistos(baselineHb        + signalRegion, rdfHb)
-baselineDataL      = createHistos(baseline          + leftSB, rdfData)
-baselineDataR      = createHistos(baseline          + rightSB, rdfData)
-baselineSData       = createHistos(baseline         + signalRegion, rdfData)
-
-# for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
-baselineCDsMu      = createHistos(baselineDsMu      , rdfSig)
-baselineCDsTau     = createHistos(baselineDsTau     , rdfSig)
-baselineCDsStarMu  = createHistos(baselineDsStarMu  , rdfSig)
-baselineCDsStarTau = createHistos(baselineDsStarTau , rdfSig)
-
-baselineCHb        = createHistos(baselineHb        , rdfHb)
-baselineCData       = createHistos(baseline         , rdfData)
-
-hb_scale = getHbScale(baselineHb, baselineDsMu)
-
-def stackedPlot(histos, var, hb_scale):
+def stackedPlot(histos, var, hb_scale, fakemass, A,B,C,D, mlow, mhigh, log = False):
 
   color, labels = getColorAndLabelSignalDistinction("stacked")
 
   for i,key in enumerate(histos.keys()):
-    histos[key].GetValue().SetFillColor(color[key])
-    histos[key].GetValue().SetLineColor(color[key])
+    try: histos[key] = histos[key].GetValue()
+    except: histos[key] = histos[key]
+
+    print("adapting fill style..", key)
+    histos[key].SetFillColor(color[key])
+    histos[key].SetLineColor(color[key])
     if key == "data":
-       histos[key].GetValue().SetMarkerStyle(8) 
+       histos[key].SetMarkerStyle(8) 
 
   # take as model
   bins  = histos["dsMu"].GetNbinsX()
@@ -645,15 +422,18 @@ def stackedPlot(histos, var, hb_scale):
   hComb = hErr.Clone()
   hComb.SetName("mass")
   hComb.SetFillColor(ROOT.kGray)
-  hComb.SetLineWidth(0)
+  hComb.SetLineColor(ROOT.kGray)
   # special error fillstyle 
   hErr.SetFillColor(ROOT.kGray+1)
   hErr.SetFillStyle(3344)
 
   #scale hb to other mc
 
-  print("Scale of Hb: ", hb_scale / histos["hb"].Integral())
-  histos["hb"].Scale(hb_scale / histos["hb"].Integral())
+  print("Scale of Hb: ", hb_scale )
+  if hb_scale == 0: 
+    histos["hb"].Scale(0.0 )
+  else:
+    histos["hb"].Scale(hb_scale / histos["hb"].Integral())
 
   nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
   print("nsig = ", nSig)
@@ -691,8 +471,6 @@ def stackedPlot(histos, var, hb_scale):
       print( "data now:", histos["data"].GetBinContent(i+1))
       print("fakemass now:", hComb.GetBinContent(i+1))
     
-    hComb.Scale(0.999)
-
     nComb = hComb.Integral()
 
     # add comb to stack and err 
@@ -707,10 +485,9 @@ def stackedPlot(histos, var, hb_scale):
     if ('comb' not in key) and ('data' not in key):
 
       histos[key].Scale((histos["data"].Integral() - nComb) / nSig)
-      if var == 'phiPi_m': histos[key].Scale(0.999)
-      hErr.Add(histos[key].GetValue())
-      hs.Add(histos[key].GetValue())
- 
+      hErr.Add(histos[key])
+      hs.Add(histos[key])
+
   ###################################
   ## Create Pads                   ## 
   ###################################
@@ -745,18 +522,24 @@ def stackedPlot(histos, var, hb_scale):
   leg.SetTextFont(42)
   leg.SetTextSize(0.035)
   leg.SetNColumns(4)
-  leg.AddEntry(histos["dsStarMu"].GetValue()   ,'B_{S}#rightarrow D*_{s}#mu#nu' ,'F' )
-  leg.AddEntry(histos["dsMu"].GetValue()       ,'B_{S}#rightarrow D_{s}#mu#nu'  ,'F' )
-  leg.AddEntry(histos["hb"].GetValue()         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
-  leg.AddEntry(histos["data"].GetValue()       ,'Data','LEP')
-  leg.AddEntry(histos["dsStarTau"].GetValue()  ,'B_{S}#rightarrow D*_{s}#tau#nu','F' )
-  leg.AddEntry(histos["dsTau"].GetValue()      ,'B_{S}#rightarrow D_{s}#tau#nu' ,'F' )
+  leg.AddEntry(histos["dsStarMu"]   ,'B_{s}#rightarrow D*_{s}#mu#nu' ,'F' )
+  leg.AddEntry(histos["dsMu"]       ,'B_{s}#rightarrow D_{s}#mu#nu'  ,'F' )
+  leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
+  leg.AddEntry(histos["data"]       ,'Data','LEP')
+  leg.AddEntry(histos["dsStarTau"]  ,'B_{s}#rightarrow D*_{s}#tau#nu','F' )
+  leg.AddEntry(histos["dsTau"]      ,'B_{s}#rightarrow D_{s}#tau#nu' ,'F' )
   leg.AddEntry(hComb                           ,'Comb. Bkg.'  ,'F' )
   leg.AddEntry(hErr                            ,'Stat. Uncer.'  ,'F' )
   
   #plot mainpad
-  histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetMaximum()*1.6)
-  histos["data"].GetYaxis().SetTitle('Events')
+  if log:
+    ROOT.gPad.SetLogy()
+    histos["data"].GetYaxis().SetTitle('Events')
+    histos["data"].GetYaxis().SetRangeUser(1e-3, hs.GetMaximum()*1000)
+    histos["data"].SetMinimum(1.001) # avoid idsplaying tons of comb bkg
+  else:
+    histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetMaximum()*1.5)
+    histos["data"].GetYaxis().SetTitle('Events')
   
   #draw data with uncertainty
   histos["data"].Draw("EP")
@@ -776,7 +559,7 @@ def stackedPlot(histos, var, hb_scale):
   ratio = histos["data"].Clone()
   ratio.SetName(ratio.GetName()+'_ratio')
   ratio.Divide(hErr)
-  ratio_stats = hErr.Clone()
+  ratio_stats = histos["data"].Clone()
   ratio_stats.SetName(ratio.GetName()+'_ratiostats')
   ratio_stats.Divide(hErr)
   ratio_stats.SetMaximum(1.999) # avoid displaying 2, that overlaps with 0 in the main_pad
@@ -784,9 +567,11 @@ def stackedPlot(histos, var, hb_scale):
   ratio_stats.GetYaxis().SetTitle('Data / MC')
   ratio_stats.GetYaxis().SetTitleOffset(0.5)
   ratio_stats.GetYaxis().SetNdivisions(405)
+  ratio_stats.GetYaxis().SetTitleOffset(0.5)
   ratio_stats.GetXaxis().SetLabelSize(3.* ratio.GetXaxis().GetLabelSize())
   ratio_stats.GetYaxis().SetLabelSize(3.* ratio.GetYaxis().GetLabelSize())
   ratio_stats.GetXaxis().SetTitleSize(3.* ratio.GetXaxis().GetTitleSize())
+  ratio_stats.GetYaxis().SetTitleSize(3.* ratio.GetYaxis().GetTitleSize())
   
          
   #divide signals by total number of measurements
@@ -803,7 +588,9 @@ def stackedPlot(histos, var, hb_scale):
   norm_stack.Add(hDummy)
   
   norm_stack.Draw('hist same')
-  
+
+  print(f"I count {hComb.Integral()} comb. bkg. events for the variable {var}")
+ 
   #subplot
   line = ROOT.TLine(ratio.GetXaxis().GetXmin(), 1., ratio.GetXaxis().GetXmax(), 1.)
   line.SetLineColor(ROOT.kBlack)
@@ -820,31 +607,302 @@ def stackedPlot(histos, var, hb_scale):
   #saving
   c1.Modified()
   c1.Update()
-  c1.SaveAs(var + ".pdf")
+  if log:
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/cmsplots/log/{var}.pdf")
+  else:
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/cmsplots/{var}.pdf")
   print(f"===> Produced plot: {var}.pdf")
 
+def normPlot(histos, var, fakemass, A,B,C,S,log = False):
 
-for var in models.keys():
-  print(f"===> Producing stacked plot for variable: {var}") 
+  color, labels = getColorAndLabelSignalDistinction("stacked")
+
+  for i,key in enumerate(histos.keys()):
+    try: histos[key] = histos[key].GetValue()
+    except: histos[key] = histos[key]
+
+    histos[key].SetFillStyle(0)
+    histos[key].SetLineColor(color[key])
+    histos[key].SetLineWidth(3)
+
+  # take as model
+  bins  = histos["dsMu"].GetNbinsX()
+  start = histos["dsMu"].GetXaxis().GetBinLowEdge(1)   # first bin
+  stop  = histos["dsMu"].GetXaxis().GetBinUpEdge(bins) # last bin
+
+  # mass histo for fakemass
+  hComb = ROOT.TH1D("mass","mass",bins,start,stop)
+  hComb.GetXaxis().SetTitleOffset(1.3)
+  hComb.GetYaxis().SetTitleSize(1*hComb.GetYaxis().GetTitleSize())
+  hComb.GetXaxis().SetTitleSize(1*hComb.GetXaxis().GetTitleSize())  
+  hComb.SetName("mass")
+  hComb.SetFillStyle(0)
+  hComb.SetLineColor(ROOT.kGray + 2)
+  hComb.SetLineWidth(3)
+
+  ###################################
+  ## Combinatorial treatment       ##
+  ###################################
+
   if var != "phiPi_m":
+    # use sideband method
+    # left one
+    hComb = histos["combL"].Clone()
+    hComb.SetName("combS") #signal region
+    hComb.Scale(B/(2*A))
 
-    histos = {"dsMu":      baselineSDsMu[var], 
-             "dsTau":     baselineSDsTau[var],
-             "dsStarMu":  baselineSDsStarMu[var], 
-             "dsStarTau": baselineSDsStarTau[var], 
-             "hb"       : baselineSHb[var], 
-             "combL"    : baselineDataL[var], 
-             "combR"    : baselineDataR[var], 
-             "data"     : baselineSData[var]}
-    stackedPlot(histos, var, hb_scale)
+    # right one
+    hCombR = histos["combR"].Clone()
+    hCombR.Scale(B/(2*C))
+    hComb.Add(hCombR)
 
   else:
+    for i in range(bins):
+      hComb.SetBinContent(i+1,fakemass[i])
+      hComb.SetBinError(i+1,np.sqrt(fakemass[i]))
 
-    histos = {"dsMu":      baselineCDsMu[var], 
-             "dsTau":     baselineCDsTau[var],
-             "dsStarMu":  baselineCDsStarMu[var], 
-             "dsStarTau": baselineCDsStarTau[var], 
-             "hb"       : baselineCHb[var], 
-             "data"     : baselineCData[var]}
-    stackedPlot(histos, var, hb_scale)
+  hComb.Scale(1 / hComb.Integral())
+  ###################################
+  ## Normalize                     ##
+  ###################################
+
+  for key in histos.keys():
+      histos[key].Scale( 1 / histos[key].Integral())
+
+ 
+  ###################################
+  ## Create Pads                   ## 
+  ###################################
+
+  c1 = ROOT.TCanvas(var, '', 700, 700)
+  c1.Draw()
+  c1.cd()
+  main_pad = ROOT.TPad('main_pad', '', 0., 0., 1. , 1.  )
+  main_pad.Draw()
+  c1.cd()
+  main_pad.SetTicks(True)
+  #main_pad.SetBottomMargin(0.)
+  #main_pad.SetLeftMargin(.16)
+  #ratio_pad.SetTopMargin(0.)
+  #ratio_pad.SetLeftMargin(.16)
+  #ratio_pad.SetGridy()
+  #ratio_pad.SetBottomMargin(0.45)
+  if log:
+    ROOT.gPad.SetLogy()
+
+  main_pad.cd()
+
+  ###################################
+  ## legends                       ## 
+  ###################################
+ 
+  #legend
+  leg = ROOT.TLegend(.2,.72,.88,0.88)
+  leg.SetBorderSize(0)
+  leg.SetFillColor(0)
+  leg.SetFillStyle(0)
+  leg.SetTextFont(42)
+  leg.SetTextSize(0.03)
+  leg.SetNColumns(3)
+  leg.AddEntry(histos["dsStarMu"]   ,'B_{s}#rightarrow D*_{s}#mu#nu' ,'L' )
+  leg.AddEntry(histos["dsMu"]       ,'B_{s}#rightarrow D_{s}#mu#nu'  ,'L' )
+  leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'L' )
+  leg.AddEntry(histos["dsStarTau"]  ,'B_{s}#rightarrow D*_{s}#tau#nu','L' )
+  leg.AddEntry(histos["dsTau"]      ,'B_{s}#rightarrow D_{s}#tau#nu' ,'L' )
+  leg.AddEntry(hComb                           ,'Comb. Bkg.'  ,'L' )
+  
+  #plot mainpad
+  key1 = next(iter(histos)) # get first key (will be drawn first)
+
+  if log:
+    ROOT.gPad.SetLogy()
+    histos[key1].GetYaxis().SetRangeUser(1e-3, getYMax(list(histos.values()) + [hComb]) * 1000)#histos[key1].GetMaximum()*1000)
+
+  else:
+    histos[key1].GetYaxis().SetRangeUser(1e-3, getYMax(list(histos.values()) + [hComb]) * 1.5 ) #histos[key1].GetMaximum()*1.5)
+    histos[key1].GetYaxis().SetTitle('a.u.')
+
+  # draw all
+  for i,key in enumerate(histos.keys()):
+    if "comb" in key: 
+      #comes later, dont draw sidebands
+      continue
+    print(f"drawing variable {key}")
+    if i == 0:
+      histos[key].Draw("HIST")
+    else:
+      histos[key].Draw("HIST SAME")
+  hComb.Draw("HIST SAME") 
+  leg.Draw("SAME")
+  #ROOT.gPad.RedrawAxis()
+  
+  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '        Preliminary', lumi_13TeV = 'X fb^{-1}')
+  #saving
+  c1.Modified()
+  c1.Update()
+  if log:
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/normplots/log/{var}.pdf")
+  else:
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/normplots/{var}.pdf")
+  print(f"===> Produced plot: {var}.pdf")
+
+def methodDistinction(histos,name, selection,norm = True):
+
+  "Histos is a DICTIONARY!"
+
+  #only makes directory if not already existing
+  os.system(f"mkdir -p ./method_dist/")
+
+  canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
+  legend = getLegend("method_dist", nColumns = 3)
+  canvas.cd()
+
+  yMax = getYMax(list(histos.values()),norm)
+
+  for i, hist in enumerate(histos.values()):
+
+    var = list(histos.keys())[i]
+
+    if norm: 
+      hist.GetValue().Scale(1/hist.Integral())
+      hist.GetValue().GetYaxis().SetTitle("a.u.")
+
+    hist.SetMaximum(1.3*yMax)    
+    _,label = getColorAndLabel(var)
+
+    # draw 
+    if  (i == 0) : hist.GetValue().Draw("HIST")
+    else         : hist.GetValue().Draw("HIST SAME")
+
+    legend.AddEntry(hist.GetValue(),label,"l")
+    legend.Draw("SAME")
+
+  canvas.SaveAs(f"./method_dist/method_dist_{name}.png")  
+  print(f"DONE")
+
+def createPlots(selec):
+
+  selecHb =        selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6) & (gen_match_success ==1 ) "
+  selecDsMu =      selec + " && (gen_sig == 0)" 
+  selecDsTau =     selec + " && (gen_sig == 1)"
+  selecDsStarMu =  selec + " && (gen_sig == 5)" 
+  selecDsStarTau = selec + " && (gen_sig == 6)"
+
+  sigma, h          = getSigma(rdfSigSB, "phiPi_m", selec + "& gen_sig == 0")
+                                                                           #bins for fit #bins for fakemass
+  A, B, C, S        = getABCS( data, rdfData, selec , "phiPi_m", sigma, h, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, sbWidth = sbWidth)
+  #A = 24158.821588264094; B = 226543.39752377832; C = 21219.183790935822; S = 19829.186060030886; #use for debugging (faster) 
+   
+  #signal region
+  mlow   = dsMass_ - nSignalRegion*sigma
+  mhigh  = dsMass_ + nSignalRegion*sigma
+
+  #sideband start
+  mlow2  = dsMass_ - nSidebands*sigma
+  mhigh2 = dsMass_ + nSidebands*sigma
+
+  #sideband stops
+  mlow3  = mlow2  - sbWidth*sigma
+  mhigh3 = mhigh2 + sbWidth*sigma
+  
+  signalRegion = f"& ({mlow} < phiPi_m) & (phiPi_m < {mhigh})"
+  leftSB       = f"& ({mlow3} < phiPi_m) & (phiPi_m < {mlow2})"
+  rightSB      = f"& ({mhigh2} < phiPi_m) & (phiPi_m < {mhigh3})"
+  
+  # get fakemass histo
+  fakemass = np.genfromtxt('mass_bincontent.csv', delimiter=',')
+  
+  #create histos returns a dictionary !:)
+  
+  #for all variables except mass plot only signal region (indicated with 'S')
+  selec_S_DsMu      = createHistos(selecDsMu      + signalRegion, rdfSig , gen = False)
+  selec_S_DsTau     = createHistos(selecDsTau     + signalRegion, rdfSig , gen = False)
+  selec_S_DsStarMu  = createHistos(selecDsStarMu  + signalRegion, rdfSig , gen = False)
+  selec_S_DsStarTau = createHistos(selecDsStarTau + signalRegion, rdfSig , gen = False)
+  selec_S_Hb        = createHistos(selecHb        + signalRegion, rdfHb , gen = False)
+  selec_S_Data      = createHistos(selec         + signalRegion, rdfData , gen = False)
+  selecDataL        = createHistos(selec          + leftSB, rdfData , gen = False)
+  selecDataR        = createHistos(selec          + rightSB, rdfData , gen = False)
+
+  hb_scale = getHbScale(selecHb + signalRegion, selecDsMu + signalRegion)
+  
+  # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
+  selec_C_DsMu      = createHistos(selecDsMu      , rdfSig , gen = False)
+  selec_C_DsTau     = createHistos(selecDsTau     , rdfSig , gen = False)
+  selec_C_DsStarMu  = createHistos(selecDsStarMu  , rdfSig , gen = False)
+  selec_C_DsStarTau = createHistos(selecDsStarTau , rdfSig , gen = False)
+  selec_C_Hb        = createHistos(selecHb        , rdfHb  , gen = False)
+  selec_C_Data      = createHistos(selec          , rdfData , gen = False)
+  
+  hb_scale = getHbScale(selecHb, selecDsMu)
+
+  for var in models.keys():
+    print(f"===> Producing stacked plot for variable: {var}") 
+    if "gen" in var:
+      #skip gen variables
+      print("This is a gen variable... skip!")
+      continue
+  
+    if var != "phiPi_m":
+  
+      histos = {"dsTau":     selec_S_DsTau[var],
+               "dsStarTau": selec_S_DsStarTau[var], 
+               "dsMu":     selec_S_DsMu[var], 
+               "dsStarMu":  selec_S_DsStarMu[var], 
+               "hb"       : selec_S_Hb[var], 
+               "combL"    : selecDataL[var], 
+               "combR"    : selecDataR[var], 
+               "data"     : selec_S_Data[var]}
+      stackedPlot(histos, var, hb_scale, fakemass, A,B,C,S, mlow, mhigh)
+      #stackedPlot(histos, var, hb_scale, fakemass, A,B,C,S, log = True)
+      #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S)
+      #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S, log = True)
+  
+    else:
+  
+      histos = {"dsTau":     selec_C_DsTau[var],
+               "dsStarTau": selec_C_DsStarTau[var], 
+               "dsMu":     selec_C_DsMu[var], 
+               "dsStarMu":  selec_C_DsStarMu[var], 
+               "hb"       : selec_C_Hb[var], 
+               "data"     : selec_C_Data[var]}
+      stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, mlow, mhigh)
+      #stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, log = True)
+      #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S)
+      #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S, log = True)
+
+    """ 
+    #also do it for weighted_reco
+    if 'reco_1' in var: #recos are available
+      name = var[0:-7] 
+      histos = {"dsMu":     getWeightedReco(selec_S_DsMu,      name, selec, norm = False), 
+               "dsTau":     getWeightedReco(selec_S_DsTau,     name, selec, norm = False),
+               "dsStarMu":  getWeightedReco(selec_S_DsStarMu,  name, selec, norm = False),
+               "dsStarTau": getWeightedReco(selec_S_DsStarTau, name, selec, norm = False),
+               "hb"       : selec_S_Hb[var], 
+               "combL"    : selecDataL[var], 
+               "combR"    : selecDataR[var], 
+               "data"     : selec_S_Data[var]}
+      stackedPlot(histos, name + "_weighted_reco", hb_scale, fakemass, A,B,C,S, mlow, mhigh)
+      #stackedPlot(histos, name + "_weighted_reco", hb_scale, fakemass, A,B,C,S, log = True)
+      #normPlot(dict(list(histos.items())[:-1]), name + "_weighted_reco", fakemass, A,B,C,S)
+      #normPlot(dict(list(histos.items())[:-1]), name + "_weighted_reco", fakemass, A,B,C,S, log = True)
+    """ 
+  """
+
+  #include Gen!
+  selec_S_DsMu      = createHistos(selecDsMu      + signalRegion, rdfSig)
+
+  #Method comparison
+  prefix = ["e_star", "q2","m2_miss","cosMuW","cosPhiDs","cosPlaneBs","bs_pt", "e_star"]
+  for name in prefix:
+    print(f" ===> Compare Bs reco methods for {name}")
+    # for all prefixes get the variables, f.e. m2_miss_gen, m2_miss_coll , ...
+    histos = {var: selec_S_DsMu[var] for var in models.keys() if name in var}
+    methodDistinction(histos,name,selecDsMu      + signalRegion)
+  """
+
+createPlots(baseline)
+#createPlots(bkg)
+#createPlots(baseline + '&' + addOn1 + '&' + addOn2)
 

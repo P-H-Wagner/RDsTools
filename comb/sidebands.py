@@ -37,7 +37,7 @@ bsMass_ = 5.36688
 ############## FIT TO MC ################
  
 # Binning:
-bins  = 15
+bins  = 21
 start = 1.91#1.91
 stop  = 2.028#2.028
 
@@ -170,6 +170,15 @@ def getRdf(dateTime):
   rdf = ROOT.RDataFrame(chain)
 
   return (chain,rdf)
+
+def defineRanges(var,nBins, start, stop):
+
+  binEdges = np.linspace(start, stop, nBins+1)
+  print(binEdges) 
+  for i in range(nBins):
+    #i starts at 0
+    var.setRange("i+1", binEdges[i], binEdges[i+1])
+  return var, binEdges
 
 def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
@@ -380,7 +389,7 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
 ######################################################################################
 
-def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins = bins, start = start, stop = stop):
+def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop, binsFake = 21, sigWidth = 5, sbWidth = 1):
 
   """
   - sigma obtained from fit to MC"  
@@ -419,8 +428,8 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   hPtr = h.GetPtr()
 
   #total number of data events
-  nData = h.GetEntries()
-  #nData = h.Integral()
+  #nData = h.GetEntries()
+  nData = h.Integral()
   print("calculating fake mass with nData:", nData) 
 
  
@@ -435,10 +444,14 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   combMass.setRange("full"     ,mlow2 ,mhigh2)
   
   #Create edges for the fake mass histogram, s.t. we can plot a MC Ds mass distribution
-  binsFake = 15
-  binEdges = np.linspace(mlow2, mhigh2, binsFake+1)
-  
+  binEdges = np.linspace(start, stop, binsFake+1)
+  #print(binEdges) 
   # Defien ranges for every bin, this does not work within a for loop -.-
+  #for i in range(binsFake):
+  #  #i starts at 0
+  #  combMass.setRange("i+1", binEdges[i], binEdges[i+1])
+
+
   combMass.setRange("1",  binEdges[0],  binEdges[1])
   combMass.setRange("2",  binEdges[1],  binEdges[2])
   combMass.setRange("3",  binEdges[2],  binEdges[3])
@@ -454,10 +467,18 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   combMass.setRange("13", binEdges[12], binEdges[13])
   combMass.setRange("14", binEdges[13], binEdges[14])
   combMass.setRange("15", binEdges[14], binEdges[15])
-  
+  combMass.setRange("16", binEdges[15], binEdges[16])
+  combMass.setRange("17", binEdges[16], binEdges[17])
+  combMass.setRange("18", binEdges[17], binEdges[18])
+  combMass.setRange("19", binEdges[18], binEdges[19])
+  combMass.setRange("20", binEdges[19], binEdges[20])
+  combMass.setRange("21", binEdges[20], binEdges[21])
+
   #create a Roo histo from our TH1D histo
   hRoo   =  ROOT.RooDataHist("hRoo","hRoo",ROOT.RooArgList(combMass),hPtr)
   
+  #make it a RooRealVar but it is fixed
+  nDataVar       = ROOT.RooRealVar(    "nDataVar",       "nDataVar",             nData) 
   #parameters for exp
   a      = ROOT.RooRealVar(      "a",     "a",     aStart, aMin, aMax)
 
@@ -477,17 +498,35 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   
   #define double gauss, exp, and double gauss + exp
   doubleGauss = ROOT.RooAddPdf( "doublegauss","doublegauss PDF",ROOT.RooArgList(gauss3,gauss4),fracs3)
+
+  #extend the gauss!
+  expSig        = ROOT.RooRealVar(      "expSig","expSig", nData * 0.07, 0, nData) # nr of signals
+  doubleGaussEx = ROOT.RooExtendPdf("ext", "ext", doubleGauss,expSig , "complete") # extended sig pdf
+
   exp = ROOT.RooExponential(     "exp","exp PDF",combMass,a)
+  #extend the exp!
+  expBkg        = ROOT.RooFormulaVar(      "expBkg","nDataVar - expSig",ROOT.RooArgList(nDataVar,expSig) ) # nr of bkg
+  expEx = ROOT.RooExtendPdf("ext2", "ext2",exp,expBkg , "complete") # extended bkg pdf
+
   model = ROOT.RooAddPdf(        "model","model PDF",ROOT.RooArgList(doubleGauss,exp),fracs4)
+  #EXtend the model!
+  modelEx = ROOT.RooAddPdf(        "modelEx","model PDFEx",ROOT.RooArgList(doubleGaussEx,expEx),ROOT.RooArgList(expSig, expBkg))
+  
  
   #perform fit
-  result = model.fitTo(hRoo)     
-  
+  #result = model.fitTo(hRoo)     
+  resultEx = modelEx.fitTo(hRoo)     
+  print("extended fitted nsig = ", expSig.getVal())
+
   #extract number of signals and bkg
-  print("fracs4: ",fracs4.getVal())
-  nSig = nData * fracs4.getVal()
-  nBkg = nData - nSig
-  
+  #print("fracs4: ",fracs4.getVal())
+  #nSig = nData * fracs4.getVal()
+  #nBkg = nData - nSig
+  nSig = expSig.getVal()
+  nBkg = expBkg.getVal()  
+
+  print("test: nSig + nBkg = ", nSig + nBkg, "= nData = ", nData)
+
   #define frame to plot on
   frame_comb = combMass.frame(ROOT.RooFit.Title(""))
   frame_comb.GetXaxis().SetTitle(r"D_{s} mass")
@@ -509,12 +548,12 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   pad3.Draw()
   
   
-  print("first fake before drawing:", nBkg  * exp.createIntegral(  combMass, combMass, "1"  ).getVal())
+  #print("first fake before drawing:", nBkg  * exp.createIntegral(  combMass, combMass, "1"  ).getVal())
   
 
   hRoo.plotOn(frame_comb,ROOT.RooFit.Name("data"))#,ROOT.RooFit.Range("complete")
-  model.plotOn(frame_comb,ROOT.RooFit.LineColor(ROOT.kRed -7),ROOT.RooFit.FillColor(ROOT.kRed -7),ROOT.RooFit.DrawOption('F'),ROOT.RooFit.LineStyle(10),ROOT.RooFit.Components("model"),ROOT.RooFit.Name("model"))#,ROOT.RooFit.Range("complete"))
-  model.plotOn(frame_comb,ROOT.RooFit.LineColor(ROOT.kGray ),ROOT.RooFit.FillColor(ROOT.kGray ),ROOT.RooFit.DrawOption('F'),ROOT.RooFit.LineStyle(0),ROOT.RooFit.Components("exp"),ROOT.RooFit.Name("exp")) #,ROOT.RooFit.Range("complete"))
+  modelEx.plotOn(frame_comb,ROOT.RooFit.LineColor(ROOT.kRed -7),ROOT.RooFit.FillColor(ROOT.kRed -7),ROOT.RooFit.DrawOption('F'),ROOT.RooFit.LineStyle(10),ROOT.RooFit.Components("modelEx"),ROOT.RooFit.Name("modelEx"))#,ROOT.RooFit.Range("complete"))
+  modelEx.plotOn(frame_comb,ROOT.RooFit.LineColor(ROOT.kGray ),ROOT.RooFit.FillColor(ROOT.kGray ),ROOT.RooFit.DrawOption('F'),ROOT.RooFit.LineStyle(0),ROOT.RooFit.Components("ext2"),ROOT.RooFit.Name("ext2")) #,ROOT.RooFit.Range("complete"))
   #model.plotOn(frame_comb,ROOT.RooFit.LineColor(ROOT.kRed),ROOT.RooFit.LineStyle(10),ROOT.RooFit.Components("doublegauss"),ROOT.RooFit.Name("double gauss"))#,ROOT.RooFit.Range("complete"))
   hRoo.plotOn(frame_comb,ROOT.RooFit.Name("data"))#,ROOT.RooFit.Range("complete")
 
@@ -523,22 +562,27 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   #get normalization constants A,B,C,S
 
   #sidebands
-  A = nBkg  * exp.createIntegral(  combMass,combMass,"left"  ).getVal()
-  C = nBkg  * exp.createIntegral(  combMass,combMass,"right" ).getVal()
-  
+  #A = nBkg  * exp.createIntegral(  combMass,combMass,"left"  ).getVal()
+  #C = nBkg  * exp.createIntegral(  combMass,combMass,"right" ).getVal()
+  A = nBkg*expEx.createIntegral(  combMass,combMass,"left"  ).getVal()
+  C = nBkg*expEx.createIntegral(  combMass,combMass,"right" ).getVal()
+
   #signal and backgroudn entries
-  B = nBkg  * exp.createIntegral(  combMass,combMass,"signal").getVal()
-  S = nData * model.createIntegral(combMass,combMass,"signal").getVal() - nBkg*exp.createIntegral(combMass,combMass,"signal").getVal()
+  #B = nBkg  * exp.createIntegral(  combMass,combMass,"signal").getVal()
+  #S = nData * model.createIntegral(combMass,combMass,"signal").getVal() - nBkg*exp.createIntegral(combMass,combMass,"signal").getVal()
+  B = nBkg*expEx.createIntegral(  combMass,combMass,"signal").getVal()
+  S = nData*modelEx.createIntegral(combMass,combMass,"signal").getVal() - nBkg*expEx.createIntegral(combMass,combMass,"signal").getVal()
 
   print(f"integral values: A = {A}, B = {B}, C = {C}, S = {S}")
-
+  print(f"From the fit we expect {A+B+C} comb. bkg. events int the complete region and {B} events in the signal region")
   # get bin content for the fake mass
   bin_content = []
   
   for i in range(binsFake):
-    nFakes = int(nBkg* exp.createIntegral(combMass,combMass,f"{i+1}").getVal())
-    nSigFakes = int(nSig* doubleGauss.createIntegral(combMass,combMass,f"{i+1}").getVal())
+    nFakes = int(nBkg* expEx.createIntegral(combMass,combMass,f"{i+1}").getVal())
+    nSigFakes = int(nSig* doubleGaussEx.createIntegral(combMass,combMass,f"{i+1}").getVal())
     print("data is:", h.GetBinContent(i+1))
+    print("data edge is:", h.GetXaxis().GetBinLowEdge(i+1))
     print("sig is:", nSigFakes)
     print("fakes are:", nFakes)
     bin_content.append(nFakes)
@@ -546,7 +590,7 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   #continue plotting....
   
   #get pulls
-  hpull = frame_comb.pullHist("data","model")
+  hpull = frame_comb.pullHist("data","modelEx")
   
   frame_comb2 = combMass.frame(ROOT.RooFit.Title(""))
   frame_comb2.addPlotable(hpull,"P")
@@ -560,26 +604,27 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   frame_comb2.GetYaxis().CenterTitle()
   ratio_bins = 11
   frame_comb2.GetYaxis().SetNdivisions(ratio_bins)
-  ratio_start = -8
-  ratio_stop = 8
+  ratio_start = -4
+  ratio_stop = 4
   frame_comb2.GetYaxis().SetRangeUser(ratio_start,ratio_stop)
   
   #get chi2, we have 5 parameters
-  chi2 =round(frame_comb.chiSquare("model","data",5),5)
+  chi2 =round(frame_comb.chiSquare("modelEx","data",5),5)
   
   c_comb.cd()
   pad1.cd()
   
   #extract exp as TF1 
-  expTF1 = frame_comb.findObject("exp")
+  #expTF1 = frame_comb.findObject("exp")
+  expTF1 = frame_comb.findObject("ext2")
 
-  print(exp.createIntegral(  combMass,combMass).getVal())
-  width = binEdges[1]-binEdges[0]
-  exp2  = exp.asTF(ROOT.RooArgList(combMass), ROOT.RooArgList(a), ROOT.RooArgList(combMass))
-  mod2 = model.asTF(ROOT.RooArgList(combMass), ROOT.RooArgList(a), ROOT.RooArgList(combMass))
+  #print(exp.createIntegral(  combMass,combMass).getVal())
+  #width = binEdges[1]-binEdges[0]
+  #exp2  = exp.asTF(ROOT.RooArgList(combMass), ROOT.RooArgList(a), ROOT.RooArgList(combMass))
+  #mod2 = model.asTF(ROOT.RooArgList(combMass), ROOT.RooArgList(a), ROOT.RooArgList(combMass))
 
-  print("nBkg", nBkg)
-  print("bin1 with TF1", nBkg*exp2.Integral(binEdges[0],  binEdges[1]))
+  #print("nBkg", nBkg)
+  #print("bin1 with TF1", nBkg*exp2.Integral(binEdges[0],  binEdges[1]))
  
   #create simple lienar TF1 (approximation to exp)
   binwidth = h.GetBinWidth(1)
@@ -632,7 +677,7 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
   textcomb.AddText("#chi^{2}_{red}" + f" = {round(chi2,2)}")
   textcomb.Draw("SAME")
   
-  CMS_lumi(pad1, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = '2.1 fb^{-1}')
+  CMS_lumi(pad1, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = 'X fb^{-1}')
   
   pad2.cd()
   
@@ -692,6 +737,7 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, sigWidth = 5, sbWidth = 1, bins
 
   return A, B, C, S
 
+"""
 test = "26_04_2024_16_28_22"
 ch, df = getRdf(test)
 s, h  = getSigma(df, "phiPi_m", selection)
@@ -700,4 +746,4 @@ dataTest = "26_04_2024_18_08_15" #"14_04_2024_22_09_50" #"19_04_2024_17_22_22"#"
 chData,dfData = getRdf(dataTest)
 A, B, C, S    = getABCS( dataTest, dfData, selectionData, "phiPi_m", s, h, bins = 15) 
 
-
+"""
