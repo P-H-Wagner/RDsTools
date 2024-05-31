@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
-from helper import colors, labels, bsMass
+from helper import bsMass_, dsMass_, phiMass_
 from histModels import models
 
 import numpy as np
@@ -39,9 +39,9 @@ nSignalRegion    = 3 #how many sigma until the signal region stops
 nSidebands     = 5 #how many sigma until the sb starts
 sbWidth = 1 # sb width
 
-dsMass_ = 1.96834
-bsMass_ = 5.36688
-phiMass_ = 1.019461
+#dsMass_ = 1.96834
+#bsMass_ = 5.36688
+#phiMass_ = 1.019461
 #########################################
 ## SELECTIONS                          ##
 #########################################
@@ -49,7 +49,7 @@ phiMass_ = 1.019461
 
 ## BASIC
 
-selBasic        = f" (dsMu_m < {bsMass}) & (k1_charge*k2_charge < 0) & (mu_charge*pi_charge <0) & (gen_match_success == 1))"
+selBasic        = f" (dsMu_m < {bsMass_}) & (k1_charge*k2_charge < 0) & (mu_charge*pi_charge <0) & (gen_match_success == 1))"
 selBasicHb      = selBasic + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6) "    # exlude signals from hb
 
 selDsMu         = selBasic + " && (gen_sig == 0)"                                              # select Ds  Mu 
@@ -612,10 +612,20 @@ def stackedPlot(histos, var, hb_scale, fakemass, A,B,C,D, mlow, mhigh, log = Fal
   #saving
   c1.Modified()
   c1.Update()
+
+
+  toSave = "/work/pahwagne/RDsTools/plots/cmsplots/"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+    os.makedirs(toSave + "/log")  
+
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/cmsplots/log/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/log/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/log/{var}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/cmsplots/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{var}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 def normPlot(histos, var, fakemass, A,B,C,S,log = False):
@@ -745,10 +755,20 @@ def normPlot(histos, var, fakemass, A,B,C,S,log = False):
   #saving
   c1.Modified()
   c1.Update()
+
+  toSave = "/work/pahwagne/RDsTools/plots/normplots/"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+    os.makedirs(toSave + "/log")  
+
+
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/normplots/log/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/log/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/log/{var}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/normplots/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{var}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{var}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 def methodDistinction(histos,name, selection,norm = True):
@@ -782,7 +802,13 @@ def methodDistinction(histos,name, selection,norm = True):
     legend.AddEntry(hist.GetValue(),label,"l")
     legend.Draw("SAME")
 
-  canvas.SaveAs(f"./method_dist/method_dist_{name}.png")  
+  toSave = "/work/pahwagne/RDsTools/plots/method_dist/"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+
+  canvas.SaveAs(f"/work/pahwagne/RDsTools/plots/method_dist/{name}.pdf")  
+  canvas.SaveAs(f"/work/pahwagne/RDsTools/plots/method_dist/{name}.png")  
   print(f"DONE")
 
 def createPlots(selec):
