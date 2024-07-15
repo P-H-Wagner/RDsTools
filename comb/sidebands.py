@@ -4,9 +4,12 @@ import ROOT
 from ROOT import TLorentzVector
 from ROOT import TVector3
 import sys
+import os
+sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
+from helper import *
+
 from cms_style import CMS_lumi
 from copy import deepcopy as dc
-import os
 
 # PERFROM SIDEBAND RECONSTRUCTRION
 # FIND: A,B,C,S
@@ -28,9 +31,6 @@ import os
 #    A      |     B    |     C       *   *  #
 #           |          |                    #
 #############################################  Ds mass
-
-dsMass_ = 1.96834
-bsMass_ = 5.36688
 
 
 
@@ -389,7 +389,7 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
 ######################################################################################
 
-def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop, binsFake = 21, sigWidth = 5, sbWidth = 1):
+def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth):
 
   """
   - sigma obtained from fit to MC"  
@@ -399,14 +399,18 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
 
   print("========> Get ABCS")
 
-  tresh  = sigWidth * sigma
 
-  mlow   = dsMass_  - tresh
-  mlow2  = mlow     - sbWidth * sigma
+  #signal region
+  mlow   = dsMass_ - nSig*sigma
+  mhigh  = dsMass_ + nSig*sigma
 
-  mhigh  = dsMass_  + tresh
-  mhigh2 = mhigh    + sbWidth * sigma
- 
+  #sideband start
+  mlow2  = dsMass_ - nSb*sigma
+  mhigh2 = dsMass_ + nSb*sigma
+
+  #sideband stops
+  mlow3  = mlow2  - width*sigma
+  mhigh3 = mhigh2 + width*sigma 
 
   #create histo
 
@@ -437,11 +441,11 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   combMass = ROOT.RooRealVar("combMass",r"D_{s} mass",start,stop)
   
   #observable ranges
-  combMass.setRange("left"     ,mlow2 ,mlow)   
-  combMass.setRange("right"    ,mhigh ,mhigh2)        
+  combMass.setRange("left"     ,mlow3  ,mlow2)   
+  combMass.setRange("right"    ,mhigh2 ,mhigh3)        
   combMass.setRange("signal"   ,mlow  ,mhigh)
   combMass.setRange("complete" ,start ,stop)   
-  combMass.setRange("full"     ,mlow2 ,mhigh2)
+  combMass.setRange("full"     ,mlow3 ,mhigh3)
   
   #Create edges for the fake mass histogram, s.t. we can plot a MC Ds mass distribution
   binEdges = np.linspace(start, stop, binsFake+1)
@@ -630,14 +634,14 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   binwidth = h.GetBinWidth(1)
   
   #to visualize sidebands ;)
-  x1 = mlow
-  x2 = mhigh
-  y1 = expTF1.Eval(mlow)
-  y2 = expTF1.Eval(mhigh)
+  x1 = mlow2
+  x2 = mhigh2
+  y1 = expTF1.Eval(mlow2)
+  y2 = expTF1.Eval(mhigh2)
   slope = (y2-y1)/(x2-x1) 
   b = y1 - slope*x1
-  dummy1 = ROOT.TF1("dummy1","[0] + x*[1] ",mlow,mlow2)
-  dummy2 = ROOT.TF1("dummy2","[0] + x*[1] ",mhigh,mhigh2)
+  dummy1 = ROOT.TF1("dummy1","[0] + x*[1] ",mlow2,mlow3)
+  dummy2 = ROOT.TF1("dummy2","[0] + x*[1] ",mhigh2,mhigh3)
   dummy1.SetParameter(0,0.999*b)
   dummy1.SetParameter(1,slope)
   dummy2.SetParameter(0,0.999*b)
@@ -738,6 +742,8 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   return A, B, C, S
 
 """
+
+# this is for a test 
 test = "26_04_2024_16_28_22"
 ch, df = getRdf(test)
 s, h  = getSigma(df, "phiPi_m", selection)
