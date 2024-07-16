@@ -31,12 +31,14 @@ import sys
 #and after
 
 
-inp = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/HOOK_DATE_TIME/HOOK_FILE_IN"
+# the input can be a single file (t3 production) or a list of files (crab)
+inp =  "HOOK_PATH"  #f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/HOOK_DATE_TIME/HOOK_FILE_IN"
 out =  f"/scratch/pahwagne/HOOK_DATE_TIME/HOOK_FILE_OUT"
 
 #load it into root file to get all branch names
 rootFile = ROOT.TFile.Open(inp)
 rootTree = rootFile.Get("Events")
+
 
 # nr of events
 #nEntries = rootTree.GetEntries()
@@ -106,7 +108,7 @@ for i,name in enumerate(names):
   if (name == "dsMu_pt"  )  : iDsMuPt   = i    
 
 nEntries = len(nf[names[-1]])
-print("flattening {nEntries} events!")
+print(f"flattening {nEntries} events!")
 
 # Lets rewrite the nfDir in the following shape and sort at the same time to avoid an extra loop:
 #                   [        [ [this is one cand with all its variables pt, mass, m2miss, .... ]        #and we dump all candidates in an array]  sort this!                                # for each event]          
