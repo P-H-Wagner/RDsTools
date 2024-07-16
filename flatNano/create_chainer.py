@@ -14,6 +14,11 @@ parser.add_argument('nDir')   # nr of directories on the t2 (counting from 0), f
 parser.add_argument('nFiles') # nr of files to chain
 args = parser.parse_args()
 
+######################################
+## From test run:                   ##
+## H-adding 10 files takes ~15 mins ##
+######################################
+
 queue = 'short' 
 #time = 60
 nevents = -1
@@ -30,32 +35,38 @@ def list_files_gfal(path):
   
   # Split the output by lines to get a list of files and directories
   files = result.stdout.splitlines()
-  
+
+  # remove first element which is log (check this with printing it)
+  files.remove('log') 
+
+ 
   return files
 
-for i in range(1): #range(int(args.nDir)):
+for i in range(int(args.nDir) + 1):
 
   print(f"Chaining files from part {i}")
 
   path       = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/2024Jun28/ParkingBPH1/crab_{args.date_time}/{args.id}/000{i}/"
   files      = list_files_gfal(path)
 
-  inputfiles = [path + f for f in files] #inlcude the path in the list :-)
+  inputfiles += [path + f for f in files] #inlcude the path in the list :-)
+
+  #inputfiles = inputfiles[0:10] #debugging
 
 os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/crab/{args.date_time}")
-os.makedirs(f"{args.date_time}/logs")
-os.makedirs(f"{args.date_time}/errs")
+os.makedirs(f"chain_{args.date_time}/logs")
+os.makedirs(f"chain_{args.date_time}/errs")
 
 for i,j in enumerate(range(0, len(inputfiles), int(args.nFiles))):
 
   #slice into lists of length args.nFiles
   fin = inputfiles[j:j+int(args.nFiles)]
-  fout = f"/scratch/pahwagne/chained_data_{args.date_time}_chunk_{i}.root"
-
+  fout = f"/scratch/pahwagne/{args.date_time}/chained_data_{args.date_time}_chunk_{i}.root"
+  
   #template
   temp = open("temp_chainer.py", "rt")
   #file to write to
-  cfg = open(f"{args.date_time}/chainer.py","wt")
+  cfg = open(f"chain_{args.date_time}/cfg_chunk_{i}.py","wt")
   
   for line in temp:
     if "HOOK_DATE_TIME"   in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
@@ -74,13 +85,13 @@ for i,j in enumerate(range(0, len(inputfiles), int(args.nFiles))):
          'eval "$(conda shell.bash hook)"',
          'conda activate /work/pahwagne/environments/hammer3p8',
          f'mkdir -p /scratch/pahwagne/{args.date_time}',
-         f'python {args.date_time}/cfg_chunk_{i}.py',
-         f'xrdcp /scratch/pahwagne/{args.date_time}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/crab/{args.date_time}/{fout}',
-         f'rm /scratch/pahwagne/{args.date_time}/{fout}',
+         f'python chain_{args.date_time}/cfg_chunk_{i}.py',
+         f'xrdcp {fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/crab/{args.date_time}/chained_data_{args.date_time}_chunk_{i}.root',
+         f'rm {fout}',
          '',
      ])
 
-  with open(f"{args.date_time}/submitter_chunk_{i}.sh", "wt") as flauncher:
+  with open(f"chain_{args.date_time}/submitter_chunk_{i}.sh", "wt") as flauncher:
     flauncher.write(to_write)
 
 
@@ -89,16 +100,16 @@ for i,j in enumerate(range(0, len(inputfiles), int(args.nFiles))):
         'sbatch',
         f'-p {queue}',
         '--account=t3',
-        f'-o {args.date_time}/logs/chunk_{i}.log',
-        f'-e {args.date_time}/errs/chunk_{i}.err',
-        '--mem=1000M',
-        f'--job-name=FLAT_{i}',
-        f'--time=5',
-        f'{args.date_time}/submitter_chunk_{i}.sh',
+        f'-o chain_{args.date_time}/logs/chunk_{i}.log',
+        f'-e chain_{args.date_time}/errs/chunk_{i}.err',
+        #'--mem=1000M',
+        f'--job-name=CHAIN_{i}',
+        f'--time=30',
+        f'chain_{args.date_time}/submitter_chunk_{i}.sh',
      ])
 
   print(command_sh_batch)
-  #os.system(command_sh_batch)
+  os.system(command_sh_batch)
 
 
 
