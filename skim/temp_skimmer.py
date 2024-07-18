@@ -1,31 +1,12 @@
 import ROOT
+import os
+import sys
+sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
+from helper import *
 
 bsMass_ = 5.36688
 
-baseline = ' & '.join([
-f'(dsMu_m < {bsMass_})',
-'(k1_charge*k2_charge <0)',
-'(mu_charge*pi_charge < 0)',
-'(mu_pt > 8)',
-'(k1_pt > 1)',
-'(k2_pt > 1)',
-'(pi_pt > 1)',
-'(lxy_ds < 1)',
-'(mu_id_medium == 1)',
-'(mu_rel_iso_03 < 0.3)',
-'tv_prob > 0.1',
-#'((cosPiK1 < -0.3) || (cosPiK1 > 0.3))',
-'(fv_prob > 0.1)'
-])
-
-bkg = ' & '.join([
-#'k1_charge*k2_charge > 0',
-#'mu_charge*pi_charge > 0',
-f'dsMu_m > {bsMass_}',
-#'mu_rel_iso_03 > 0.3'
-])
-
-selections = {"baseline": baseline, "bkg": bkg}
+selections = {"baseline": baseline, "bkg": bkg, "ma_cut": ma_cut, "ma_cut_wout_fv":ma_cut_wout_fv}
 
 # pick the skim selection
 name = "HOOK_SELECTION"

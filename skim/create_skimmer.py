@@ -15,7 +15,7 @@ parser.add_argument('selection') # pick selection
 args = parser.parse_args()
 
 queue = 'short' 
-#time = 60
+time = 10
 nevents = -1
 
 #naming
@@ -32,8 +32,8 @@ directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_t
 chain = ROOT.TChain("tree")
 chain.Add(directory)
 
-#define weights for math solution
-signal_directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/13_05_2024_14_39_06/*"
+#define weights for math solution (take the most actual signal sample)
+signal_directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/15_07_2024_07_50_49/*"
 signals = ROOT.TChain("tree")
 signals.Add(signal_directory)
 
@@ -52,8 +52,8 @@ branches = chain.GetListOfBranches()
 names    = [branch.GetName() for branch in branches]
 
 # errors and logs
-os.makedirs(f"{args.date_time}/logs")
-os.makedirs(f"{args.date_time}/errs")
+os.makedirs(f"{args.date_time}_{args.selection}/logs")
+os.makedirs(f"{args.date_time}_{args.selection}/errs")
 
 #write for loop as string to print into the skimmer file
 
@@ -76,7 +76,7 @@ print(forLoop)
 #template
 temp = open("temp_skimmer.py", "rt")
 #file to write to
-cfg = open(f"{args.date_time}/skimmer.py","wt")
+cfg = open(f"{args.date_time}_{args.selection}/skimmer.py","wt")
 
 for line in temp:
   if "HOOK_DATE_TIME"   in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
@@ -92,14 +92,14 @@ to_write = '\n'.join([
        '#!/bin/bash',
        'eval "$(conda shell.bash hook)"',
        'conda activate /work/pahwagne/environments/hammer3p8',
-       f'mkdir -p /scratch/pahwagne',
-       f'python /work/pahwagne/RDsTools/comb/{args.date_time}/skimmer.py',
+       f'mkdir -p /scratch/pahwagne/skimmed_{args.date_time}_{args.selection}',
+       f'python /work/pahwagne/RDsTools/skim/{args.date_time}_{args.selection}/skimmer.py',
        f'xrdcp /scratch/pahwagne/skimmed_{args.selection}_{args.date_time}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{args.date_time}/skimmed_{args.selection}_{args.date_time}.root',
-       f'rm -r /scratch/pahwagne',
+       f'rm -r /scratch/pahwagne/skimmed_{args.date_time}_{args.selection}',
        '',
    ])
 
-with open(f"{args.date_time}/skimmer.sh", "wt") as flauncher:
+with open(f"{args.date_time}_{args.selection}/skimmer.sh", "wt") as flauncher:
   flauncher.write(to_write)
 
 
@@ -108,12 +108,12 @@ command_sh_batch = ' '.join([
       'sbatch',
       f'-p {queue}',
       '--account=t3',
-      f'-o {args.date_time}/logs/log.txt',
-      f'-e {args.date_time}/errs/err.txt',
+      f'-o {args.date_time}_{args.selection}/logs/log.txt',
+      f'-e {args.date_time}_{args.selection}/errs/err.txt',
       #'--mem=1500M',
       f'--job-name=SKIM_{args.channel}',
       #f'--time={time}',
-      f'{args.date_time}/skimmer.sh',
+      f'{args.date_time}_{args.selection}/skimmer.sh',
    ])
 
 print(command_sh_batch)
