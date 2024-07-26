@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
-from helper import bsMass_, dsMass_, phiMass_
+from helper import * 
 from histModels import models
 
 import numpy as np
@@ -21,100 +21,53 @@ from cms_style import CMS_lumi
 ROOT.gStyle.SetOptTitle(0)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(True)
-ROOT.TH1.SetDefaultSumw2()
+ROOT.TH1.SetDefaultSumw2() #apply weights!
 
 #########################################
 ## INPUT                               ##
 #########################################
 
-sig   = "13_05_2024_14_39_06"                      #"26_04_2024_16_28_22" #old MC 
-hb    = "26_04_2024_16_28_58" #"10_04_2024_00_32_53"#"09_04_2024_18_44_36"  #"22_03_2024_17_34_53" #old inclusive
-data  = "26_04_2024_18_08_15" #data -> apply SB method
-bs    = "21_05_2024_20_27_35"
-bplus = "21_05_2024_20_27_47"
-b0    = "21_05_2024_19_58_59"
-lambdab    = "21_05_2024_20_28_00"
+sig     = "" #"19_06_2024_13_06_17" #"17_06_2024_09_07_34" #"13_05_2024_14_39_06"                      #"26_04_2024_16_28_22" #old MC 
+hb      = "" #"19_06_2024_13_08_23" #"17_06_2024_09_09_13" #"26_04_2024_16_28_58" #"10_04_2024_00_32_53"#"09_04_2024_18_44_36"  #"22_03_2024_17_34_53" #old inclusive
+           # part 1          # part 2           # part 3           # part 4
+data    = [""] #"17_06_2024_09_09_46" #"26_04_2024_18_08_15" #data -> apply SB method
 
-nSignalRegion    = 3 #how many sigma until the signal region stops
-nSidebands     = 5 #how many sigma until the sb starts
-sbWidth = 1 # sb width
 
-#dsMass_ = 1.96834
-#bsMass_ = 5.36688
-#phiMass_ = 1.019461
+bs      = "18_06_2024_13_01_31" #"21_05_2024_20_27_35"
+bplus   = "18_06_2024_13_01_42" #"21_05_2024_20_27_47"
+b0      = "18_06_2024_13_01_53" #"21_05_2024_19_58_59"
+lambdab = "21_05_2024_20_28_00"
+
 #########################################
 ## SELECTIONS                          ##
 #########################################
 
-
 ## BASIC
 
 selBasic        = f" (dsMu_m < {bsMass_}) & (k1_charge*k2_charge < 0) & (mu_charge*pi_charge <0) & (gen_match_success == 1))"
-selBasicHb      = selBasic + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6) "    # exlude signals from hb
+selBasicHb      = selBasic + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) "    # exlude signals from hb
 
-selDsMu         = selBasic + " && (gen_sig == 0)"                                              # select Ds  Mu 
-selDsTau        = selBasic + " && (gen_sig == 1)"                                              # select Ds  Tau 
-selDsStarMu     = selBasic + " && (gen_sig == 5)"                                              # select Ds* Mu
-selDsStarTau    = selBasic + " && (gen_sig == 6)"                                              # select Ds* Tau
+#baseline = baseline + '&' + addOn1 #+ '&' + addOn2
+print(baseline)
+sel = selBasic + baseline
 
-selMu           = selBasic + " && (gen_sig == 0 || gen_sig == 5)"                                  # select mu  signals
-selTau          = selBasic + " && (gen_sig == 1 || gen_sig == 6)"                                  # select tau signals
-selDs           = selBasic + " && (gen_sig == 0 || gen_sig == 1)"                                  # select Ds signals
-selDsStar       = selBasic + " && (gen_sig == 5 || gen_sig == 6)"                                  # select Ds star signals
+selBasicHb      = sel + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) "    # exlude signals from hb
+selDsMu         = sel + " && (gen_sig == 0)"                                              # select Ds  Mu 
+selDsTau        = sel + " && (gen_sig == 1)"                                              # select Ds  Tau 
+selDsStarMu     = sel + " && (gen_sig == 10)"                                              # select Ds* Mu
+selDsStarTau    = sel + " && (gen_sig == 11)"                                              # select Ds* Tau
 
-## BASELINE
-
-baseline = ' & '.join([
-f'(dsMu_m < {bsMass_})',
-'(k1_charge*k2_charge <0)',
-'(mu_charge*pi_charge < 0)',
-'(mu_pt > 8)',
-'(k1_pt > 1)',
-'(k2_pt > 1)',
-'(pi_pt > 1)',
-'(lxy_ds < 1)',
-'(mu_id_medium == 1)',
-'(mu_rel_iso_03 < 0.3)',
-#'tv_prob > 0.1',
-#'((cosPiK1 < -0.3) || (cosPiK1 > 0.3))',
-'(fv_prob > 0.1)'
-])
-
-addOn1 = ' & '.join([
-'(bs_pt_reco_2 > 10)',
-'(cosMuW_lhcb_alt > -0.5)',
-'((cosPiK1 < -0.6) || (cosPiK1 > 0.6))',
-'(e_star_reco_2 < 2.5)'
-])
-
-addOn2 = ' & '.join([
-'(pt_miss_lhcb_alt < 25)',
-'(m2_miss_lhcb_alt > -2)',
-f'(abs(kk_m - {phiMass_}) < 0.010 )',
-])
-
-addOn3 = ' & '.join([
-'(m2_miss_lhcb_alt > -2)',
-'(e_star_reco_weighted < 1.7)',
-'(bs_pt_reco_2 > 20)',
-'((cosPiK1 < -0.4) || (cosPiK1 > 0.4))',
-])
-
-bkg = ' & '.join([
-f'dsMu_m > {bsMass_}',
-#'mu_rel_iso_03 > 0.3'
-])
+selMu           = sel + " && (gen_sig == 0 || gen_sig == 10)"                                  # select mu  signals
+selTau          = sel + " && (gen_sig == 1 || gen_sig == 11)"                                  # select tau signals
+selDs           = sel + " && (gen_sig == 0 || gen_sig == 1)"                                  # select Ds signals
+selDsStar       = sel + " && (gen_sig == 10 || gen_sig == 11)"                                  # select Ds star signals
 
 
-#baseline = baseline #+ '&' + addOn1 + '&' + addOn2
-baseline = baseline + '&' + addOn3
-
-
-baselineHb =        baseline + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6) & (gen_match_success ==1 ) "
+baselineHb =        baseline + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
 baselineDsMu =      baseline + " && (gen_sig == 0)" 
 baselineDsTau =     baseline + " && (gen_sig == 1)"
-baselineDsStarMu =  baseline + " && (gen_sig == 5)" 
-baselineDsStarTau = baseline + " && (gen_sig == 6)"
+baselineDsStarMu =  baseline + " && (gen_sig == 10)" 
+baselineDsStarTau = baseline + " && (gen_sig == 11)"
 
 #########################################
 ## CREATE RDF FROM TREE                ##
@@ -122,22 +75,36 @@ baselineDsStarTau = baseline + " && (gen_sig == 6)"
 
 def getRdf(dateTime, debug = False, skimmed = ""):
 
-  if skimmed != "":
-    files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_{skimmed}_{dateTime}.root" #data skimmed with selection 'skimmed'
-    #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for closure
-    print("taking skimmed file ...", files)
-  else:
-    #access the flat ntuples
-    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
 
-  if debug:
-    print("picking only one file for debugging ...")
-    fileList = os.listdir(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/")
-    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/" +  fileList[0] # pick just the first one 
-
-  #chain them
   chain = ROOT.TChain("tree")
-  chain.Add(files)
+
+  if isinstance(dateTime, list) and skimmed!= "":
+    print("collecting several data chunks")
+
+    for part in dateTime:
+      print(f"appending part {part}")
+      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{part}/skimmed_{skimmed}_{part}.root"
+      chain.Add(files)       
+
+
+  else: 
+
+
+    if skimmed != "":
+      files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_{skimmed}_{dateTime}.root" #data skimmed with selection 'skimmed'
+      #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for closure
+      print("taking skimmed file ...", files)
+    else:
+      #access the flat ntuples
+      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
+  
+    if debug:
+      print("picking only one file for debugging ...")
+      fileList = os.listdir(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/")
+      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/" +  fileList[0] # pick just the first one 
+  
+    #chain them
+    chain.Add(files)
 
   #create rdf from tree
   rdf = ROOT.RDataFrame(chain)
@@ -147,11 +114,12 @@ def getRdf(dateTime, debug = False, skimmed = ""):
 
 # Create rdf from tree
 print(f" ===> Start creating RDataFrames")
-chainSigSB, rdfSigSB   = getRdf(sig, skimmed = "baseline"   ) # FOR SB FIT
-chainSig, rdfSig   = getRdf(sig, skimmed = "baseline"   )#,  debug = True)
-chainHb,  rdfHb    = getRdf(hb,  skimmed = "baseline"    )#,   debug = True)
-#chainData,rdfData  = getRdf(data)#, debug = True)
-chainData,rdfData  = getRdf(data,skimmed = "baseline")  #skimmed = "baseline") #pick already skimmed file!
+chainSigSB, rdfSigSB   = getRdf(sig,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+chainSig, rdfSig       = getRdf(sig,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+chainHb,  rdfHb        = getRdf(hb,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+#chainData,rdfData     = getRdf(data)#, debug = True)
+chainData,rdfData      = getRdf(data,    skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+
 
 #########################################
 ## COLOR SCHEME                        ##
@@ -448,27 +416,24 @@ def stackedPlot(histos, var, hb_scale, fakemass, A,B,C,D, mlow, mhigh, log = Fal
   ###################################
 
   if var != "phiPi_m":
-    print("i am here")
     # use sideband method
     # left one
     hComb = histos["combL"].Clone()
     hComb.SetName("combS") #signal region
     hComb.Scale(B/(2*A))
 
-    print("i am here")
     # right one
     hCombR = histos["combR"].Clone()
     hCombR.Scale(B/(2*C))
     hComb.Add(hCombR)
 
-    print("i am here")
     nComb = hComb.Integral()
 
-    print("i am here")
+    print("number of comb events", hComb.Integral())
     # add comb to stack and err 
     hErr.Add(hComb)
     hs.Add(hComb)
- 
+
   else:
     for i in range(bins):
       hComb.SetBinContent(i+1,fakemass[i])
@@ -481,7 +446,8 @@ def stackedPlot(histos, var, hb_scale, fakemass, A,B,C,D, mlow, mhigh, log = Fal
     # add comb to stack and err 
     hErr.Add(hComb)
     hs.Add(hComb)
-
+  
+  histos["comb"] = hComb
   ###################################
   ## Scale MC to data              ##
   ###################################
@@ -493,6 +459,7 @@ def stackedPlot(histos, var, hb_scale, fakemass, A,B,C,D, mlow, mhigh, log = Fal
       hErr.Add(histos[key])
       hs.Add(histos[key])
 
+  print("number of data events", histos["data"].GetEntries())
   ###################################
   ## Create Pads                   ## 
   ###################################
@@ -627,6 +594,8 @@ def stackedPlot(histos, var, hb_scale, fakemass, A,B,C,D, mlow, mhigh, log = Fal
     c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{var}.pdf")
     c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{var}.png")
   print(f"===> Produced plot: {var}.pdf")
+
+  return histos
 
 def normPlot(histos, var, fakemass, A,B,C,S,log = False):
 
@@ -811,17 +780,57 @@ def methodDistinction(histos,name, selection,norm = True):
   canvas.SaveAs(f"/work/pahwagne/RDsTools/plots/method_dist/{name}.png")  
   print(f"DONE")
 
+def writeDatacard(histos, var, digits = 5):
+
+  temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate.txt", "rt")
+  card = open(f"/work/pahwagne/RDsTools/fit/datacards/datacard_{var}.txt", "wt")
+
+  # width in datacard template is 17 spaces
+  spaces = 22
+
+  dataStr       = str(round(histos["data"].Integral(), digits))
+  dataStr      += " "*(spaces - len(dataStr))
+  
+  dsMuStr       = str(round(histos["dsMu"].Integral(), digits))
+  dsMuStr      += " "*(spaces - len(dsMuStr))
+
+  dsTauStr      = str(round(histos["dsTau"].Integral(), digits))
+  dsTauStr     += " "*(spaces - len(dsTauStr))
+
+  dsStarMuStr   = str(round(histos["dsStarMu"].Integral(), digits))
+  dsStarMuStr  += " "*(spaces - len(dsStarMuStr))
+  print(histos["dsStarMu"].Integral())
+  dsStarTauStr  = str(round(histos["dsStarTau"].Integral(), digits))
+  dsStarTauStr += " "*(spaces - len(dsStarTauStr))
+
+  hbStr         = str(round(histos["hb"].Integral(), digits))
+  hbStr        += " "*(spaces - len(hbStr))
+
+  combStr       = str(round(histos["comb"].Integral(), digits))  
+  #combStr      += " "*(spaces - len(combStr))
+
+  rates = dsMuStr + dsTauStr + dsStarMuStr + dsStarTauStr + hbStr + combStr
+
+  for line in temp:
+    if "HOOK_RATES"            in line: line = line.replace("HOOK_RATES", rates )
+    elif "HOOK_DATA_RATE"      in line: line = line.replace("HOOK_DATA_RATE", dataStr )
+    elif "HOOK_VAR"            in line: line = line.replace("HOOK_VAR", var )
+    card.write(line)
+
+  temp.close()
+  card.close()
+
 def createPlots(selec):
 
-  selecHb =        selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 5) && (gen_sig != 6) & (gen_match_success ==1 ) "
+  selecHb =        selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
   selecDsMu =      selec + " && (gen_sig == 0)" 
   selecDsTau =     selec + " && (gen_sig == 1)"
-  selecDsStarMu =  selec + " && (gen_sig == 5)" 
-  selecDsStarTau = selec + " && (gen_sig == 6)"
+  selecDsStarMu =  selec + " && (gen_sig == 10)" 
+  selecDsStarTau = selec + " && (gen_sig == 11)"
 
   sigma, h          = getSigma(rdfSigSB, "phiPi_m", selec + "& gen_sig == 0")
-                                                                           #bins for fit #bins for fakemass
-  A, B, C, S        = getABCS( data, rdfData, selec , "phiPi_m", sigma, h, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, sbWidth = sbWidth)
+
+  A, B, C, S        = getABCS( rdfData, selec , "phiPi_m", sigma, h, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
   #A = 24158.821588264094; B = 226543.39752377832; C = 21219.183790935822; S = 19829.186060030886; #use for debugging (faster) 
    
   #signal region
@@ -851,7 +860,7 @@ def createPlots(selec):
   selec_S_DsStarMu  = createHistos(selecDsStarMu  + signalRegion, rdfSig , gen = False)
   selec_S_DsStarTau = createHistos(selecDsStarTau + signalRegion, rdfSig , gen = False)
   selec_S_Hb        = createHistos(selecHb        + signalRegion, rdfHb , gen = False)
-  selec_S_Data      = createHistos(selec         + signalRegion, rdfData , gen = False)
+  selec_S_Data      = createHistos(selec          + signalRegion, rdfData , gen = False)
   selecDataL        = createHistos(selec          + leftSB, rdfData , gen = False)
   selecDataR        = createHistos(selec          + rightSB, rdfData , gen = False)
 
@@ -868,6 +877,11 @@ def createPlots(selec):
   hb_scale = getHbScale(selecHb, selecDsMu)
 
   for var in models.keys():
+
+    #create root file for every variable which holds shapes
+    myFile    = ROOT.TFile.Open(f"/work/pahwagne/RDsTools/fit/shapes/{var}_shapes.root", "RECREATE")
+    myFile_1D = ROOT.TFile.Open(f"/work/pahwagne/RDsTools/fit/shapes/{var}_shapes_1D.root", "RECREATE")
+
     print(f"===> Producing stacked plot for variable: {var}") 
     if "gen" in var:
       #skip gen variables
@@ -884,41 +898,58 @@ def createPlots(selec):
                "combL"    : selecDataL[var], 
                "combR"    : selecDataR[var], 
                "data"     : selec_S_Data[var]}
-      stackedPlot(histos, var, hb_scale, fakemass, A,B,C,S, mlow, mhigh)
+      print("ds tau before scaling:",selec_S_DsTau[var].Integral())
+      print("ds mu before scaling:",selec_S_DsMu[var].Integral())
+      histosScaled = stackedPlot(histos, var, hb_scale, fakemass, A,B,C,S, mlow, mhigh)
       #stackedPlot(histos, var, hb_scale, fakemass, A,B,C,S, log = True)
       #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S)
       #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S, log = True)
-  
+ 
+      myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
+      myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
+      myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+      myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+      myFile.WriteObject(histosScaled["hb"],        "hb"        )
+      myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
+      myFile.WriteObject(histosScaled["comb"],      "comb"      )
+
+      myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+      myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+      myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
+      myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
+      myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
+
+      writeDatacard(histosScaled, var)
+ 
     else:
   
-      histos = {"dsTau":     selec_C_DsTau[var],
+      histos = {"dsTau":    selec_C_DsTau[var],
                "dsStarTau": selec_C_DsStarTau[var], 
-               "dsMu":     selec_C_DsMu[var], 
+               "dsMu":      selec_C_DsMu[var], 
                "dsStarMu":  selec_C_DsStarMu[var], 
                "hb"       : selec_C_Hb[var], 
                "data"     : selec_C_Data[var]}
-      stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, mlow, mhigh)
+      histosScaled = stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, mlow, mhigh)
       #stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, log = True)
       #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S)
       #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S, log = True)
+      
 
-    """ 
-    #also do it for weighted_reco
-    if 'reco_1' in var: #recos are available
-      name = var[0:-7] 
-      histos = {"dsMu":     getWeightedReco(selec_S_DsMu,      name, selec, norm = False), 
-               "dsTau":     getWeightedReco(selec_S_DsTau,     name, selec, norm = False),
-               "dsStarMu":  getWeightedReco(selec_S_DsStarMu,  name, selec, norm = False),
-               "dsStarTau": getWeightedReco(selec_S_DsStarTau, name, selec, norm = False),
-               "hb"       : selec_S_Hb[var], 
-               "combL"    : selecDataL[var], 
-               "combR"    : selecDataR[var], 
-               "data"     : selec_S_Data[var]}
-      stackedPlot(histos, name + "_weighted_reco", hb_scale, fakemass, A,B,C,S, mlow, mhigh)
-      #stackedPlot(histos, name + "_weighted_reco", hb_scale, fakemass, A,B,C,S, log = True)
-      #normPlot(dict(list(histos.items())[:-1]), name + "_weighted_reco", fakemass, A,B,C,S)
-      #normPlot(dict(list(histos.items())[:-1]), name + "_weighted_reco", fakemass, A,B,C,S, log = True)
-    """ 
+      myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
+      myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
+      myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+      myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+      myFile.WriteObject(histosScaled["hb"],        "hb"        )
+      myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
+      myFile.WriteObject(histosScaled["comb"],      "comb"      )
+
+      myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+      myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+      myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
+      myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
+      myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
+
+      writeDatacard(histosScaled, var)
   """
 
   #include Gen!
@@ -933,7 +964,9 @@ def createPlots(selec):
     methodDistinction(histos,name,selecDsMu      + signalRegion)
   """
 
-createPlots(baseline)
+#createPlots(ma_cut)
+#createPlots(ma_cut_wout_fv + "& tv_prob > 0.01 & fv_prob > 0.01")
+#createPlots(baseline)
 #createPlots(bkg)
 #createPlots(baseline + '&' + addOn1 + '&' + addOn2)
 
