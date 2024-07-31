@@ -1,4 +1,24 @@
 
+# samples
+
+sig_unc     = ["26_07_2024_14_44_54"]
+hb_unc      = ["25_07_2024_14_23_01"]
+bs_unc      = ["30_07_2024_11_40_54"]
+b0_unc      = ["30_07_2024_11_40_34"]
+bplus_unc   = ["30_07_2024_11_40_45"]
+               #part 1           #part 3           #part 4
+data_unc    = ["20240724_170223","20240728_200528","20240729_090628" ]
+
+
+sig_cons    = ["26_07_2024_14_46_03"]
+hb_cons     = ["25_07_2024_14_23_42"]
+bs_cons     = [""]
+b0_cons     = [""]
+bplus_cons  = [""]
+               #part 1
+data_cons   = ["20240724_170443"]
+
+
 # Mass constants
 
 dsMass_       = 1.96834
@@ -48,14 +68,36 @@ lumi_bs_eff    = lumi_bs    * n_processed_bs    / n_bs
 lumi_bplus_eff = lumi_bplus * n_processed_bplus / n_bplus
 
 
-print(lumi_b0_eff)
-print(lumi_bs_eff)
-print(lumi_bplus_eff)
-
 # Selections
 
+#########################
+## work with this sel  ##
+#########################
 
-ma_cut = ' & '.join([
+base = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 8)', 
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)',
+'(tv_prob > 0.1)'
+])
+
+base_wout_tv = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 8)', 
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)'
+])
+
+ma_cut_wout_tv = ' && '.join([
 f'(dsMu_m < {bsMass_})',
 '(k1_charge*k2_charge <0)',
 '(mu_charge*pi_charge < 0)',
@@ -68,6 +110,68 @@ f'(dsMu_m < {bsMass_})',
 '(mu_rel_iso_03 < 0.3)',
 '(fv_prob > 0.1)'
 ])
+
+
+
+ma_cut = ' && '.join([
+f'(dsMu_m < {bsMass_})',
+'(k1_charge*k2_charge <0)',
+'(mu_charge*pi_charge < 0)',
+'(mu_pt > 8)',
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)',
+'(tv_prob > 0.1)'
+])
+
+ma_cut_high_mass = ' && '.join([
+f'(dsMu_m > {bsMass_})',
+'(k1_charge*k2_charge <0)',
+'(mu_charge*pi_charge < 0)',
+'(mu_pt > 8)',
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)',
+'(tv_prob > 0.1)'
+])
+
+ma_cut_sign_flip = ' && '.join([
+f'(dsMu_m < {bsMass_})',
+'((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0))',
+'(mu_pt > 8)',
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)',
+'(tv_prob > 0.1)'
+])
+
+ma_cut_sign_flip_high_mass = ' && '.join([
+f'(dsMu_m > {bsMass_})',
+'((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0))',
+'(mu_pt > 8)',
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)',
+'(tv_prob > 0.1)'
+])
+
+###########################
 
 ma_cut_wout_fv = ' & '.join([
 f'(dsMu_m < {bsMass_})',
@@ -122,5 +226,4 @@ bkg = ' & '.join([
 f'dsMu_m > {bsMass_}',
 #'mu_rel_iso_03 > 0.3'
 ])
-
 

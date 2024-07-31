@@ -143,8 +143,7 @@ f'dsMu_m < {bsMass_}',
 # 'lxy_ds < 1.0',
 # 'k1_charge*k2_charge <0'])
 
-
-selection     = selec + "& gen_sig == 0"
+selection     = selec + " && (gen_sig == 0)"
 selectionData = selec 
 
 #plotting settings
@@ -155,7 +154,7 @@ ROOT.gStyle.SetOptTitle(0)
 ROOT.gStyle.SetPadLeftMargin(0.15)
 
 
-outdir = "./sb_fits/"
+outdir = "/work/pahwagne/RDsTools/comb/sb_fits/"
 
 
 #importing trees
@@ -163,7 +162,6 @@ outdir = "./sb_fits/"
 def getRdf(dateTime):
 
   files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
-  print(files)
 
   chain = ROOT.TChain("tree")
   chain.Add(files)
@@ -174,7 +172,6 @@ def getRdf(dateTime):
 def defineRanges(var,nBins, start, stop):
 
   binEdges = np.linspace(start, stop, nBins+1)
-  print(binEdges) 
   for i in range(nBins):
     #i starts at 0
     var.setRange("i+1", binEdges[i], binEdges[i+1])
@@ -202,8 +199,6 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
   # and create ptr to this histo ( for the cosntructor of hRoo)
   hPtr = h.GetPtr()
-
-  h.Scale(0.999) #apply?
 
   # Fitting variable
   dsMass = ROOT.RooRealVar(var,r"D_{s} mass", start, stop)
@@ -389,7 +384,7 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
 ######################################################################################
 
-def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth):
+def getABCS( rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth):
 
   """
   - sigma obtained from fit to MC"  
@@ -520,7 +515,7 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   #perform fit
   #result = model.fitTo(hRoo)     
   resultEx = modelEx.fitTo(hRoo)     
-  print("extended fitted nsig = ", expSig.getVal())
+  #print("extended fitted nsig = ", expSig.getVal())
 
   #extract number of signals and bkg
   #print("fracs4: ",fracs4.getVal())
@@ -529,7 +524,7 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   nSig = expSig.getVal()
   nBkg = expBkg.getVal()  
 
-  print("test: nSig + nBkg = ", nSig + nBkg, "= nData = ", nData)
+  #print("test: nSig + nBkg = ", nSig + nBkg, "= nData = ", nData)
 
   #define frame to plot on
   frame_comb = combMass.frame(ROOT.RooFit.Title(""))
@@ -585,10 +580,10 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   for i in range(binsFake):
     nFakes = int(nBkg* expEx.createIntegral(combMass,combMass,f"{i+1}").getVal())
     nSigFakes = int(nSig* doubleGaussEx.createIntegral(combMass,combMass,f"{i+1}").getVal())
-    print("data is:", h.GetBinContent(i+1))
-    print("data edge is:", h.GetXaxis().GetBinLowEdge(i+1))
-    print("sig is:", nSigFakes)
-    print("fakes are:", nFakes)
+    #print("data is:", h.GetBinContent(i+1))
+    #print("data edge is:", h.GetXaxis().GetBinLowEdge(i+1))
+    #print("sig is:", nSigFakes)
+    #print("fakes are:", nFakes)
     bin_content.append(nFakes)
   
   #continue plotting....
@@ -725,7 +720,7 @@ def getABCS(filename, rdf, sel, var, sigma, hMc, bins = bins, start = start, sto
   
   	#this mass lies within the bin
   	mass_average = (binEdges[i] + binEdges[i+1])/2 
-  	print(mass_average) 
+  	#print(mass_average) 
   	for j in range(events):
   		#lets append this mass events-times
   		fake_mass.append(mass_average)
