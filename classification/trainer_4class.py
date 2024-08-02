@@ -73,36 +73,126 @@ files_b0    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f
 files_bs    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in bs_unc   ]
 files_bplus = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in bplus_unc]
 #this is only unconstrained data! (cut on fv only)
-file_data  = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
-file_sig   = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
-file_hb    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
-file_b0    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
-file_bs    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
-file_bplus = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
+file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
+file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
+file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
+file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
+file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
+file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
 #this is only unconstrained data! (cut on fv only)
-file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
-file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
-file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
-file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
-file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
 
+#file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
+#file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+#file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
+#file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
+#file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
+#file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
 
-def getRdf(inputfiles, debug = False, skimmed = ""):
+#def getRdf(inputfiles, debug = False, skimmed = ""):
+#  print(inputfiles)
+#  chain = ROOT.TChain("tree")
+#
+#  for f in inputfiles:
+#    chain.AddFile(f)
+#
+#  rdf = ROOT.RDataFrame(chain)
+#  import pdb
+#  pdb.set_trace()  
+#
+#  return rdf
+
+def getRdf(dateTimes, debug = None, skimmed = None):
+
 
   chain = ROOT.TChain("tree")
 
-  for f in inputfiles:
-    chain.Add(f)
+  if not isinstance(dateTimes, list):
+    print("dateTimes must be a list of strings")
 
-  rdf = ROOT.RDataFrame("tree", chain);
-  return rdf
+  if debug:
+    print(f"Picking {debug} file(s) for debugging ...")
+    fileList = os.listdir(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/")
+    #files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/" +  fileList[0] # pick just the first one 
+    for i in range(debug):
+      try: chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/" +  fileList[i])
+      except: chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/*")
+
+    rdf = ROOT.RDataFrame(chain)
+    return (chain,rdf)
+
+
+  for dateTime in dateTimes:
+
+    if skimmed:
+      files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_{skimmed}_{dateTime}.root" #data skimmed with selection 's     kimmed'
+      #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for      closure
+      print(f"Appending {files}")
+
+    else:
+      #access the flat ntuples
+      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
+
+    #chain them all
+    chain.Add(files)
+
+  #create rdf from tree
+
+  rdf = ROOT.RDataFrame(chain)
+
+  return (chain,rdf)
+
+#--------------------define sideband region (mlow, mhigh) and dump it into pickle ----------------
+
+if args.constrained:
+  chainSig,rdfSig     = getRdf(sig_cons, skimmed = "base") 
+  chainData,rdfData   = getRdf(data_cons, skimmed = "base")
+
+else:
+  chainSig,rdfSig     = getRdf(sig_unc, skimmed = "base") 
+  chainData,rdfData   = getRdf(data_unc, skimmed = "base")
+
+pdb.set_trace()
+
+sigma, h          = getSigma(rdfSig, "phiPi_m", ma_cut_wout_tv + "& (gen_sig == 0)")
+
+massfit = {}
+massfit["sigma"]  = sigma
+#massfit["h"]      = h 
+
+pdb.set_trace()
 
 if not args.constrained:
-  rdfSig    = getRdf(file_sig       )#, debug = True)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
-  rdfData   = getRdf(file_data       )#, debug = True)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+  
+  A, B, C, S        = getABCS( rdfData, ma_cut_wout_tv , "phiPi_m", sigma, h, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
 
-#------------------limit CPU---------------------
+  massfit["A"] = A 
+  massfit["B"] = B
+  massfit["C"] = C
+  massfit["S"] = S
+
+#write them into file to use the same constants for the evulation (for later: also use the same for pre-fit plots!)
+
+
+with open("massfit","wb") as f:
+  pickle.dump(massfit,f)
+
+#signal region
+mlow   = dsMass_ - nSignalRegion*sigma
+mhigh  = dsMass_ + nSignalRegion*sigma
+
+#sideband start
+mlow2  = dsMass_ - nSidebands*sigma
+mhigh2 = dsMass_ + nSidebands*sigma
+
+#sideband stops
+mlow3  = mlow2  - sbWidth*sigma
+mhigh3 = mhigh2 + sbWidth*sigma
+
+signalRegion = f"& ({mlow} < phiPi_m) & (phiPi_m < {mhigh})"
+leftSB       = f"& ({mlow3} < phiPi_m) & (phiPi_m < {mlow2})"
+rightSB      = f"& ({mhigh2} < phiPi_m) & (phiPi_m < {mhigh3})"
+
+#------------------limit CPU--------------------------------------
 
 def limitCPU(n):
   print("========> limiting CPU")
@@ -120,37 +210,6 @@ def limitCPU(n):
   tf.config.set_soft_device_placement(True)
 
 #limitCPU(1)
-
-#--------------------define sideband region (mlow, mhigh)----------------
-
-if not args.constrained:
-
-  #take sb method, for this we have to get the sigma of the ds mu mass fit
-  sigma, h          = getSigma(rdfSig, "phiPi_m", ma_cut + "& gen_sig == 0")
-  A, B, C, S        = getABCS( rdfData, ma_cut , "phiPi_m", sigma, h, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
-
-  #write them into file to use the same constants for the evulation (for later: also use the same for pre-fit plots!)
-  with open("massfit","wb") as f:
-    massfit = {"sigma":sigma,"h":h,"A":A,"B":B,"C":C,"D":D}
-    pickle.dump(massfit,f)
-  
-
-  #signal region
-  mlow   = dsMass_ - nSignalRegion*sigma
-  mhigh  = dsMass_ + nSignalRegion*sigma
-
-  #sideband start
-  mlow2  = dsMass_ - nSidebands*sigma
-  mhigh2 = dsMass_ + nSidebands*sigma
-
-  #sideband stops
-  mlow3  = mlow2  - sbWidth*sigma
-  mhigh3 = mhigh2 + sbWidth*sigma
-
-  signalRegion = f"& ({mlow} < phiPi_m) & (phiPi_m < {mhigh})"
-  leftSB       = f"& ({mlow3} < phiPi_m) & (phiPi_m < {mlow2})"
-  rightSB      = f"& ({mhigh2} < phiPi_m) & (phiPi_m < {mhigh3})"
-
 
 #--------------------define features ----------------------
  
@@ -235,9 +294,6 @@ class Sample(object):
       arr = tree2array(tree_obj,selection = self.selection, branches = kin_var)
       self.df = pd.DataFrame(arr)
 
-
-    import pdb
-    pdb.set_trace()
 
     pd.options.mode.chained_assignment = None
     self.df['is_signal'] = signal
@@ -451,7 +507,7 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(40, activation= 'swish'))
     #model.add(tf.keras.layers.Dense(32, activation= 'relu'))
     #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(20, activation ='relu'))
+    #model.add(tf.keras.layers.Dense(20, activation ='relu'))
     model.add(tf.keras.layers.Dense(16, activation ='relu'))
     model.add(tf.keras.layers.Dense(8, activation ='relu'))
     model.add(tf.keras.layers.Dense(4, activation= 'softmax'))
