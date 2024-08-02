@@ -13,6 +13,7 @@ from itertools import product
 from time import time 
 from datetime import datetime
 from sklearn.preprocessing import LabelBinarizer
+from tensorflow.keras import regularizers
 
 #import seaborn as sns
 
@@ -151,7 +152,6 @@ else:
   chainSig,rdfSig     = getRdf(sig_unc, skimmed = "base") 
   chainData,rdfData   = getRdf(data_unc, skimmed = "base")
 
-pdb.set_trace()
 
 sigma, h          = getSigma(rdfSig, "phiPi_m", ma_cut_wout_tv + "& (gen_sig == 0)")
 
@@ -159,7 +159,6 @@ massfit = {}
 massfit["sigma"]  = sigma
 #massfit["h"]      = h 
 
-pdb.set_trace()
 
 if not args.constrained:
   
@@ -355,7 +354,7 @@ class Trainer(object):
  
     #signals     #ds mu   #ds tau   #dstar mu   #dstar tau   #hb
     mc_ids     = [0       ,1        ,10         ,11          ,-1]
-    mc_classes = [0       ,1        ,0          ,1           ,2 ] #changed ! 
+    mc_classes = [0       ,0        ,0          ,0           ,1 ] #changed ! 
 
     for mc_id, class_id in zip (mc_ids,mc_classes):
 
@@ -369,7 +368,7 @@ class Trainer(object):
         mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + hb_selec,                tree = tree_name,signal = class_id).df
         mc_sample           = pd.concat([mc_sample1,mc_sample2,mc_sample3], sort = False)
 
-      mc_train, mc_test = train_test_split(mc_sample,test_size = 0.2,random_state = 1968)
+      mc_train, mc_test = train_test_split(mc_sample,test_size = 0.2,random_state = 1000)
       print(f"train sample for signal {mc_id} has class name {class_id} and contains {len(mc_train)} events")
       print(f"test sample for signal {mc_id} has class name {class_id} and contains {len(mc_test)} events")
   
@@ -379,7 +378,7 @@ class Trainer(object):
     #---------------------------  COMB BACKGROUND ------------------------------------ 
 
     ## Denote comb with id 2
-    data_id = 3
+    data_id = 2
 
     #siebands used for the comb. bkg
 
@@ -392,7 +391,7 @@ class Trainer(object):
       data_selec = self.baseline_selection + SB
 
     data_sample           = Sample(filename=file_data, selection=data_selec, tree = 'tree',signal = data_id)
-    data_train, data_test = train_test_split(data_sample.df, test_size=0.2, random_state = 1968)
+    data_train, data_test = train_test_split(data_sample.df, test_size=0.2, random_state = 1000)
 
     train[data_id] = data_train
     test [data_id] = data_test
@@ -500,7 +499,12 @@ class Trainer(object):
     '''
     #NOTE for the moment, everything is hardcoded
 
-    rate = 0.001 #learning rate (not applied in our model :))
+    rate = 0.0001 #learning rate (not applied in our model :))
+    rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=0.0001,
+    decay_steps=10000,
+    decay_rate=0.9
+)
 
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input((len(features),)))
@@ -508,11 +512,16 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(32, activation= 'relu'))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(20, activation ='relu'))
-    model.add(tf.keras.layers.Dense(16, activation ='relu'))
-    model.add(tf.keras.layers.Dense(8, activation ='relu'))
-    model.add(tf.keras.layers.Dense(4, activation= 'softmax'))
+    model.add(tf.keras.layers.Dense(64, activation ='relu'))#, kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dropout(.2))
+    model.add(tf.keras.layers.Dense(32, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(32, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dropout(.2))
+    model.add(tf.keras.layers.Dense(16, activation ='relu'))#, kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dropout(.2))
+    model.add(tf.keras.layers.Dense(3, activation= 'softmax'))
 
-    opt = keras.optimizers.Adam(learning_rate=rate) 
+    opt = keras.optimizers.SGD(learning_rate=rate_schedule) 
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
     
     print(model.summary())
@@ -572,11 +581,11 @@ class Trainer(object):
     '''
 
     x_train = x_train.to_numpy()
-    y_train = tf.one_hot(y_train['is_signal'].to_numpy(), 4)
+    y_train = tf.one_hot(y_train['is_signal'].to_numpy(), 3)
     y_train = y_train.numpy()
 
     x_val = x_val.to_numpy()
-    y_val= tf.one_hot(y_val['is_signal'].to_numpy(), 4)
+    y_val= tf.one_hot(y_val['is_signal'].to_numpy(), 3)
     y_val = y_val.numpy()
     
     print(f"class weights: {weight}")
@@ -934,7 +943,7 @@ class Trainer(object):
     linestyles = ['solid','dotted','dashed', 'dashdot' ]#,(0, (1, 10)),(0,(3, 5, 1, 5, 1, 5))]
 
 
-    for sig in range(4):
+    for sig in range(3):
       #plot roc for every class
       class_id = np.flatnonzero(label_binarizer.classes_ == sig)[0]
       fpr,tpr,_ = roc_curve(y_onehot_test[:, class_id],y_score[:, class_id])    
@@ -1085,7 +1094,7 @@ class Trainer(object):
     self.plotKSTest(model, x_train, x_val, y_train, y_val, 0)
     self.plotKSTest(model, x_train, x_val, y_train, y_val, 1)
     self.plotKSTest(model, x_train, x_val, y_train, y_val, 2)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
 
 
 
@@ -1104,15 +1113,15 @@ if __name__ == '__main__':
   tf.compat.v1.keras.backend.set_session(session)         
   '''
 
-  tf.random.set_seed(1968)
-  np.random.seed(1968)
+  tf.random.set_seed(1000)
+  np.random.seed(1000)
   
   features = kin_var 
-  epochs = 20
+  epochs = 100
   batch_size = 128
   scaler_type = 'robust'
   do_early_stopping = True
-  do_reduce_lr = True
+  do_reduce_lr = False
   dirname = 'test'
   baseline_selection = ma_cut_wout_tv
 
