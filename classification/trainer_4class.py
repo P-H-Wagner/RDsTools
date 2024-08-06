@@ -215,12 +215,21 @@ def limitCPU(n):
 ##the feature vector
 kin_var = [
 'bs_boost_reco_weighted',
+#'bs_boost_reco_1',
+#'bs_boost_reco_2',
+'bs_boost_lhcb_alt',
 'bs_boost_coll',
 
 'bs_pt_reco_weighted',
+#'bs_pt_reco_1',
+#'bs_pt_reco_2',
+'bs_pt_lhcb_alt',
 'bs_pt_coll',
 
 'cosMuW_reco_weighted', #better separates all signals
+#'cosMuW_reco_1', #better separates all signals
+#'cosMuW_reco_2', #better separates all signals
+'cosMuW_lhcb_alt', #better separates all signals
 'cosMuW_coll', #better separates all signals
 
 'cosPhiDs_lhcb',
@@ -231,22 +240,31 @@ kin_var = [
 'e_gamma',
 
 'e_star_reco_weighted',
+#'e_star_reco_1',
+#'e_star_reco_2',
+'e_star_lhcb_alt',
 'e_star_coll',
 
+'m2_miss_coll',
 'm2_miss_lhcb_alt',
+
 'mu_rel_iso_03',
 'phiPi_deltaR',
 #'phiPi_m',              #only for constrained fitter!
 'dsMu_m',
 #'pt_miss_....',        #too similar to m2 miss?
-'q2_reco_weighted',
-'q2_coll',
-'mu_pt',
-'pi_pt'
 
-#'fv_prob',
-#'tv_prob',
-#'sv_prob',
+'q2_reco_weighted',
+#'q2_reco_1',
+#'q2_reco_2',
+'q2_coll',
+'q2_lhcb_alt',
+'mu_pt',
+'pi_pt',
+
+'fv_prob',
+'tv_prob',
+'sv_prob',
 #'mu_eta',
 #'mu_phi',
 #'pi_eta',
@@ -257,8 +275,8 @@ kin_var = [
 #'dsMu_pt',
 #'dsMu_eta',
 #'dsMu_phi',
-#'disc_negativity',
-#'ds_vtx_cosine'
+'disc_negativity',
+'ds_vtx_cosine'
 ]
 
 class Sample(object):
@@ -512,12 +530,12 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(32, activation= 'relu'))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(20, activation ='relu'))
-    model.add(tf.keras.layers.Dense(64, activation ='relu'))#, kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(128, activation ='swish'))#, kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(32, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(32, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64, activation ='swish', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64, activation ='swish', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(16, activation ='relu'))#, kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(32, activation ='swish'))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
     #model.add(tf.keras.layers.Dropout(.2))
     model.add(tf.keras.layers.Dense(3, activation= 'softmax'))
 
@@ -1117,8 +1135,8 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 100
-  batch_size = 128
+  epochs = 50
+  batch_size = 32
   scaler_type = 'robust'
   do_early_stopping = True
   do_reduce_lr = False
