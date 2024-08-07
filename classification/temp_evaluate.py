@@ -107,6 +107,7 @@ class createDf(object):
       branches += weights
     if channel != "data":
       branches += ["gen_sig"] 
+      branches += ["gen_match_success"] 
 
       
     print(branches)   
@@ -151,10 +152,10 @@ class createDf(object):
       Function that returns a dataframe out of a list of samples
     '''
     df = pd.concat([self.convertRootToDF(ifile, training_info, treename, selection, weights, var, channel) for ifile in files], sort=False)
-
+    print("before removing nans i have:", len(df))
     # remove inf and nan
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df.dropna(inplace=True)
+    df.dropna(inplace=True) 
 
     # re-index
     df = df.reset_index(drop=True)
@@ -211,6 +212,7 @@ class createDf(object):
     # get other quantities to fill the branches with
     if channel != 'data':
      var.append("gen_sig")
+     var.append("gen_match_success")
 
     var = dc(training_info.features) + var
 
@@ -223,7 +225,7 @@ class createDf(object):
         weight_val[weight] = df[weight]
 
     # create file
-    root_filename = f"/scratch/pahwagne/score_trees/{label}_{datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')}.root"
+    root_filename = f"/scratch/pahwagne/score_trees/{channel}/{label}_{datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')}.root"
     out_file = ROOT.TFile(root_filename, "RECREATE")
 
     # create tree
@@ -292,34 +294,50 @@ class createDf(object):
 if __name__ == '__main__':
 
    # parsing shell variable
+   constrained = os.getenv("constrained") 
    channel = os.getenv("channel") 
+   modelpath    = os.getenv("modelpath") 
+   model   = os.getenv("model") 
    print("parsing command line... evaluate on: ", channel)   
 
    files = {}
     
-   #this is only unconstrained data! (cut on fv and tv)
-   files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in data_unc ]
-   files["sig"]   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in sig_unc  ]
-   files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in hb_unc   ]
-   files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in b0_unc   ]
-   files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in bs_unc   ]
-   files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in bplus_unc]
-   #this is only unconstrained data! (cut on fv only)
-   files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
-   files["sig"]   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
-   files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
-   files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
-   files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
-   files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
+   if constrained:
+     #this is only constrained data! (cut on fv only)
+     files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
+     files["sig"]   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+     files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
+     files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
+     files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
+     files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
 
+   else:
+     #this is only unconstrained data! (cut on fv only)
+     files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
+     files["sig"]   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
+     files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
+     files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
+     files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
+     files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
  
    #specify model
-   training_path = '/work/pahwagne/RDsTools/classification/outputs/test_06Aug2024_09h48m21s' #mu and tau in same class 
-   model_label = '0049_val_loss_1.8358_val_acc_0.6366' # model in https://github.com/P-H-Wagner/RDsTools/commit/65650fe9fce1f424a7b38563b12de00ac579465f"
+   #training_path = '/work/pahwagne/RDsTools/classification/outputs/test_06Aug2024_09h48m21s' #mu and tau in same class (sgd) 
+   #model_label = '0049_val_loss_1.8358_val_acc_0.6366' # model in https://github.com/P-H-Wagner/RDsTools/commit/65650fe9fce1f424a7b38563b12de00ac579465f"
 
+   #training_path = '/work/pahwagne/RDsTools/classification/outputs/test_06Aug2024_18h46m08s' #mu and tau in same class  (adam) uncon.
+   #model_label = '0023_val_loss_0.6837_val_acc_0.7222' # 
 
-   #training_path = '/work/pahwagne/RDsTools/classification/outputs/test_05Aug2024_11h55m13s' #mu in hb class 
-   #model_label = '0036_val_loss_1.9227_val_acc_0.6295' # "
+   #if args.constrained:
+   #  training_path = '/work/pahwagne/RDsTools/classification/outputs/test_07Aug2024_15h15m20s' #mu in hb class (adam) con.
+   #  model_label = '0028_val_loss_0.6195_val_acc_0.7665' # "
+
+   #else:
+   #  training_path = '/work/pahwagne/RDsTools/classification/outputs/test_07Aug2024_13h18m06s' #mu in hb class (adam) uncon.
+   #  model_label = '0016_val_loss_0.6832_val_acc_0.7344' # "
+
+   training_path = f'/work/pahwagne/RDsTools/classification/outputs/{modelpath}' #mu and tau in same class  (adam) uncon.
+   model_label = model # 
+  
 
    weights=None
 
@@ -411,20 +429,21 @@ if __name__ == '__main__':
 
 
    extra_vars = [
-   "pi_pt",
    "pi_charge",
-   "mu_pt",
    "mu_charge",
    "k1_pt",
    "k1_charge",
    "k2_pt",
    "k2_charge",
    "phiPi_pt",
-   "phiPi_m",
    "dsMu_pt",
    "lxy_ds",
-   "mu_id_medium"
+   "mu_id_medium",
+   "run"
    ]
+
+   if not constrained: extra_vars.append("phiPi_m")
+
 
    var = {}
    var["sig"]   = features + extra_vars
@@ -457,7 +476,7 @@ if __name__ == '__main__':
 
 
    #selection for mc, exlude hb from the inclusive sample and include it explicitly with the hb only sample
-   selections = {"sig":ma_cut_wout_tv, "data":ma_cut_wout_tv, "bs":ma_cut_wout_tv ,"b0":ma_cut_wout_tv , "bplus": ma_cut_wout_tv , "hb": ma_cut_wout_tv}
+   selections = {"sig":base_wout_tv, "data":base_wout_tv, "bs":base_wout_tv ,"b0":base_wout_tv , "bplus": base_wout_tv , "hb": base_wout_tv}
 
    print(mlow,mlow2,mhigh2,mhigh3) 
 
