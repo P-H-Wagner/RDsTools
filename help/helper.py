@@ -6,17 +6,49 @@ hb_unc      = ["25_07_2024_14_23_01"]
 bs_unc      = ["30_07_2024_11_40_54"]
 b0_unc      = ["30_07_2024_11_40_34"]
 bplus_unc   = ["30_07_2024_11_40_45"]
-               #part 1           #part 3           #part 4
-data_unc    = ["20240724_170223","20240728_200528","20240729_090628" ]
 
+               #part 1            #part 2            #part 3           #part 4
+data_unc    = ["20240802_111807", "20240730_223445", "20240728_200528","20240729_090628" ]
 
 sig_cons    = ["26_07_2024_14_46_03"]
 hb_cons     = ["25_07_2024_14_23_42"]
-bs_cons     = [""]
-b0_cons     = [""]
-bplus_cons  = [""]
+bs_cons     = ["31_07_2024_10_07_17"]
+b0_cons     = ["31_07_2024_10_07_43"]
+bplus_cons  = ["31_07_2024_10_08_00"]
                #part 1
 data_cons   = ["20240724_170443"]
+
+#samples after NN (sgd)
+sig_unc_pastNN     = "sig_pastNN_06Aug2024_11h58m45s"
+hb_unc_pastNN      = "hb_pastNN_06Aug2024_11h56m50s"
+bs_unc_pastNN      = "bs_pastNN_06Aug2024_11h56m53s"
+b0_unc_pastNN      = "b0_pastNN_06Aug2024_11h56m57s"
+bplus_unc_pastNN   = "bplus_pastNN_06Aug2024_11h56m53s"
+data_unc_pastNN    = "data_pastNN_06Aug2024_11h59m43s"
+
+#adam (mu and tau in class 0)
+sig_unc_pastNN     = "sig_pastNN_06Aug2024_19h02m14s"
+hb_unc_pastNN      = "hb_pastNN_06Aug2024_19h00m37s"
+bs_unc_pastNN      = "bs_pastNN_06Aug2024_19h00m38s"
+b0_unc_pastNN      = "b0_pastNN_06Aug2024_19h00m47s"
+bplus_unc_pastNN   = "bplus_pastNN_06Aug2024_19h00m38s"
+data_unc_pastNN    = "data_pastNN_06Aug2024_19h05m54s"
+
+#adam (mu and hb in class 1)
+sig_unc_pastNN     = "sig_pastNN_07Aug2024_14h04m03s"
+hb_unc_pastNN      = "hb_pastNN_07Aug2024_14h03m05s"
+bs_unc_pastNN      = "bs_pastNN_07Aug2024_14h03m09s"
+b0_unc_pastNN      = "b0_pastNN_07Aug2024_14h03m18s"
+bplus_unc_pastNN   = "bplus_pastNN_07Aug2024_14h03m08s"
+data_unc_pastNN    = "data_pastNN_07Aug2024_14h09m37s"
+
+#adam (mu and hb in class 1)
+sig_cons_pastNN     = "sig_pastNN_07Aug2024_17h22m02s"
+hb_cons_pastNN      = "hb_pastNN_07Aug2024_17h21m16s"
+bs_cons_pastNN      = "bs_pastNN_07Aug2024_17h21m18s"
+b0_cons_pastNN      = "b0_pastNN_07Aug2024_17h21m22s"
+bplus_cons_pastNN   = "bplus_pastNN_07Aug2024_17h21m18s"
+data_cons_pastNN    = "data_pastNN_07Aug2024_17h21m38s"
 
 
 # Mass constants
