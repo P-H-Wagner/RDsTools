@@ -19,7 +19,9 @@ def boolean_string(s):
 
 # parsing
 parser = argparse.ArgumentParser()
-parser.add_argument('constrained', type=boolean_string)
+parser.add_argument('constrained', type=boolean_string) #use constrained sampels?
+parser.add_argument('newHb',  type=boolean_string) #use new hb?
+parser.add_argument('pastNN', type=boolean_string) #use samples after NN?
 args = parser.parse_args()
 
 print(f"====> Running constrained fit? {args.constrained}")
@@ -64,13 +66,24 @@ baselineDsStarTau = baseline + " && (gen_sig == 11)"
 ## CREATE RDF FROM TREE                ##
 #########################################
 
-def getRdf(dateTimes, debug = None, skimmed = None):
+def getRdf(dateTimes, debug = None, skimmed = None, pastNN = None):
 
 
   chain = ROOT.TChain("tree")
 
-  if not isinstance(dateTimes, list):
+  if ((not pastNN) and (not isinstance(dateTimes, list))):
     print("dateTimes must be a list of strings")
+
+  if pastNN:
+
+    print(f"picking past NN file ...") #only one per channel, already chained!
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}.root"
+    n = chain.Add(files)
+    if n > 1: print("alert, finding more than one past NN tree for this channel!")
+    import pdb
+    rdf = ROOT.RDataFrame(chain)
+    return (chain,rdf)
+  
 
   if debug:
     print(f"Picking {debug} file(s) for debugging ...")
@@ -104,30 +117,62 @@ def getRdf(dateTimes, debug = None, skimmed = None):
   return (chain,rdf)
 
 
+#########################################
+## INPUT SAMPLES                       ##
+#########################################
+
 # Create rdf from tree
 print(f" ===> Start creating RDataFrames")
 
-if args.constrained:
 
-  chainSigSB, rdfSigSB     = getRdf(sig_cons      , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
-  chainSig, rdfSig         = getRdf(sig_cons      , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   )#,  debug = True)
-  chainHb,  rdfHb          = getRdf(hb_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainBs,  rdfBs          = getRdf(bs_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainB0,  rdfB0          = getRdf(b0_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainBplus,  rdfBplus    = getRdf(bplus_cons    , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainData,rdfData        = getRdf(data_cons     , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
-  print("I count for data events: ", rdfData.Count().GetValue())
+if args.pastNN:
+
+  print("Producing post-NN plots")
+
+  if args.constrained:
+    print("constrained data after NN not processed yet..")
+    chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN       , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+    chainSig,   rdfSig       = getRdf(sig_cons_pastNN       , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+    chainHb,    rdfHb        = getRdf(hb_cons_pastNN        , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBs,    rdfBs        = getRdf(bs_cons_pastNN        , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainB0,    rdfB0        = getRdf(b0_cons_pastNN        , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN     , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainData,  rdfData      = getRdf(data_cons_pastNN      , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+
+
+
+  else:
+    chainSigSB, rdfSigSB     = getRdf(sig_unc_pastNN       , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+    chainSig,   rdfSig       = getRdf(sig_unc_pastNN       , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+    chainHb,    rdfHb        = getRdf(hb_unc_pastNN        , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBs,    rdfBs        = getRdf(bs_unc_pastNN        , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainB0,    rdfB0        = getRdf(b0_unc_pastNN        , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBplus, rdfBplus     = getRdf(bplus_unc_pastNN     , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainData,  rdfData      = getRdf(data_unc_pastNN      , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+
+
 else:
 
-  chainSigSB, rdfSigSB     = getRdf(sig_unc       , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
-  chainSig,   rdfSig       = getRdf(sig_unc       , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
-  chainHb,    rdfHb        = getRdf(hb_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainBs,    rdfBs        = getRdf(bs_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainB0,    rdfB0        = getRdf(b0_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainBplus, rdfBplus     = getRdf(bplus_unc     , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-  chainData,  rdfData      = getRdf(data_unc      , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
-
-
+  print("Producing pre-NN plots")
+  if args.constrained:
+    chainSigSB, rdfSigSB     = getRdf(sig_cons      , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+    chainSig, rdfSig         = getRdf(sig_cons      , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+    chainHb,  rdfHb          = getRdf(hb_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBs,  rdfBs          = getRdf(bs_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainB0,  rdfB0          = getRdf(b0_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBplus,  rdfBplus    = getRdf(bplus_cons    , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainData,rdfData        = getRdf(data_cons     , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+    print("I count for data events: ", rdfData.Count().GetValue())
+  else:
+  
+    chainSigSB, rdfSigSB     = getRdf(sig_unc       , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+    chainSig,   rdfSig       = getRdf(sig_unc       , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+    chainHb,    rdfHb        = getRdf(hb_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBs,    rdfBs        = getRdf(bs_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainB0,    rdfB0        = getRdf(b0_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBplus, rdfBplus     = getRdf(bplus_unc     , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainData,  rdfData      = getRdf(data_unc      , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+  
 #########################################
 ## COLOR SCHEME                        ##
 #########################################
@@ -650,6 +695,10 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   if newHb: name += "_newHb"
   else: name += ""
 
+  if args.pastNN: name += "_pastNN"
+  else: name += ""
+
+
   if log:
     c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/log/{var}_{name}.pdf")
     c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/log/{var}_{name}.png")
@@ -824,6 +873,9 @@ def normPlot(histos, var, constrained, fakemass = None , A = None ,B = None ,C =
   if newHb: name += "_newHb"
   else: name += ""
 
+  if args.pastNN: name += "_pastNN"
+  else: name += ""
+
   if log:
     c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/log/{var}_{name}.pdf")
     c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/log/{var}_{name}.png")
@@ -912,7 +964,23 @@ def writeDatacard(histos, var, digits = 5):
   temp.close()
   card.close()
 
-def createPlots(selec, constrained = False, newHb = False):
+def createPlots(base, constrained = False, newHb = False):
+
+
+  high_mass         = f" && (dsMu_m > {bsMass_})"
+  low_mass          = f" && (dsMu_m < {bsMass_})"
+  wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
+  right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
+
+  if args.pastNN:
+
+    #apply score-cut on top!
+    base += "&& (score2 < 0.2) " #&& (score0 > 0.3) && (tv_prob > 0.1)"
+
+
+  # the signal selection is then:
+
+  selec = base + low_mass + right_sign
  
   print("Applied selection: ", selec)
   selecHb =        selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
@@ -924,6 +992,7 @@ def createPlots(selec, constrained = False, newHb = False):
   selecDsStarMu =  selec + " && (gen_sig == 10)" 
   selecDsStarTau = selec + " && (gen_sig == 11)"
 
+  import pdb
   sigma, h          = getSigma(rdfSigSB, "phiPi_m", selec + "&& (gen_sig == 0)")
 
   if not constrained:
@@ -952,8 +1021,15 @@ def createPlots(selec, constrained = False, newHb = False):
   leftSB            = f"&& ({mlow3} < phiPi_m) && (phiPi_m < {mlow2})"
   rightSB           = f"&& ({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})"
 
+  high_mass         = f" && (dsMu_m > {bsMass_})"
+  low_mass          = f" && (dsMu_m < {bsMass_})"
+  wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
+  right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
 
   if constrained:
+   
+   print(f"we have {rdfData.Filter( base + wrong_sign + low_mass + signalRegion ).Count().GetValue()} wrong sign events in signal region for the shape histo")
+
    #we take the shape of wrong sign events in the signal region as a reference, as this is easy to select. However, our baseline selection of course
    #selects correct sign events (to enhance the signal). So we have to take the shape of wrong sign events and assign it the correct number of 
    #right sign events ( in order to plot it together with the signal MC). This means we have to count the number of right sign combinatorial in the
@@ -961,16 +1037,20 @@ def createPlots(selec, constrained = False, newHb = False):
    #sure have no signal and count the number of combinatorial events:
 
    # nr of right sign in high mass : #TODO automize this for arbitrary selection
-   N_rs_high_mass_sr = rdfData.Filter(ma_cut_high_mass + signalRegion).Count().GetValue()
-   N_rs_high_mass    = rdfData.Filter(ma_cut_high_mass ).Count().GetValue()
+   N_rs_high_mass_sr = rdfData.Filter( base + right_sign + high_mass + signalRegion ).Count().GetValue()
+   N_rs_high_mass    = rdfData.Filter( base + right_sign + high_mass                ).Count().GetValue()
 
    # nr of wrong sign in high mass : 
-   N_ws_high_mass_sr = rdfData.Filter(ma_cut_sign_flip_high_mass + signalRegion).Count().GetValue()
-   N_ws_high_mass    = rdfData.Filter(ma_cut_sign_flip_high_mass ).Count().GetValue()
+   N_ws_high_mass_sr = rdfData.Filter( base + wrong_sign + high_mass + signalRegion ).Count().GetValue()
+   N_ws_high_mass    = rdfData.Filter( base + wrong_sign + high_mass                ).Count().GetValue()
 
    #get the ratio
    rs_over_ws_sr     = N_rs_high_mass_sr / N_ws_high_mass_sr
    rs_over_ws        = N_rs_high_mass    / N_ws_high_mass
+
+   print("ratios:")
+   print(rs_over_ws_sr)
+   print(rs_over_ws)
 
   #get proportions from inclusive sample
   hb_tot      = rdfHb.Filter(selecHb).Count().GetValue()
@@ -1156,10 +1236,6 @@ def createPlots(selec, constrained = False, newHb = False):
     methodDistinction(histos,name,selecDsMu      + signalRegion)
   """
 
-createPlots(ma_cut, constrained = args.constrained, newHb = False)
-#createPlots(ma_cut, constrained = args.constrained)
-#createPlots(ma_cut_wout_fv + "& tv_prob > 0.01 & fv_prob > 0.01")
-#createPlots(baseline)
-#createPlots(bkg)
-#createPlots(baseline + '&' + addOn1 + '&' + addOn2)
+#createPlots(ma_cut, constrained = args.constrained, newHb = False)
+createPlots(base_wout_tv, constrained = args.constrained, newHb = args.newHb)
 
