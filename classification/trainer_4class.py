@@ -442,10 +442,12 @@ class Trainer(object):
       #for weight
       samples_len[key] = len(dummy)
       total_len        += samples_len[key]
+      
     
     for key in samples.keys():
       weight[key] = total_len / samples_len[key] 
-    
+      print(f"sample for class {key} contains {samples_len[key]} events (without nans)")
+     
     return samples_notnan, weight
 
 
@@ -539,7 +541,7 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dropout(.2))
     model.add(tf.keras.layers.Dense(3, activation= 'softmax'))
 
-    opt = keras.optimizers.SGD(learning_rate=rate_schedule) 
+    opt = keras.optimizers.Adam(learning_rate=rate_schedule) 
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
     
     print(model.summary())
@@ -1135,8 +1137,8 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 50
-  batch_size = 32
+  epochs = 30
+  batch_size = 64
   scaler_type = 'robust'
   do_early_stopping = True
   do_reduce_lr = False
