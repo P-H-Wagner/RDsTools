@@ -26,10 +26,6 @@ ROOT.TH1.SetDefaultSumw2() #apply weights!
 #########################################
 ## INPUT                               ##
 #########################################
-sig_unc     = "25_07_2024_12_14_05"
-sig_c       = "25_07_2024_12_13_14"
-data_unc    = "20240724_170223" 
-data_c      = "20240724_170443" 
 
 
 #########################################
@@ -41,57 +37,72 @@ data_c      = "20240724_170443"
 bkg_enhancing_1    = f"(mu_rel_iso_03 > 0.3) && (lxy_ds_sig < 10) && (dsMu_m < 5.366)" #models the comb
 bkg_enhancing_2    = f"(dsMu_m > 5.366)" #models the comb
 
-sign_flip         = f"((k1_charge*k2_charge > 0)" # || (pi_charge * mu_charge > 0))"
+sign_flip_mu_pi    = f"(pi_charge * mu_charge > 0)"
+sign_flip_kk       = f"(k1_charge * k2_charge > 0)"
+sign_flip_both     = f"((pi_charge * mu_charge > 0) || (k1_charge * k2_charge > 0))"
 
 
 #########################################
 ## CREATE RDF FROM TREE                ##
 #########################################
 
-def getRdf(dateTime, debug = False, skimmed = ""):
-
-
+def getRdf(dateTimes, debug = None, skimmed = None, pastNN = None):
+ 
+ 
   chain = ROOT.TChain("tree")
 
-  if isinstance(dateTime, list) and skimmed!= "":
-    print("collecting several data chunks")
+  if ((not pastNN) and (not isinstance(dateTimes, list))):
+    print("dateTimes must be a list of strings")
 
-    for part in dateTime:
-      print(f"appending part {part}")
-      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{part}/skimmed_{skimmed}_{part}.root"
-      chain.Add(files)       
+  if pastNN:
+
+    print(f"picking past NN file ...") #only one per channel, already chained!
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}.root"
+    n = chain.Add(files)
+    if n > 1: print("alert, finding more than one past NN tree for this channel!")
+    import pdb
+    rdf = ROOT.RDataFrame(chain)
+    return (chain,rdf)
 
 
-  else: 
+  if debug:
+    print(f"Picking {debug} file(s) for debugging ...")
+    fileList = os.listdir(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/")
+    #files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/" +  fileList[0] # pick just the first one 
+    for i in range(debug):
+      try: chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/" +  fileList[i])
+      except: chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/*")
+
+    rdf = ROOT.RDataFrame(chain)
+    return (chain,rdf)
 
 
-    if skimmed != "":
+  for dateTime in dateTimes:
+
+    if skimmed:
       files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_{skimmed}_{dateTime}.root" #data skimmed with selection 'skimmed'
       #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for closure
-      print("taking skimmed file ...", files)
+      print(f"Appending {files}")
+
     else:
       #access the flat ntuples
       files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
-  
-    if debug:
-      print("picking only one file for debugging ...")
-      fileList = os.listdir(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/")
-      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/" +  fileList[0] # pick just the first one 
-  
-    #chain them
+
+    #chain them all
     chain.Add(files)
 
   #create rdf from tree
   rdf = ROOT.RDataFrame(chain)
 
   return (chain,rdf)
+ 
 
 
 # Create rdf from tree
 print(f" ===> Start creating RDataFrames")
-chainData_unc,rdfData_unc      = getRdf(data_unc, debug = False)  
-chainData_c  ,rdfData_c        = getRdf(data_c, debug =False)  
-chainSigSB,   rdfSigSB         = getRdf(sig_unc, debug =False) # FOR SB FIT
+chainData_unc,   rdfData_unc        = getRdf(data_unc[0:1],  debug = False)  
+chainData_cons,  rdfData_cons       = getRdf(data_cons[0:1], debug = False)  
+chainSigSB,      rdfSigSB           = getRdf(sig_unc,   debug = False) # FOR SB FIT
 
 
 #########################################
@@ -335,7 +346,7 @@ def getHbScale(selHb, selMu):
   print( "#Hb events for MC sample is:", scale_hb)
   return scale_hb
 
-def normPlot(histos, var, fakemass, A,B,C,S, region, log = False):
+def normPlot(histos, var, fakemass, A,B,C,S, region, log = False, method = ""):
 
   for i,key in enumerate(histos.keys()):
     try: histos[key] = histos[key].GetValue()
@@ -479,15 +490,15 @@ def normPlot(histos, var, fakemass, A,B,C,S, region, log = False):
 
 
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/log/{var}_{name}_{region}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/log/{var}_{name}_{region}.png")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/log/{var}_{name}_{region}_{method}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/log/{var}_{name}_{region}_{method}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/{var}_{name}_{region}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/{var}_{name}_{region}.png")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/{var}_{name}_{region}_{method}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/comb/closure/{var}_{name}_{region}_{method}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 
-def createPlots(selec):
+def createPlots(selec, sign_flip):
 
   if selec == bkg_enhancing_1: region = "low_mass"
   if selec == bkg_enhancing_2: region = "high_mass"
@@ -529,9 +540,15 @@ def createPlots(selec):
   selec_S_DataR_unc     = createHistos(selec          + rightSB, rdfData_unc ,      gen = False)
 
   #constrained data, model with sign flip
-  selec_S_Data_c_bh     = createHistos(selec          + signalRegion, rdfData_c ,   gen = False)
-  selec_S_Data_c_sf     = createHistos(sign_flip       + signalRegion, rdfData_c ,   gen = False)
-  
+  selec_S_Data_c_bh     = createHistos(selec          + signalRegion, rdfData_cons ,   gen = False)
+  selec_S_Data_c_sf     = createHistos(sign_flip       + signalRegion, rdfData_cons ,   gen = False)
+ 
+
+  #get label for signflip method
+  if ("mu" in sign_flip)     and ("k1" not in sign_flip): method = "mu_pi" 
+  if ("mu" not in sign_flip) and ("k1" in sign_flip): method  = "kk" 
+  else: method = "both"
+ 
   for var in models.keys():
 
     print(f"===> Producing stacked plot for variable: {var}") 
@@ -548,7 +565,7 @@ def createPlots(selec):
                "data"     : selec_S_Data_unc[var]}
       
       
-      normPlot(dict(list(histos.items())), var, fakemass, A,B,C,S, region = region)
+      normPlot(dict(list(histos.items())), var, fakemass, A,B,C,S, region = region, method = method)
 
 
       histos = {
@@ -556,7 +573,7 @@ def createPlots(selec):
                "data_sf"     : selec_S_Data_c_sf[var]}
 
 
-      normPlot(dict(list(histos.items())), var, fakemass, A,B,C,S, region = region)
+      normPlot(dict(list(histos.items())), var, fakemass, A,B,C,S, region = region, method = method)
  
   """
 
@@ -572,6 +589,8 @@ def createPlots(selec):
     methodDistinction(histos,name,selecDsMu      + signalRegion)
   """
 
-createPlots(bkg_enhancing_1)
+createPlots(bkg_enhancing_1, sign_flip_mu_pi)
+createPlots(bkg_enhancing_1, sign_flip_kk)
+createPlots(bkg_enhancing_1, sign_flip_both)
 #createPlots(bkg_enhancing_2)
 
