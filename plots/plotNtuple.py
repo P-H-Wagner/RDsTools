@@ -6,8 +6,9 @@ import sys
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
+from signflip  import getSignflipRatio
 from helper import * 
-from histModels import models
+from histModels import models, pastNN_models
 
 import numpy as np
 from cms_style import CMS_lumi
@@ -25,6 +26,8 @@ parser.add_argument('pastNN', type=boolean_string) #use samples after NN?
 args = parser.parse_args()
 
 print(f"====> Running constrained fit? {args.constrained}")
+if args.pastNN: models.update(pastNN_models)
+
 
 # disable title and stats and displaying
 ROOT.gStyle.SetOptTitle(0)
@@ -38,29 +41,29 @@ ROOT.TH1.SetDefaultSumw2() #apply weights!
 
 ## BASIC
 
-selBasic        = f" (dsMu_m < {bsMass_}) & (k1_charge*k2_charge < 0) & (mu_charge*pi_charge <0) & (gen_match_success == 1))"
-selBasicHb      = selBasic + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) "    # exlude signals from hb
-
-#baseline = baseline + '&' + addOn1 #+ '&' + addOn2
-sel = selBasic + baseline
-
-selBasicHb      = sel + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) "    # exlude signals from hb
-selDsMu         = sel + " && (gen_sig == 0)"                                              # select Ds  Mu 
-selDsTau        = sel + " && (gen_sig == 1)"                                              # select Ds  Tau 
-selDsStarMu     = sel + " && (gen_sig == 10)"                                              # select Ds* Mu
-selDsStarTau    = sel + " && (gen_sig == 11)"                                              # select Ds* Tau
-
-selMu           = sel + " && (gen_sig == 0 || gen_sig == 10)"                                  # select mu  signals
-selTau          = sel + " && (gen_sig == 1 || gen_sig == 11)"                                  # select tau signals
-selDs           = sel + " && (gen_sig == 0 || gen_sig == 1)"                                  # select Ds signals
-selDsStar       = sel + " && (gen_sig == 10 || gen_sig == 11)"                                  # select Ds star signals
-
-
-baselineHb =        baseline + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
-baselineDsMu =      baseline + " && (gen_sig == 0)" 
-baselineDsTau =     baseline + " && (gen_sig == 1)"
-baselineDsStarMu =  baseline + " && (gen_sig == 10)" 
-baselineDsStarTau = baseline + " && (gen_sig == 11)"
+#selBasic        = f" (dsMu_m < {bsMass_}) & (k1_charge*k2_charge < 0) & (mu_charge*pi_charge <0) & (gen_match_success == 1))"
+#selBasicHb      = selBasic + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) "    # exlude signals from hb
+#
+##baseline = baseline + '&' + addOn1 #+ '&' + addOn2
+#sel = selBasic + baseline
+#
+#selBasicHb      = sel + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) "    # exlude signals from hb
+#selDsMu         = sel + " && (gen_sig == 0)"                                              # select Ds  Mu 
+#selDsTau        = sel + " && (gen_sig == 1)"                                              # select Ds  Tau 
+#selDsStarMu     = sel + " && (gen_sig == 10)"                                              # select Ds* Mu
+#selDsStarTau    = sel + " && (gen_sig == 11)"                                              # select Ds* Tau
+#
+#selMu           = sel + " && (gen_sig == 0 || gen_sig == 10)"                                  # select mu  signals
+#selTau          = sel + " && (gen_sig == 1 || gen_sig == 11)"                                  # select tau signals
+#selDs           = sel + " && (gen_sig == 0 || gen_sig == 1)"                                  # select Ds signals
+#selDsStar       = sel + " && (gen_sig == 10 || gen_sig == 11)"                                  # select Ds star signals
+#
+#
+#baselineHb =        baseline + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
+#baselineDsMu =      baseline + " && (gen_sig == 0)" 
+#baselineDsTau =     baseline + " && (gen_sig == 1)"
+#baselineDsStarMu =  baseline + " && (gen_sig == 10)" 
+#baselineDsStarTau = baseline + " && (gen_sig == 11)"
 
 #########################################
 ## CREATE RDF FROM TREE                ##
@@ -155,23 +158,23 @@ else:
 
   print("Producing pre-NN plots")
   if args.constrained:
-    chainSigSB, rdfSigSB     = getRdf(sig_cons      , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
-    chainSig, rdfSig         = getRdf(sig_cons      , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   )#,  debug = True)
-    chainHb,  rdfHb          = getRdf(hb_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainBs,  rdfBs          = getRdf(bs_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainB0,  rdfB0          = getRdf(b0_cons       , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainBplus,  rdfBplus    = getRdf(bplus_cons    , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainData,rdfData        = getRdf(data_cons     , skimmed = "base")#, debug = 1)#,      skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+    chainSigSB, rdfSigSB     = getRdf(sig_cons      , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+    chainSig, rdfSig         = getRdf(sig_cons      , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+    chainHb,  rdfHb          = getRdf(hb_cons       , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBs,  rdfBs          = getRdf(bs_cons       , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainB0,  rdfB0          = getRdf(b0_cons       , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBplus,  rdfBplus    = getRdf(bplus_cons    , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainData,rdfData        = getRdf(data_cons     , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
     print("I count for data events: ", rdfData.Count().GetValue())
   else:
   
-    chainSigSB, rdfSigSB     = getRdf(sig_unc       , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
-    chainSig,   rdfSig       = getRdf(sig_unc       , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
-    chainHb,    rdfHb        = getRdf(hb_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainBs,    rdfBs        = getRdf(bs_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainB0,    rdfB0        = getRdf(b0_unc        , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainBplus, rdfBplus     = getRdf(bplus_unc     , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
-    chainData,  rdfData      = getRdf(data_unc      , skimmed = "base" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
+    chainSigSB, rdfSigSB     = getRdf(sig_unc       , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
+    chainSig,   rdfSig       = getRdf(sig_unc       , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   )#,  debug = True)
+    chainHb,    rdfHb        = getRdf(hb_unc        , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBs,    rdfBs        = getRdf(bs_unc        , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainB0,    rdfB0        = getRdf(b0_unc        , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainBplus, rdfBplus     = getRdf(bplus_unc     , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"    )#,   debug = True)
+    chainData,  rdfData      = getRdf(data_unc      , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
   
 #########################################
 ## COLOR SCHEME                        ##
@@ -488,7 +491,18 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
     #simple: take sign slipped data as comb
     hComb = histos["data_sf"].Clone()
     #and rescale it to the nr of righ sign comb events
-    hComb.Scale(rs_scale)
+    #hComb.Scale(rs_scale)
+    #hComb.Scale(0.1)
+
+    #hRest = histos["dsMu"].Clone()
+    #hRest.Add(histos["dsStarMu"].Clone())
+    #hRest.Add(histos["dsTau"].Clone())
+    #hRest.Add(histos["dsStarTau"].Clone())
+    #hRest.Add(histos["hb"].Clone())
+    #scale_b = getSignflipRatio(hComb.Clone(),hRest,histos["data"].Clone())
+    hComb.Scale(scale_b)
+
+
     print("rs scale is:", rs_scale)
 
 
@@ -964,7 +978,7 @@ def writeDatacard(histos, var, digits = 5):
   temp.close()
   card.close()
 
-def createPlots(base, constrained = False, newHb = False):
+def createPlots(baseline, constrained = False, newHb = False):
 
 
   high_mass         = f" && (dsMu_m > {bsMass_})"
@@ -972,15 +986,16 @@ def createPlots(base, constrained = False, newHb = False):
   wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
   right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
 
+    
+  selec = baseline + low_mass + right_sign
+
+  score_cut = ""
+
   if args.pastNN:
+ 
+    score_cut = "&& (score0 > 0.5)"
+    selec += score_cut  # && (tv_prob > 0.1)"
 
-    #apply score-cut on top!
-    base += "&& (score2 < 0.2) " #&& (score0 > 0.3) && (tv_prob > 0.1)"
-
-
-  # the signal selection is then:
-
-  selec = base + low_mass + right_sign
  
   print("Applied selection: ", selec)
   selecHb =        selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
@@ -1026,31 +1041,32 @@ def createPlots(base, constrained = False, newHb = False):
   wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
   right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
 
+
   if constrained:
-   
-   print(f"we have {rdfData.Filter( base + wrong_sign + low_mass + signalRegion ).Count().GetValue()} wrong sign events in signal region for the shape histo")
 
-   #we take the shape of wrong sign events in the signal region as a reference, as this is easy to select. However, our baseline selection of course
-   #selects correct sign events (to enhance the signal). So we have to take the shape of wrong sign events and assign it the correct number of 
-   #right sign events ( in order to plot it together with the signal MC). This means we have to count the number of right sign combinatorial in the
-   #signal region. This is not straight forward, as we dont know how much signal is there. Therefore we go in the high-mass region, where we for
-   #sure have no signal and count the number of combinatorial events:
+    print(f"we have {rdfData.Filter( baseline + wrong_sign + low_mass + signalRegion ).Count().GetValue()} wrong sign events in signal region for the shape histo")
 
-   # nr of right sign in high mass : #TODO automize this for arbitrary selection
-   N_rs_high_mass_sr = rdfData.Filter( base + right_sign + high_mass + signalRegion ).Count().GetValue()
-   N_rs_high_mass    = rdfData.Filter( base + right_sign + high_mass                ).Count().GetValue()
+    #we take the shape of wrong sign events in the signal region as a reference, as this is easy to select. However, our baseline selection of course
+    #selects correct sign events (to enhance the signal). So we have to take the shape of wrong sign events and assign it the correct number of 
+    #right sign events ( in order to plot it together with the signal MC). This means we have to count the number of right sign combinatorial in the
+    #signal region. This is not straight forward, as we dont know how much signal is there. Therefore we go in the high-mass region, where we for
+    #sure have no signal and count the number of combinatorial events:
 
-   # nr of wrong sign in high mass : 
-   N_ws_high_mass_sr = rdfData.Filter( base + wrong_sign + high_mass + signalRegion ).Count().GetValue()
-   N_ws_high_mass    = rdfData.Filter( base + wrong_sign + high_mass                ).Count().GetValue()
+    # nr of right sign in high mass : #TODO automize this for arbitrary selection
+    N_rs_high_mass_sr = rdfData.Filter( baseline + right_sign + high_mass + signalRegion  ).Count().GetValue()
+    N_rs_high_mass    = rdfData.Filter( baseline + right_sign + high_mass                ).Count().GetValue()
 
-   #get the ratio
-   rs_over_ws_sr     = N_rs_high_mass_sr / N_ws_high_mass_sr
-   rs_over_ws        = N_rs_high_mass    / N_ws_high_mass
+    # nr of wrong sign in high mass : 
+    N_ws_high_mass_sr = rdfData.Filter( baseline + wrong_sign + high_mass + signalRegion ).Count().GetValue()
+    N_ws_high_mass    = rdfData.Filter( baseline + wrong_sign + high_mass                ).Count().GetValue()
 
-   print("ratios:")
-   print(rs_over_ws_sr)
-   print(rs_over_ws)
+    #get the ratio
+    rs_over_ws_sr     = N_rs_high_mass_sr / N_ws_high_mass_sr
+    rs_over_ws        = N_rs_high_mass    / N_ws_high_mass
+
+    print("ratios:")
+    print(rs_over_ws_sr)
+    print(rs_over_ws)
 
   #get proportions from inclusive sample
   hb_tot      = rdfHb.Filter(selecHb).Count().GetValue()
@@ -1079,7 +1095,7 @@ def createPlots(base, constrained = False, newHb = False):
     selec_S_DataR        = createHistos(selec          + rightSB,         rdfData       , gen = False)
 
   else: 
-    selec_S_Data_sf      = createHistos(ma_cut_sign_flip + signalRegion,  rdfData       , gen = False)
+    selec_S_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
 
   print("===> signal region done...")
 
@@ -1100,8 +1116,27 @@ def createPlots(base, constrained = False, newHb = False):
     selec_C_Bplus          = createHistos(selecHb        ,                  rdfBplus      , gen = False, massPlot = True)
 
   if constrained:
-    selec_C_Data_sf      = createHistos(ma_cut_sign_flip,                 rdfData       , gen = False, massPlot = True)
+    selec_C_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData       , gen = False, massPlot = True)
+ 
+
+    #get the signflip scale by fitting the ds mass peak
   
+    hbDummy = selec_C_Hb["phiPi_m"].Clone()
+    if hb_scale == 0:
+      hbDummy.Scale(0.0 )
+    else:
+      hbDummy.Scale(hb_scale / hbDummy.Integral())
+
+    hRest    = selec_C_DsMu["phiPi_m"].Clone()
+    hRest.Add( selec_C_DsStarMu["phiPi_m"].Clone())
+    hRest.Add( selec_C_DsTau["phiPi_m"].Clone())
+    hRest.Add( selec_C_DsStarTau["phiPi_m"].Clone())
+    hRest.Add( hbDummy)
+
+    global scale_b;
+    scale_b = getSignflipRatio(selec_C_Data_sf["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
+    print(f" ====> Scale signflipped comb by {scale_b}")
+ 
   print("===> total region done...")
   hb_scale = getHbScale(selecHb, selecDsMu)
 
@@ -1141,7 +1176,7 @@ def createPlots(base, constrained = False, newHb = False):
         histos["data_sf"] = selec_S_Data_sf[var] 
         toPass = histos.copy() 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws_sr, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histosScaled = stackedPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, newHb = newHb, log = True)
 
