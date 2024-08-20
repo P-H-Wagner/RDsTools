@@ -14,6 +14,7 @@ from time import time
 from datetime import datetime
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras import regularizers
+import shap
 
 #import seaborn as sns
 
@@ -42,7 +43,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from helper import *
 import argparse
-
+import seaborn
 def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
@@ -54,7 +55,7 @@ parser.add_argument('-c', '--constrained', type=boolean_string, required = True)
 args = parser.parse_args()
 
 print(f"====> Running constrained fit? {args.constrained}")
-
+shap.initjs()
 ########################################
 #                                      #
 # multiclassifier with 4 classes to    #
@@ -66,28 +67,23 @@ print(f"====> Running constrained fit? {args.constrained}")
 
 #------------------input files-------------------
 
-#this is only unconstrained data! (cut on fv and tv)
-files_data  = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in data_unc ] 
-files_sig   = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in sig_unc  ]
-files_hb    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in hb_unc   ]
-files_b0    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in b0_unc   ]
-files_bs    = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in bs_unc   ]
-files_bplus = ["/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_{f}.root" for f in bplus_unc]
-#this is only unconstrained data! (cut on fv only)
-file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
-file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
-file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
-file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
-file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
-file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
-#this is only unconstrained data! (cut on fv only)
+if args.constrained:
+  #this is only constrained data! (cut on fv only)
+  file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
+  file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+  file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
+  file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
+  file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
+  file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
 
-#file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-#file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
-#file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
-#file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
-#file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
-#file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
+else:
+  #this is only unconstrained data! (cut on fv only)
+  file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
+  file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
+  file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
+  file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
+  file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
+  file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
 
 #def getRdf(inputfiles, debug = False, skimmed = ""):
 #  print(inputfiles)
@@ -145,15 +141,15 @@ def getRdf(dateTimes, debug = None, skimmed = None):
 #--------------------define sideband region (mlow, mhigh) and dump it into pickle ----------------
 
 if args.constrained:
-  chainSig,rdfSig     = getRdf(sig_cons, skimmed = "base") 
-  chainData,rdfData   = getRdf(data_cons, skimmed = "base")
+  chainSig,rdfSig     = getRdf(sig_cons, skimmed = "base_wout_tv") 
+  chainData,rdfData   = getRdf(data_cons, skimmed = "base_wout_tv")
 
 else:
-  chainSig,rdfSig     = getRdf(sig_unc, skimmed = "base") 
-  chainData,rdfData   = getRdf(data_unc, skimmed = "base")
+  chainSig,rdfSig     = getRdf(sig_unc, skimmed = "base_wout_tv") 
+  chainData,rdfData   = getRdf(data_unc, skimmed = "base_wout_tv")
 
 
-sigma, h          = getSigma(rdfSig, "phiPi_m", ma_cut_wout_tv + "& (gen_sig == 0)")
+sigma, h          = getSigma(rdfSig, "phiPi_m", base_wout_tv+ "& (gen_sig == 0)")
 
 massfit = {}
 massfit["sigma"]  = sigma
@@ -162,7 +158,7 @@ massfit["sigma"]  = sigma
 
 if not args.constrained:
   
-  A, B, C, S        = getABCS( rdfData, ma_cut_wout_tv , "phiPi_m", sigma, h, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
+  A, B, C, S        = getABCS( rdfData, base_wout_tv , "phiPi_m", sigma, h, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
 
   massfit["A"] = A 
   massfit["B"] = B
@@ -190,6 +186,7 @@ mhigh3 = mhigh2 + sbWidth*sigma
 signalRegion = f"& ({mlow} < phiPi_m) & (phiPi_m < {mhigh})"
 leftSB       = f"& ({mlow3} < phiPi_m) & (phiPi_m < {mlow2})"
 rightSB      = f"& ({mhigh2} < phiPi_m) & (phiPi_m < {mhigh3})"
+lowMass      = f"& (dsMu_m < {bsMass_})"
 
 #------------------limit CPU--------------------------------------
 
@@ -214,34 +211,34 @@ def limitCPU(n):
  
 ##the feature vector
 kin_var = [
-'bs_boost_reco_weighted',
-#'bs_boost_reco_1',
-#'bs_boost_reco_2',
+#'bs_boost_reco_weighted',
+'bs_boost_reco_1',
+'bs_boost_reco_2',
 'bs_boost_lhcb_alt',
 'bs_boost_coll',
 
-'bs_pt_reco_weighted',
-#'bs_pt_reco_1',
-#'bs_pt_reco_2',
+#'bs_pt_reco_weighted',
+'bs_pt_reco_1',
+'bs_pt_reco_2',
 'bs_pt_lhcb_alt',
 'bs_pt_coll',
 
-'cosMuW_reco_weighted', #better separates all signals
-#'cosMuW_reco_1', #better separates all signals
-#'cosMuW_reco_2', #better separates all signals
+#'cosMuW_reco_weighted', #better separates all signals
+'cosMuW_reco_1', #better separates all signals
+'cosMuW_reco_2', #better separates all signals
 'cosMuW_lhcb_alt', #better separates all signals
 'cosMuW_coll', #better separates all signals
 
 'cosPhiDs_lhcb',
-'cosPiK1',
-'dsMu_deltaR',
+'abs(cosPiK1)',
+#'dsMu_deltaR',
 'kk_deltaR',
 
 'e_gamma',
 
-'e_star_reco_weighted',
-#'e_star_reco_1',
-#'e_star_reco_2',
+#'e_star_reco_weighted',
+'e_star_reco_1',
+'e_star_reco_2',
 'e_star_lhcb_alt',
 'e_star_coll',
 
@@ -250,17 +247,21 @@ kin_var = [
 
 'mu_rel_iso_03',
 'phiPi_deltaR',
-#'phiPi_m',              #only for constrained fitter!
 'dsMu_m',
 #'pt_miss_....',        #too similar to m2 miss?
 
-'q2_reco_weighted',
-#'q2_reco_1',
-#'q2_reco_2',
+#'q2_reco_weighted',
+'q2_reco_1',
+'q2_reco_2',
 'q2_coll',
 'q2_lhcb_alt',
 'mu_pt',
 'pi_pt',
+'kk_pt',
+'phiPi_pt',
+'phi_fitted_pt',
+'ds_fitted_pt',
+'bs_fitted_pt',
 
 'fv_prob',
 'tv_prob',
@@ -276,8 +277,12 @@ kin_var = [
 #'dsMu_eta',
 #'dsMu_phi',
 'disc_negativity',
+
 'ds_vtx_cosine'
 ]
+
+if args.constrained: kin_var.append("phiPi_m") #only allowed for constrained fitter! :D
+
 
 class Sample(object):
   '''
@@ -331,15 +336,29 @@ class Trainer(object):
     self.baseline_selection = baseline_selection
 
 
+
   def createOutDir(self):
     '''
       This function creates the output directory
     '''
     outdir = f'./outputs/{self.dirname}'
+    self.outdir = outdir
+
     if not path.exists(outdir):
       os.system(f'mkdir -p ./outputs/{self.dirname}')
 
-    return outdir
+    
+    f = open(self.outdir + "/settings.txt", "x")
+    f.write("Features: "           + str(self.features)            + "\n")
+    f.write("Epochs: "             + str(self.epochs)              + "\n")
+    f.write("Batch size: "         + str(self.batch_size)          + "\n")
+    f.write("Scaler type: "        + str(self.scaler_type)         + "\n")
+    f.write("Early stopping: "     + str(self.do_early_stopping)   + "\n")
+    f.write("Reduce lr: "          + str(self.do_reduce_lr)        + "\n")
+    f.write("Baseline selection: " + str(self.baseline_selection)  + "\n")
+    f.close()
+
+    return 
 
 
   def saveFig(self, plt, name):
@@ -370,20 +389,25 @@ class Trainer(object):
     # Lets collect everything which is not signal and not combinatorial into hb = -1 (for now)
     hb_selec = " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) && (gen_match_success)"
  
-    #signals     #ds mu   #ds tau   #dstar mu   #dstar tau   #hb
-    mc_ids     = [0       ,1        ,10         ,11          ,-1]
-    mc_classes = [0       ,0        ,0          ,0           ,1 ] #changed ! 
+    #signals      #ds mu   #ds tau   #dstar mu   #dstar tau   #hb
+    mc_ids      = [0       ,1        ,10         ,11          ,-1]
+    mc_classes  = [1       ,0        ,1          ,0           ,1 ] #changed ! 
+    label       = {0: r" \mu", 1:r" \tau", 10:r" \mu^{*}", 11: r" \tau^{*}", -1: r" H_{b}" }
+    class_label = {class_id: [] for class_id in mc_classes}
 
     for mc_id, class_id in zip (mc_ids,mc_classes):
 
+      class_label[class_id].append(label[mc_id]) 
+
       if mc_id >= 0: 
-        mc_sample          = Sample(filename = file_sig, selection=self.baseline_selection  + f'& gen_sig == {mc_id}', tree = tree_name,signal = class_id).df
+        mc_sample           = Sample(filename = file_sig,    selection=self.baseline_selection  + f'& gen_sig == {mc_id}' + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
 
       else:
-        #mc_sample          = Sample(filename = file_hb,     selection=self.baseline_selection  + hb_selec,                tree = tree_name,signal = class_id)
-        mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + hb_selec,                tree = tree_name,signal = class_id).df
-        mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + hb_selec,                tree = tree_name,signal = class_id).df
-        mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + hb_selec,                tree = tree_name,signal = class_id).df
+        #mc_sample          = Sample(filename = file_hb,     selection=self.baseline_selection  + hb_selec,               + signalRegion + lowMass,                tree = tree_name,signal = class_id)
+        mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+
         mc_sample           = pd.concat([mc_sample1,mc_sample2,mc_sample3], sort = False)
 
       mc_train, mc_test = train_test_split(mc_sample,test_size = 0.2,random_state = 1000)
@@ -397,18 +421,24 @@ class Trainer(object):
 
     ## Denote comb with id 2
     data_id = 2
+    class_label[2] = ["Comb. Bkg."]
+
+    #join the labels with ','
+    for key in class_label.keys(): 
+      class_label[key] =  ','.join(class_label[key]) 
+      class_label[key] =   "$" + class_label[key] + "$"
 
     #siebands used for the comb. bkg
 
     if args.constrained:
-      sign_flip  = "((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
-      data_selec = sign_flip
+      sign_flip  = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
+      data_selec = self.baseline_selection + sign_flip + signalRegion + lowMass
 
     else:
       SB = f'& (( {mlow3} < phiPi_m & phiPi_m < {mlow2}) || ({mhigh2} < phiPi_m & phiPi_m < {mhigh3}))'
-      data_selec = self.baseline_selection + SB
+      data_selec = self.baseline_selection + SB + lowMass
 
-    data_sample           = Sample(filename=file_data, selection=data_selec, tree = 'tree',signal = data_id)
+    data_sample               = Sample(filename=file_data,   selection=data_selec, tree = 'tree',signal = data_id)
     data_train, data_test = train_test_split(data_sample.df, test_size=0.2, random_state = 1000)
 
     train[data_id] = data_train
@@ -421,7 +451,7 @@ class Trainer(object):
     
     print(f'========> it took {round(time() - now,2)} seconds' )
 
-    return train, test 
+    return train, test, class_label 
 
   def createDataframe(self, samples):
     '''
@@ -519,7 +549,6 @@ class Trainer(object):
     '''
     #NOTE for the moment, everything is hardcoded
 
-    rate = 0.0001 #learning rate (not applied in our model :))
     rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
     initial_learning_rate=0.0001,
     decay_steps=10000,
@@ -532,12 +561,14 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(32, activation= 'relu'))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(20, activation ='relu'))
-    model.add(tf.keras.layers.Dense(128, activation ='swish'))#, kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
+    #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     model.add(tf.keras.layers.Dense(64, activation ='swish', kernel_regularizer=regularizers.l2(0.01)))
     model.add(tf.keras.layers.Dense(64, activation ='swish', kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(32, activation ='swish'))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
+    model.add(tf.keras.layers.Dense(32, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
     #model.add(tf.keras.layers.Dropout(.2))
     model.add(tf.keras.layers.Dense(3, activation= 'softmax'))
 
@@ -546,6 +577,11 @@ class Trainer(object):
     
     print(model.summary())
 
+
+    f = open(self.outdir + "/settings.txt", "a")
+    f.write(str(model.summary()))
+    f.close()
+  
     return model
 
 
@@ -612,6 +648,18 @@ class Trainer(object):
 
     history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = weight)
 
+
+    # Create an explainer object
+    explainer = shap.DeepExplainer(model, x_train)
+    print("created explainer...")    
+    # Calculate SHAP values for the dataset
+    shap_values = explainer.shap_values(x_train)
+    print("created explainer values...")    
+    
+    # Plot summary of SHAP values for all features
+    shap.summary_plot(shap_values, x_train)
+    print("created summary...")    
+
     return history
 
 
@@ -667,257 +715,86 @@ class Trainer(object):
     return score
 
 
-  def plotScoreTau(self, model, mc_test_samples,data_test_samples):
-    '''
-      Plot the score distributions for signal and background
-    '''
-    signals = [0,1,2,3,4,5]
-
-    # get the score for the test dataframe
-
-    mc_test_samples = pd.concat(mc_test_samples,sort= False)
-    data_test_samples = pd.concat(data_test_samples, sort = False)
-
-    #mu 
-    df0 =  mc_test_samples.loc[mc_test_samples['is_signal'] == 0]
-    df1 =  mc_test_samples.loc[mc_test_samples['is_signal'] == 2]
-    
-    #back
-    df4 =  mc_test_samples.loc[mc_test_samples['is_signal'] == 4]
-    df5 =  data_test_samples.loc[data_test_samples['is_signal'] == 5]
-  
-    #tau
-    df2 = mc_test_samples.loc[mc_test_samples['is_signal'] == 1]
-    df3 = mc_test_samples.loc[mc_test_samples['is_signal'] == 3]
-
-    #for part two :)
-    df = pd.concat([df2,df3],sort = False)
-    df_rest = pd.concat([df0,df1,df4,df5],sort = False)
-
-    #collect initial length 
-    lmu = len(df0) + len(df1)
-    ltau2 = len(df2)
-    ltau3 = len(df3)
-    ltau = ltau2 + ltau3
-    lback = len(df4) + len(df5) 
-
-    print(f"we start off with {len(df0)+len(df1)} mu samples, {len(df4)} hb samples, {len(df5)} comb bkg samples and {len(df2) + len(df3)} tau samples")
-
- 
-    #calculat mu score
-    score_mu0 = self.predictScore(model,df0) 
-    score_mu1 = self.predictScore(model,df1) 
-    #only keep score columns of tau and tau* and comb! We're interested in these!
-    score_mu2 = np.concatenate((score_mu0[:,2],score_mu1[:,2])) #mu score at tau
-    score_mu3 =  np.concatenate((score_mu0[:,3],score_mu1[:,3])) #mu_score at tau*
-    score_mu5 = np.concatenate((score_mu0[:,5],score_mu1[:,5]))
-
-    #same for tau itself
-    score_tau2 =  self.predictScore(model,df2)
-    score_tau3 =  self.predictScore(model,df3)
-    score_tau2_v2 = np.concatenate((score_tau2[:,2],score_tau3[:,2])) #tau score at tau
-    score_tau3_v2 = np.concatenate((score_tau2[:,3],score_tau3[:,3])) #tau score at tau*
-    score_tau5 = np.concatenate((score_tau2[:,5],score_tau3[:,5]))
-    print(len(score_tau2))
- 
-    #and same for background
-    score_back4 = self.predictScore(model,df4)   
-    score_back5 = self.predictScore(model,df5)   
-    score_back2 = np.concatenate((score_back4[:,2],score_back5[:,2])) #back score at tau
-    score_back3 = np.concatenate((score_back4[:,3],score_back5[:,3])) #back score at tau*
-    score_back5_v2 = np.concatenate((score_back4[:,5],score_back4[:,5]))
-
-    #cut array over which we optimize
-    cuts = np.arange(0,0.8,0.05) 
-     
-    #prepare 2D arrays, 2D because we want to cut tau and tau* independently 
-    tau2_left = np.zeros((len(cuts),len(cuts),len(cuts),len(cuts),len(cuts)))
-    tau3_left = np.zeros_like(tau2_left)
-    back5_left = np.zeros_like(tau2_left)
-    back4_left = np.zeros_like(tau2_left)
-    mu0_left = np.zeros_like(tau2_left)
-    mu1_left = np.zeros_like(tau2_left)
-    mu_left = np.zeros_like(tau2_left)
-    tau_left = np.zeros_like(tau2_left)
-    back_left = np.zeros_like(tau2_left)
-    sig_to_back = np.zeros_like(tau2_left)
-    sig_to_real_back = np.zeros_like(tau2_left)
-    all_sig_to_back =  np.zeros_like(tau2_left)
-
-    for i,c2 in enumerate(cuts):
-      print(c2)
-      for j,c3 in enumerate(cuts):
-        for k,c5 in enumerate(cuts):
-          for l,c0 in enumerate(cuts):
-            for m,c1 in enumerate(cuts):
-
-              #ugly but it works! :) 
-              tau2_count = len(np.intersect1d(np.intersect1d(np.intersect1d(np.argwhere(score_tau2[:,2] > c2).flatten(),np.argwhere(score_tau2[:,3] > c3).flatten()),np.intersect1d(np.argwhere(score_tau2[:,5] < c5).flatten() ,np.argwhere(score_tau2[:,0] > c0).flatten())) ,np.argwhere(score_tau2[:,1] > c1).flatten()))
-              tau3_count = len(np.intersect1d(np.intersect1d(np.intersect1d(np.argwhere(score_tau3[:,2] > c2).flatten(),np.argwhere(score_tau3[:,3] > c3).flatten()),np.intersect1d(np.argwhere(score_tau3[:,5] < c5).flatten() ,np.argwhere(score_tau3[:,0] > c0).flatten())) ,np.argwhere(score_tau3[:,1] > c1).flatten()))
-              mu0_count = len(np.intersect1d(np.intersect1d(np.intersect1d(np.argwhere(score_mu0[:,2] > c2).flatten(),np.argwhere(score_mu0[:,3] > c3).flatten()),np.intersect1d(np.argwhere(score_mu0[:,5] < c5).flatten() ,np.argwhere(score_mu0[:,0] > c0).flatten())) ,np.argwhere(score_mu0[:,1] > c1).flatten()))
-              mu1_count = len(np.intersect1d(np.intersect1d(np.intersect1d(np.argwhere(score_mu1[:,2] > c2).flatten(),np.argwhere(score_mu1[:,3] > c3).flatten()),np.intersect1d(np.argwhere(score_mu1[:,5] < c5).flatten() ,np.argwhere(score_mu1[:,0] > c0).flatten())) ,np.argwhere(score_mu1[:,1] > c1).flatten()))
-              back4_count = len(np.intersect1d(np.intersect1d(np.intersect1d(np.argwhere(score_back4[:,2] > c2).flatten(),np.argwhere(score_back4[:,3] > c3).flatten()),np.intersect1d(np.argwhere(score_back4[:,5] < c5).flatten() ,np.argwhere(score_back4[:,0] > c0).flatten())) ,np.argwhere(score_back4[:,1] > c1).flatten()))
-              back5_count = len(np.intersect1d(np.intersect1d(np.intersect1d(np.argwhere(score_back5[:,2] > c2).flatten(),np.argwhere(score_back5[:,3] > c3).flatten()),np.intersect1d(np.argwhere(score_back5[:,5] < c5).flatten() ,np.argwhere(score_back5[:,0] > c0).flatten())) ,np.argwhere(score_back5[:,1] > c1).flatten()))
-
-              #see how many tau* are left if we cut tau on c2 and tau* on c3: 
-              tau2_left[i][j][k][l][m] = tau2_count
-              tau3_left[i][j][k][l][m] = tau3_count
-              back4_left[i][j][k][l][m] = back4_count
-              back5_left[i][j][k][l][m] = back5_count
-              mu0_left[i][j][k][l][m] = mu0_count
-              mu1_left[i][j][k][l][m] = mu1_count
-              tau_left[i][j][k][l][m] = tau2_count + tau3_count
-              mu_left[i][j][k][l][m] = mu0_count + mu1_count
-              back_left[i][j][k][l][m] = back4_count + back5_count
-
-              tot_count = tau2_count + tau3_count + back4_count + back5_count + mu0_count + mu1_count
-          
-              if tot_count == 0:
-                sig_to_back[i][j][k][l][m] = np.nan
-                all_sig_to_back[i][j][k][l][m] = np.nan
-
-              else:
-                sig_to_back[i][j][k][l][m] = (tau2_count + tau3_count) / np.sqrt(tot_count)
-                all_sig_to_back[i][j][k][l][m] = (tau2_count + tau3_count + mu0_count + mu1_count) / np.sqrt(tot_count)
- 
-              if back4_count + back5_count + tau2_count + tau3_count == 0:
-                sig_to_real_back[i][j][k][l][m] = np.nan
-              else:
-                sig_to_real_back[i][j][k][l][m] = (tau2_count + tau3_count) / np.sqrt( tau2_count + tau3_count + back_left[i][j][k][l][m])
-
-    
-
-    c2max = np.unravel_index(np.nanargmax(sig_to_back), sig_to_back.shape)[0]
-    c3max = np.unravel_index(np.nanargmax(sig_to_back), sig_to_back.shape)[1]
-    c5max = np.unravel_index(np.nanargmax(sig_to_back), sig_to_back.shape)[2]
-    c0max = np.unravel_index(np.nanargmax(sig_to_back), sig_to_back.shape)[3]
-    c1max = np.unravel_index(np.nanargmax(sig_to_back), sig_to_back.shape)[4]
-
-    c2max_real = np.unravel_index(np.nanargmax(sig_to_real_back), sig_to_real_back.shape)[0]
-    c3max_real = np.unravel_index(np.nanargmax(sig_to_real_back), sig_to_real_back.shape)[1]
-    c5max_real = np.unravel_index(np.nanargmax(sig_to_real_back), sig_to_real_back.shape)[2]
-    c0max_real = np.unravel_index(np.nanargmax(sig_to_real_back), sig_to_real_back.shape)[3]
-    c1max_real = np.unravel_index(np.nanargmax(sig_to_real_back), sig_to_real_back.shape)[4]
-
-    c2max_all = np.unravel_index(np.nanargmax(all_sig_to_back), all_sig_to_back.shape)[0]
-    c3max_all = np.unravel_index(np.nanargmax(all_sig_to_back), all_sig_to_back.shape)[1]
-    c5max_all = np.unravel_index(np.nanargmax(all_sig_to_back), all_sig_to_back.shape)[2]
-    c0max_all = np.unravel_index(np.nanargmax(all_sig_to_back), all_sig_to_back.shape)[3]
-    c1max_all = np.unravel_index(np.nanargmax(all_sig_to_back), all_sig_to_back.shape)[4]
-
-
-
-    print(f"Sig to Back is {sig_to_back[c2max][c3max][c5max][c0max][c1max]} maximal at c2 = {cuts[c2max]}, c3 = {cuts[c3max]}, c5 = {cuts[c5max]}, c0 = {cuts[c0max]}, c1 = {cuts[c1max]}")
-
-    print(f"and there we have {back_left[c2max][c3max][c5max][c0max][c1max]/lback} bkg. left")
-    print(f"and there we have {mu_left[c2max][c3max][c5max][c0max][c1max]/lmu} mu left")
-    print(f"and there we have {tau_left[c2max][c3max][c5max][c0max][c1max]/ltau} tau left")
-
-
-    print(f"Sig to real Back is {sig_to_real_back[c2max_real][c3max_real][c5max_real][c0max_real][c1max_real]} maximal at c2 = {cuts[c2max_real]}, c3 = {cuts[c3max_real]}, c5 = {cuts[c5max_real]}, c0 = {cuts[c0max_real]}, c1 = {cuts[c1max_real]}")
-
-    print(f"and there we have {back_left[c2max_real][c3max_real][c5max_real][c0max_real][c1max_real]/lback} bkg. left")
-    print(f"and there we have {mu_left[c2max_real][c3max_real][c5max_real][c0max_real][c1max_real]/lmu} mu left")
-    print(f"and there we have {tau_left[c2max_real][c3max_real][c5max_real][c0max_real][c1max_real]/ltau} tau left")
-
-
-    print(f"All signals to Back, {sig_to_real_back[c2max_real][c3max_real][c5max_real][c0max_real][c1max_real]} maximal at c2 = {cuts[c2max_all]}, c3 = {cuts[c3max_all]}, c5 = {cuts[c5max_all]}, c0 = {cuts[c0max_all]}, c1 = {cuts[c1max_all]}")
-
-    print(f"and there we have {back_left[c2max_all][c3max_all][c5max_all][c0max_all][c1max_all]/lback} bkg. left")
-    print(f"and there we have {mu_left[c2max_all][c3max_all][c5max_all][c0max_all][c1max_all]/lmu} mu left")
-    print(f"and there we have {tau_left[c2max_all][c3max_all][c5max_all][c0max_all][c1max_all]/ltau} tau left")
-
-
-
-    ############
-
-    print("=========> collapsing multiclassifier to binary (tau against the rest)")
-
-
-    max_ind = []    
-    max_ind_rest = []
-
-
-    #score of tau signals, get index of maximal score
-    for event in np.concatenate((score_tau2,score_tau3)):
-      max_ind.append(np.nanargmax(event))
-    #score of all other signals, get index of maximal score
-    for event in np.concatenate((score_mu0,score_mu1,score_back4,score_back5)):
-      max_ind_rest.append(np.nanargmax(event))
-
-    max_ind = np.array(max_ind)
-    max_ind_rest = np.array(max_ind_rest)
-
-    true_pos = (len(max_ind[max_ind == 2]) + len(max_ind[max_ind == 3]))/len(max_ind)
-    false_neg =(len(max_ind) - len(max_ind[max_ind == 2]) - len(max_ind[max_ind == 3]))/len(max_ind)
-
-    false_pos = (len(max_ind_rest[max_ind_rest == 2]) + len(max_ind_rest[max_ind_rest == 3])) /len(max_ind_rest)
-    true_neg = (len(max_ind_rest) - len(max_ind_rest[max_ind_rest == 2]) - len(max_ind_rest[max_ind_rest == 3]))/len(max_ind_rest)
-
-
-    print(f"True positive rate: {true_pos}, False positive rate: {false_pos}")
-    print(f"True negative rate: {true_neg}, False negative rate: {false_neg}")
-
-  def plotScore(self, model, mc_test_samples,data_test_samples,sig):
+   
+  def plotScore(self, model, test_samples, sig, class_label):
     '''
       Plot the score of all channels class sig
     '''
 
-    mc_test_samples = pd.concat(mc_test_samples,sort= False)
-    data_test_samples = pd.concat(data_test_samples, sort = False)
+    channels = [0,1,2]
 
-    #mu 
-    df0 =  mc_test_samples.loc[mc_test_samples['is_signal'] == 0]
-    df1 =  mc_test_samples.loc[mc_test_samples['is_signal'] == 10]
-    
-    #back
-    df4 =  mc_test_samples.loc[mc_test_samples['is_signal'] == 1]
-    df5 =  data_test_samples.loc[data_test_samples['is_signal'] == 11]
-  
-    #tau
-    df2 = mc_test_samples.loc[mc_test_samples['is_signal'] == -1]
-    df3 = mc_test_samples.loc[mc_test_samples['is_signal'] == -2]
+    # get the score for the test dataframe
 
-    scores = []
+    df = {}
+    score = {}
 
-    for i,df in enumerate([df0,df1,df2,df3,df4,df5]):
-      #only keep score of signal sig
-      score = self.predictScore(model,df)[:,sig]
-      #save it
-      np.savetxt(f"{self.outdir}/score_{i}_for_{sig}.csv",score,delimiter = ",")
-      scores.append(self.predictScore(model,df)[:,sig]) #only keep sig class score 
-  
-    name={0:r'$D_s \mu$',1:r'$D_s \tau$',10:r'$D^*_s \mu$',11:r'$D^*_s \tau$',-1:r'$H_b$',-2:'comb. Bkg.'}
-    col ={0:'c',1:'g',10:'m',11:'r',5:'b',6:'k'}
-    linestyles = {0:'solid',1:'dotted',10:'dashed',11:'dashdot',-1:(0, (1, 10)),-2:(0, (3, 5, 1, 5, 1, 5))}
+    for chan in channels:
+      df[chan]    = test_samples.loc[test_samples['is_signal'] == chan]
+      score[chan] = self.predictScore(model,df[chan])[:,sig] 
+      np.savetxt(f"{self.outdir}/score_of_class_{chan}_for_class_{sig}.csv",score[chan],delimiter = ",")
+
+ 
+    col ={0:'c',1:'g',2:'m',11:'r',5:'b',6:'k'}
+    linestyles = {0:'solid',1:'dotted',2:'dashed',11:'dashdot',-1:(0, (1, 10)),-2:(0, (3, 5, 1, 5, 1, 5))}
 
     fig = plt.figure()
+    import pdb
 
-    for i,score in enumerate(scores):
+    for key in score.keys():
       # plot the score distributions
-      plt.hist(score, bins=np.arange(0,1.025,0.025), color=col[i], alpha=0.5, label=f'actual class {i}', histtype='stepfilled',density = True,linestyle = linestyles[i], linewidth = 1.5)
+      plt.hist(score[key], bins=np.arange(0,1.025,0.025), color=col[key], alpha=0.5, label=class_label[key], histtype='stepfilled',density = True,linestyle = linestyles[key], linewidth = 1.5)
     plt.legend(loc='upper right')
-    plt.title(f'Predicition for class {sig}')
+    plt.title(f'Score for class ' + class_label[sig])
     plt.xlabel('score')
     plt.ylabel('events')
-    fig.savefig('outputs/score_' + str(sig) + '.pdf')
-    fig.savefig('outputs/score_' + str(sig) + '.png')
+    #fig.savefig('outputs/score_' + str(sig) + '.pdf')
+    #fig.savefig('outputs/score_' + str(sig) + '.png')
     self.saveFig(fig, 'score_' + str(sig) )
     plt.clf()
 
+  def plotCorr(self,model, test_df):
+
+    test_x = pd.DataFrame(test_df, columns = list(set(self.features)))  
+
+    #get the score
+    score  =  self.predictScore(model,test_x) #this is a list of length #classes!
+
+    #append it to pd such that we can plot it in the corr matrix
+    test_x["score0"] = score[:,0]
+    test_x["score1"] = score[:,1]
+    test_x["score2"] = score[:,2]
+
+    corr = test_x.corr()
 
 
-  def plotCM(self, model, mc_test_samples,data_test_samples):
+    # Set up the matplotlib figure
+    f, ax = plt.subplots(figsize=(11, 9))
+    
+    # Generate a custom diverging colormap
+    cmap = seaborn.diverging_palette(220, 10, as_cmap=True)
+    
+    # Draw the heatmap with the mask and correct aspect ratio
+    g = seaborn.heatmap(corr, cmap=cmap, vmax=1., vmin=-1, center=0, annot=True, fmt='.1f', square=True, linewidths=.8, cbar_kws={"shrink": .8},  annot_kws={"size": 2})
+    
+    # rotate axis labels
+    g.set_xticklabels(test_x.keys().tolist(), rotation='vertical')
+    g.set_yticklabels(test_x.keys().tolist(), rotation='horizontal')
+    
+    # plt.show()
+    #plt.figure(figsize=(12, 12))
+    plt.title('linear correlation matrix - signal')
+    plt.tight_layout()
+    self.saveFig(plt, 'corr_sig')
+    plt.clf()
+
+
+  def plotCM(self, model, test_df, class_label):
     '''
       Get and save everything rto later produce confusion matrix
     '''
 
-    mc = pd.concat(mc_test_samples,sort = False)
-    data = pd.concat(data_test_samples,sort = False)
-
-    test = pd.concat([mc,data],sort = False)
-    test_x = pd.DataFrame(test, columns=list(set(self.features)))
-    test_y = pd.DataFrame(test, columns=['is_signal'])
+    test_x = pd.DataFrame(test_df, columns=list(set(self.features)))
+    test_y = pd.DataFrame(test_df, columns=['is_signal'])
     test_y = test_y.to_numpy().flatten()
     
     #get the score
@@ -936,7 +813,46 @@ class Trainer(object):
     np.savetxt(f"{self.outdir}/testyforCM.csv",test_y,delimiter = ",")
 
     cm = confusion_matrix(test_y, score_list)   
-    print(cm)
+    print("Confusion matrix: \n", cm)
+
+
+    cm_recall = []
+    cm_presi= []
+
+    for i,row in enumerate(cm):
+    	cm_recall.append(row / np.sum(row ))
+    	cm_presi.append(cm[:,i]/np.sum(cm[:,i]))
+    print("Confusion matrix recall: \n " , cm_recall)	
+    print("Confusion matrix presi: \n " , cm_presi)
+
+    #get labels
+    fig = plt.figure()
+    sb = seaborn.heatmap(cm_recall, annot = True)
+
+    sb.set_xticklabels(list(class_label.values()))
+    sb.set_yticklabels(list(class_label.values()))
+
+    #plt.title(r'Class 0 = $D^{(*)}_\mathrm{s}\mu$, Class 1 = $D^{(*)}_\mathrm{s}\tau$, Class 2 = $H_\mathrm{b}$, Class 3 = $B_\mathrm{c}$')
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted') 
+    fig.savefig(f'{self.outdir}/cm_recall.pdf')
+    fig.savefig(f'{self.outdir}/cm_recall.png')
+	
+    plt.clf()
+
+    fig = plt.figure()
+    sb = seaborn.heatmap(cm_presi, annot = True)
+
+    sb.set_xticklabels(list(class_label.values()))
+    sb.set_yticklabels(list(class_label.values()))
+
+    #plt.title(r'Class 0 = $D^{(*)}_\mathrm{s}\mu$, Class 1 = $D^{(*)}_\mathrm{s}\tau$, Class 2 = $H_\mathrm{b}$, Class 3 = $B_\mathrm{c}$')
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted') 
+    fig.savefig(f'{self.outdir}/cm_presi.pdf')
+    fig.savefig(f'{self.outdir}/cm_presi.png')
+	
+    plt.clf()
 
 
   def plotROCbinary(self,model,x_train,y_train,x_val,y_val,key):
@@ -1055,6 +971,7 @@ class Trainer(object):
 
 
     c1.SaveAs(self.outdir + f'/KS_test_{sig}.pdf')
+    c1.SaveAs(self.outdir + f'/KS_test_{sig}.png')
     #print('KS score: ',ks_score, len(train_pred),len(test_pred))
 
 
@@ -1064,11 +981,11 @@ class Trainer(object):
     
     # create output directory
     print('\n========> creating output directory')
-    self.outdir = self.createOutDir()
+    self.createOutDir()
 
     # get the samples (dictionaries with signal key)
     print('\n========> getting the samples')
-    train_samples, test_samples = self.getSamples()
+    train_samples, test_samples, class_label = self.getSamples()
 
     # create dataframes
     print('\n========> creating the train dataframes')
@@ -1100,14 +1017,11 @@ class Trainer(object):
     print('\n========> plotting...' )
     self.plotLoss(history)
     self.plotAccuracy(history)
-    #self.plotScoreTau(model,mc_test_df,data_test_df)
-    #self.plotScore(model, mc_test_df,data_test_df,-2)
-    #self.plotScore(model, mc_test_df,data_test_df,0)
-    #self.plotScore(model, mc_test_df,data_test_df,1)
-    #self.plotScore(model, mc_test_df,data_test_df,10)
-    #self.plotScore(model, mc_test_df,data_test_df,11)
-    #self.plotScore(model, mc_test_df,data_test_df,-1)
-    #self.plotCM(model, mc_test_df,data_test_df)
+    self.plotScore(model, main_test_df, 0,class_label)
+    self.plotScore(model, main_test_df, 1,class_label)
+    self.plotScore(model, main_test_df, 2,class_label)
+    self.plotCorr(model, main_test_df)
+    self.plotCM(model, main_test_df, class_label)
     self.plotROCbinary(model,x_train,y_train,x_val,y_val,'Train')
     self.plotROCbinary(model,x_train,y_train,x_val,y_val,'Test')
     #self.plotKSTest(model, x_train, x_val, y_train, y_val, -2)
@@ -1137,13 +1051,13 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 30
+  epochs = 1
   batch_size = 64
   scaler_type = 'robust'
   do_early_stopping = True
   do_reduce_lr = False
   dirname = 'test'
-  baseline_selection = ma_cut_wout_tv
+  baseline_selection = base_wout_tv
 
   trainer = Trainer(
       features = features, 
