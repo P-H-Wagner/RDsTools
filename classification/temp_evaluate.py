@@ -1,7 +1,7 @@
 import os
 import sys
 from os import path
-
+import uproot
 import ROOT
 
 #from root_pandas import read_root
@@ -97,6 +97,11 @@ class createDf(object):
   '''
   create df for evaluation on either mc or data
   '''
+
+  def __init__(self,date_time, channel):
+    self.date_time = date_time
+    self.channel   = channel 
+
 
   def convertRootToDF(self, sample, training_info, treename, selection, weights, var, channel):
    
@@ -204,11 +209,36 @@ class createDf(object):
     score = self.predictScore(training_info=training_info, df=df) #use head function for debugging on few events
     print(score)     
 
+    all_scores = []
+
     score0 = score[:,0] 
     score1 = score[:,1] 
     score2 = score[:,2] 
-    #score3 = score[:,3] 
+    score3 = score[:,3] 
+    score4 = score[:,4] 
+    score5 = score[:,5] 
 
+    all_scores.append(score0)    
+    all_scores.append(score1)    
+    all_scores.append(score2)    
+    all_scores.append(score3)    
+    all_scores.append(score4)    
+    all_scores.append(score5)    
+
+    all_scores = np.array(all_scores)
+    max_score = [ np.argmax( all_scores[:,i] ) for i in range(len(all_scores[0]))] 
+    print("length of max score",len(max_score))
+    print("length of all_scores",len(all_scores[:,0] ))
+
+    df["score0"] = score0
+    df["score1"] = score1
+    df["score2"] = score2
+    df["score3"] = score3
+    df["score4"] = score4
+    df["score5"] = score5
+    df["class"] = max_score
+
+    """
     # get other quantities to fill the branches with
     if channel != 'data':
      var.append("gen_sig")
@@ -224,8 +254,16 @@ class createDf(object):
       for weight in weights:
         weight_val[weight] = df[weight]
 
+    """
+
     # create file
-    root_filename = f"/scratch/pahwagne/score_trees/{channel}/{label}_{datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')}.root"
+    root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}.root"
+
+    with uproot.recreate(root_filename) as f:
+
+      f["tree"] = df
+
+    """
     out_file = ROOT.TFile(root_filename, "RECREATE")
 
     # create tree
@@ -288,7 +326,7 @@ class createDf(object):
       tree.Fill()
     tree.Write()
     out_file.Close()
-
+    """
     print(f' ========> {root_filename} created')
 
 if __name__ == '__main__':
@@ -299,6 +337,10 @@ if __name__ == '__main__':
    modelpath    = os.getenv("modelpath") 
    model   = os.getenv("model") 
    print("parsing command line... evaluate on: ", channel)   
+
+   if constrained == 'True': constrained = True
+   else: constrained = False
+
 
    files = {}
     
@@ -337,7 +379,11 @@ if __name__ == '__main__':
 
    training_path = f'/work/pahwagne/RDsTools/classification/outputs/{modelpath}' #mu and tau in same class  (adam) uncon.
    model_label = model # 
-  
+   date_time   = modelpath[5:] 
+   print("date_time:", date_time)
+
+
+   print(f"=====> Using model {modelpath}/{model}.") 
 
    weights=None
 
@@ -398,7 +444,7 @@ if __name__ == '__main__':
    'mu_rel_iso_03',
    'phiPi_deltaR',
    #'phiPi_m',              #only for constrained fitter!
-   'dsMu_m',
+   #'dsMu_m',
    #'pt_miss_....',        #too similar to m2 miss?
    
    #'q2_reco_weighted',
@@ -429,20 +475,84 @@ if __name__ == '__main__':
 
 
    extra_vars = [
+
+   ##'bs_boost_reco_weighted',
+   #'bs_boost_lhcb',
+   #'bs_boost_reco_1',
+   #'bs_boost_reco_2',
+   #'bs_boost_lhcb_alt',
+   #'bs_boost_coll',
+
+   ##'bs_pt_reco_weighted',
+   #'bs_pt_lhcb',
+   #'bs_pt_reco_1',
+   #'bs_pt_reco_2',
+   #'bs_pt_lhcb_alt',
+   #'bs_pt_coll',
+
+   ##'cosMuW_reco_weighted', 
+   #'cosMuW_lhcb', 
+   #'cosMuW_reco_weighted', #better separates all signals
+   #'cosMuW_reco_1', #better separates all signals
+   #'cosMuW_reco_2', #better separates all signals
+
+
+   ##'e_star_reco_weighted',
+   #'e_star_lhcb',
+   #'e_star_reco_weighted',
+   #'e_star_reco_1',
+   #'e_star_reco_2',
+   #'e_star_coll',
+
+   ##'q2_reco_weighted',
+   #'q2_lhcb',
+   #'q2_reco_1',
+   #'q2_reco_2',
+   #'q2_coll',
+
+   #'pt_miss_coll',
+   #'pt_miss_lhcb',
+   #'pt_miss_lhcb_alt',
+   #'disc_is_negative',
+   #'dsMu_deltaR',
+
+   #'cosPhiDs_coll',
+   #'cosPhiDs_lhcb_alt',
+   #'cosPhiDs_reco_1',
+   #'cosPhiDs_reco_2',
+   #'cosPhiDs_reco_weighted',
+
+   #'cosPlaneBs_coll',
+   #'cosPlaneBs_lhcb',
+   #'cosPlaneBs_lhcb_alt',
+   #'cosPlaneBs_reco_1',
+   #'cosPlaneBs_reco_2',
+   #'cosPlaneBs_reco_weighted',
+
+   'lxy_ds_sig',
+   'dxy_mu_sig',
+   'pv_prob',
+
    "pi_charge",
    "mu_charge",
+
    "k1_pt",
    "k1_charge",
    "k2_pt",
    "k2_charge",
-   "phiPi_pt",
+
+   #"phiPi_pt",
+   #"dsMu_m",
+   #"phiPi_m",
    "dsMu_pt",
    "lxy_ds",
    "mu_id_medium",
    "run"
    ]
 
-   if not constrained: extra_vars.append("phiPi_m")
+   if not constrained: 
+     print("appending mass...")
+     extra_vars.append("phiPi_m")
 
 
    var = {}
@@ -483,7 +593,7 @@ if __name__ == '__main__':
    print(f"========> Evaluating on {channel} ...")
 
    #create df on which we want to evaluate
-   tools = createDf() 
+   tools = createDf(date_time, channel) 
 
    #create tree
    FileWithScore = tools.createFileWithAnalysisTree(training_path, model_label, files[channel], selections[channel], weights, labels[channel], treename, extra_vars,channel)
