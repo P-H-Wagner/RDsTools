@@ -211,21 +211,21 @@ def limitCPU(n):
  
 ##the feature vector
 kin_var = [
-#'bs_boost_reco_weighted',
-'bs_boost_reco_1',
-'bs_boost_reco_2',
-'bs_boost_lhcb_alt',
-'bs_boost_coll',
+'bs_boost_reco_weighted',
+#'bs_boost_reco_1',
+#'bs_boost_reco_2',
+#'bs_boost_lhcb_alt',
+#'bs_boost_coll',
 
-#'bs_pt_reco_weighted',
-'bs_pt_reco_1',
-'bs_pt_reco_2',
-'bs_pt_lhcb_alt',
-'bs_pt_coll',
+'bs_pt_reco_weighted',
+#'bs_pt_reco_1',
+#'bs_pt_reco_2',
+#'bs_pt_lhcb_alt',
+#'bs_pt_coll',
 
 #'cosMuW_reco_weighted', #better separates all signals
-'cosMuW_reco_1', #better separates all signals
-'cosMuW_reco_2', #better separates all signals
+#'cosMuW_reco_1', #better separates all signals
+#'cosMuW_reco_2', #better separates all signals
 'cosMuW_lhcb_alt', #better separates all signals
 'cosMuW_coll', #better separates all signals
 
@@ -237,10 +237,10 @@ kin_var = [
 'e_gamma',
 
 #'e_star_reco_weighted',
-'e_star_reco_1',
-'e_star_reco_2',
+#'e_star_reco_1',
+#'e_star_reco_2',
 'e_star_lhcb_alt',
-'e_star_coll',
+#'e_star_coll',
 
 'm2_miss_coll',
 'm2_miss_lhcb_alt',
@@ -250,18 +250,22 @@ kin_var = [
 'dsMu_m',
 #'pt_miss_....',        #too similar to m2 miss?
 
-#'q2_reco_weighted',
-'q2_reco_1',
-'q2_reco_2',
-'q2_coll',
+'q2_reco_weighted',
+#'q2_reco_1',
+#'q2_reco_2',
+#'q2_coll',
 'q2_lhcb_alt',
 'mu_pt',
+'mu_eta',
+'mu_phi',
 'pi_pt',
-'kk_pt',
-'phiPi_pt',
-'phi_fitted_pt',
-'ds_fitted_pt',
-'bs_fitted_pt',
+#'pi_eta',
+#'pi_phi',
+#'kk_eta',
+#'kk_phi',
+#'phi_fitted_pt',
+#'ds_fitted_pt',
+#'bs_fitted_pt',
 
 'fv_prob',
 'tv_prob',
@@ -550,7 +554,7 @@ class Trainer(object):
     #NOTE for the moment, everything is hardcoded
 
     rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.0001,
+    initial_learning_rate=0.00005,
     decay_steps=10000,
     decay_rate=0.9
 )
@@ -564,8 +568,8 @@ class Trainer(object):
     model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64, activation ='swish', kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64, activation ='swish', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
     model.add(tf.keras.layers.Dense(32, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
@@ -636,6 +640,11 @@ class Trainer(object):
       Perform the training
     '''
 
+    #keep pandas for shap
+    x_train_pd = x_train
+    x_val_pd = x_val
+
+    #convert to numpy for training
     x_train = x_train.to_numpy()
     y_train = tf.one_hot(y_train['is_signal'].to_numpy(), 3)
     y_train = y_train.numpy()
@@ -648,17 +657,78 @@ class Trainer(object):
 
     history = model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = weight)
 
+    """
+    shap_size = 10000
 
     # Create an explainer object
-    explainer = shap.DeepExplainer(model, x_train)
+    explainer = shap.DeepExplainer(model, x_train[:shap_size,:])
     print("created explainer...")    
     # Calculate SHAP values for the dataset
-    shap_values = explainer.shap_values(x_train)
+    shap_values = explainer.shap_values(x_train[:shap_size,:])
     print("created explainer values...")    
-    
+
+    plt.figure() 
     # Plot summary of SHAP values for all features
-    shap.summary_plot(shap_values, x_train)
+    shap.summary_plot(shap_values[:,:,0], x_train_pd.head(shap_size))
+    ax = plt.gca()
+    ax.set_xlim([-1, 1])
+    self.saveFig(plt,'shap_summary_plot_class0')
+    plt.clf()
+
+    shap.summary_plot(shap_values[:,:,0], x_train_pd.head(shap_size))
+    plt.gca().set_xscale('log')
+    ax = plt.gca()
+    ax.set_xlim([-1, 1])
+    self.saveFig(plt,'shap_summary_plot_class0_log')
     print("created summary...")    
+    plt.clf()
+
+    plt.figure() 
+    # Plot summary of SHAP values for all features
+    shap.summary_plot(shap_values[:,:,1], x_train_pd.head(shap_size))
+    ax = plt.gca()
+    ax.set_xlim([-1, 1])
+    self.saveFig(plt,'shap_summary_plot_class1')
+    plt.clf()
+
+    shap.summary_plot(shap_values[:,:,1], x_train_pd.head(shap_size))
+    plt.gca().set_xscale('log')
+    ax = plt.gca()
+    ax.set_xlim([-1, 1])
+    self.saveFig(plt,'shap_summary_plot_class1_log')
+    print("created summary...")    
+    plt.clf()
+
+    plt.figure() 
+    # Plot summary of SHAP values for all features
+    shap.summary_plot(shap_values[:,:,2], x_train_pd.head(shap_size))
+    ax = plt.gca()
+    ax.set_xlim([-1, 1])
+    self.saveFig(plt,'shap_summary_plot_class2')
+    plt.clf()
+
+    shap.summary_plot(shap_values[:,:,2], x_train_pd.head(shap_size))
+    plt.gca().set_xscale('log')
+    ax = plt.gca()
+    ax.set_xlim([-1, 1])
+    self.saveFig(plt,'shap_summary_plot_class2_log')
+    print("created summary...")    
+    plt.clf()
+    
+    plt.figure() 
+    # Plot summary of SHAP values for all features
+    shap.force_plot(shap_values, x_train[:1000,:])
+    print("created force summary...")    
+    plt.savefig('force_summary_plot.png', dpi=300, bbox_inches='tight')
+    plt.clf()
+
+    plt.figure() 
+    # Plot summary of SHAP values for all features
+    shap.dependence_plot(shap_values, x_train[:1000,:])
+    print("created dependence summary...")    
+    plt.savefig('dependence_summary_plot.png', dpi=300, bbox_inches='tight')
+    plt.clf()
+    """
 
     return history
 
@@ -1051,7 +1121,7 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 1
+  epochs = 20
   batch_size = 64
   scaler_type = 'robust'
   do_early_stopping = True
