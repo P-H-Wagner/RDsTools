@@ -1,3 +1,5 @@
+#taken from supplementary material from: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.100.094503
+
 #==========================================================================================
 #= Table of N=2 a_n coefficients without rounding.  The order is slightly modified from
 #= the text. The order of processes is Bc->J/Psi, Bc->eta_c, B->D*, B->D, Bs->Ds*,  
