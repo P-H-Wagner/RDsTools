@@ -395,7 +395,7 @@ class Trainer(object):
  
     #signals      #ds mu   #ds tau   #dstar mu   #dstar tau   #hb
     mc_ids      = [0       ,1        ,10         ,11          ,-1]
-    mc_classes  = [1       ,0        ,1          ,0           ,1 ] #changed ! 
+    mc_classes  = [2       ,0        ,3          ,1           ,4 ] #changed ! 
     label       = {0: r" \mu", 1:r" \tau", 10:r" \mu^{*}", 11: r" \tau^{*}", -1: r" H_{b}" }
     class_label = {class_id: [] for class_id in mc_classes}
 
@@ -424,8 +424,8 @@ class Trainer(object):
     #---------------------------  COMB BACKGROUND ------------------------------------ 
 
     ## Denote comb with id 2
-    data_id = 2
-    class_label[2] = ["Comb. Bkg."]
+    data_id = 5
+    class_label[5] = ["Comb. Bkg."]
 
     #join the labels with ','
     for key in class_label.keys(): 
@@ -554,7 +554,7 @@ class Trainer(object):
     #NOTE for the moment, everything is hardcoded
 
     rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.00005,
+    initial_learning_rate=0.0001,
     decay_steps=10000,
     decay_rate=0.9
 )
@@ -565,18 +565,21 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(32, activation= 'relu'))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(20, activation ='relu'))
-    model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dense(159, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    #model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(157,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(tf.keras.layers.Dense(222,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(tf.keras.layers.Dense(44,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
     #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(32, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
+    #model.add(tf.keras.layers.Dense(20, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
     #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(3, activation= 'softmax'))
+    model.add(tf.keras.layers.Dense(6, activation= 'softmax'))
 
-    opt = keras.optimizers.Adam(learning_rate=rate_schedule) 
+    opt = keras.optimizers.Adam(learning_rate=0.0005) 
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
     
     print(model.summary())
@@ -646,11 +649,11 @@ class Trainer(object):
 
     #convert to numpy for training
     x_train = x_train.to_numpy()
-    y_train = tf.one_hot(y_train['is_signal'].to_numpy(), 3)
+    y_train = tf.one_hot(y_train['is_signal'].to_numpy(), 6)
     y_train = y_train.numpy()
 
     x_val = x_val.to_numpy()
-    y_val= tf.one_hot(y_val['is_signal'].to_numpy(), 3)
+    y_val= tf.one_hot(y_val['is_signal'].to_numpy(), 6)
     y_val = y_val.numpy()
     
     print(f"class weights: {weight}")
@@ -791,7 +794,7 @@ class Trainer(object):
       Plot the score of all channels class sig
     '''
 
-    channels = [0,1,2]
+    channels = [0,1,2,3,4,5]
 
     # get the score for the test dataframe
 
@@ -804,8 +807,8 @@ class Trainer(object):
       np.savetxt(f"{self.outdir}/score_of_class_{chan}_for_class_{sig}.csv",score[chan],delimiter = ",")
 
  
-    col ={0:'c',1:'g',2:'m',11:'r',5:'b',6:'k'}
-    linestyles = {0:'solid',1:'dotted',2:'dashed',11:'dashdot',-1:(0, (1, 10)),-2:(0, (3, 5, 1, 5, 1, 5))}
+    col ={0:'c',1:'g',2:'m',3:'r',4:'b',5:'k'}
+    linestyles = {0:'solid',1:'dotted',2:'dashed',3:'dashdot',4:(0, (1, 10)),5:(0, (3, 5, 1, 5, 1, 5))}
 
     fig = plt.figure()
     import pdb
@@ -833,6 +836,9 @@ class Trainer(object):
     test_x["score0"] = score[:,0]
     test_x["score1"] = score[:,1]
     test_x["score2"] = score[:,2]
+    test_x["score3"] = score[:,3]
+    test_x["score4"] = score[:,4]
+    test_x["score5"] = score[:,5]
 
     corr = test_x.corr()
 
@@ -945,11 +951,11 @@ class Trainer(object):
     y_onehot_test = label_binarizer.transform(y)
    
     plt.figure()
-    col =['c','g','m','r'] #,'b','k']
-    linestyles = ['solid','dotted','dashed', 'dashdot' ]#,(0, (1, 10)),(0,(3, 5, 1, 5, 1, 5))]
+    col =['c','g','m','r','b','k']
+    linestyles = ['solid','dotted','dashed', 'dashdot',(0, (1, 10)),(0,(3, 5, 1, 5, 1, 5))]
 
 
-    for sig in range(3):
+    for sig in range(5):
       #plot roc for every class
       class_id = np.flatnonzero(label_binarizer.classes_ == sig)[0]
       fpr,tpr,_ = roc_curve(y_onehot_test[:, class_id],y_score[:, class_id])    
@@ -1090,6 +1096,9 @@ class Trainer(object):
     self.plotScore(model, main_test_df, 0,class_label)
     self.plotScore(model, main_test_df, 1,class_label)
     self.plotScore(model, main_test_df, 2,class_label)
+    self.plotScore(model, main_test_df, 3,class_label)
+    self.plotScore(model, main_test_df, 4,class_label)
+    self.plotScore(model, main_test_df, 5,class_label)
     self.plotCorr(model, main_test_df)
     self.plotCM(model, main_test_df, class_label)
     self.plotROCbinary(model,x_train,y_train,x_val,y_val,'Train')
@@ -1098,6 +1107,9 @@ class Trainer(object):
     self.plotKSTest(model, x_train, x_val, y_train, y_val, 0)
     self.plotKSTest(model, x_train, x_val, y_train, y_val, 1)
     self.plotKSTest(model, x_train, x_val, y_train, y_val, 2)
+    self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
+    self.plotKSTest(model, x_train, x_val, y_train, y_val, 4)
+    self.plotKSTest(model, x_train, x_val, y_train, y_val, 5)
     #self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
 
 
@@ -1121,8 +1133,8 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 20
-  batch_size = 64
+  epochs = 15
+  batch_size = 122
   scaler_type = 'robust'
   do_early_stopping = True
   do_reduce_lr = False
