@@ -339,6 +339,18 @@ class Trainer(object):
     self.dirname = dirname + '_' + datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')
     self.baseline_selection = baseline_selection
     self.nfolds = nfolds
+    self.colors = [
+    "red",
+    "green",
+    "blue",
+    "yellow",
+    "orange",
+    "purple",
+    "pink",
+    "cyan",
+    "magenta",
+    "brown"
+    ]
 
 
   def createOutDir(self):
@@ -700,102 +712,56 @@ class Trainer(object):
       y_val[n] = tf.one_hot(y_val[n]['is_signal'].to_numpy(), 6)
       y_val[n] = y_val[n].numpy()
 
-      import pdb; pdb.set_trace();
 
       history[n] = model.fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n]), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = weight)
     
     print(f"class weights: {weight}")
 
-    """
-    shap_size = 10000
-
-    # Create an explainer object
-    explainer = shap.DeepExplainer(model, x_train[:shap_size,:])
-    print("created explainer...")    
-    # Calculate SHAP values for the dataset
-    shap_values = explainer.shap_values(x_train[:shap_size,:])
-    print("created explainer values...")    
-
-    plt.figure() 
-    # Plot summary of SHAP values for all features
-    shap.summary_plot(shap_values[:,:,0], x_train_pd.head(shap_size))
-    ax = plt.gca()
-    ax.set_xlim([-1, 1])
-    self.saveFig(plt,'shap_summary_plot_class0')
-    plt.clf()
-
-    shap.summary_plot(shap_values[:,:,0], x_train_pd.head(shap_size))
-    plt.gca().set_xscale('log')
-    ax = plt.gca()
-    ax.set_xlim([-1, 1])
-    self.saveFig(plt,'shap_summary_plot_class0_log')
-    print("created summary...")    
-    plt.clf()
-
-    plt.figure() 
-    # Plot summary of SHAP values for all features
-    shap.summary_plot(shap_values[:,:,1], x_train_pd.head(shap_size))
-    ax = plt.gca()
-    ax.set_xlim([-1, 1])
-    self.saveFig(plt,'shap_summary_plot_class1')
-    plt.clf()
-
-    shap.summary_plot(shap_values[:,:,1], x_train_pd.head(shap_size))
-    plt.gca().set_xscale('log')
-    ax = plt.gca()
-    ax.set_xlim([-1, 1])
-    self.saveFig(plt,'shap_summary_plot_class1_log')
-    print("created summary...")    
-    plt.clf()
-
-    plt.figure() 
-    # Plot summary of SHAP values for all features
-    shap.summary_plot(shap_values[:,:,2], x_train_pd.head(shap_size))
-    ax = plt.gca()
-    ax.set_xlim([-1, 1])
-    self.saveFig(plt,'shap_summary_plot_class2')
-    plt.clf()
-
-    shap.summary_plot(shap_values[:,:,2], x_train_pd.head(shap_size))
-    plt.gca().set_xscale('log')
-    ax = plt.gca()
-    ax.set_xlim([-1, 1])
-    self.saveFig(plt,'shap_summary_plot_class2_log')
-    print("created summary...")    
-    plt.clf()
-    
-    plt.figure() 
-    # Plot summary of SHAP values for all features
-    shap.force_plot(shap_values, x_train[:1000,:])
-    print("created force summary...")    
-    plt.savefig('force_summary_plot.png', dpi=300, bbox_inches='tight')
-    plt.clf()
-
-    plt.figure() 
-    # Plot summary of SHAP values for all features
-    shap.dependence_plot(shap_values, x_train[:1000,:])
-    print("created dependence summary...")    
-    plt.savefig('dependence_summary_plot.png', dpi=300, bbox_inches='tight')
-    plt.clf()
-    """
-
-    return history
+    return history, xx_train, y_train, xx_val, y_val
 
 
   def plotLoss(self, history):
     '''
       Plot the loss for training and validation sets
     '''
-    loss_train = history.history['loss']
-    loss_val = history.history['val_loss']
-    epochs = range(1, len(loss_train)+1)
-    plt.plot(epochs, loss_train, 'g', label='Training loss')
-    plt.plot(epochs, loss_val, 'b', label='Validation loss')
-    plt.title('Training and Validation Loss')
+
+    average_loss = []
+
+    for n in range(self.nfolds):
+
+      loss_train = history[n].history['loss']
+      average_loss.append(np.array(loss_train))
+      epochs = range(1, len(loss_train)+1)
+      plt.plot(epochs, loss_train, self.colors[n], label=f'Fold {n}')
+
+    average_loss = sum(average_loss)/self.nfolds
+    plt.plot(epochs, average_loss, 'black' , label='Average loss', linestyle= 'dashed')
+
+    plt.title('Training Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    self.saveFig(plt, 'loss')
+    self.saveFig(plt, 'training_loss')
+    plt.clf()
+
+
+
+    average_loss = []
+    for n in range(self.nfolds):
+
+      loss_val = history[n].history['val_loss']
+      average_loss.append(np.array(loss_val))
+      epochs = range(1, len(loss_train)+1)
+      epochs = range(1, len(loss_train)+1)
+      plt.plot(epochs, loss_val, self.colors[n], label='Fold {n}')
+
+    average_loss = sum(average_loss)/self.nfolds
+    plt.plot(epochs, average_loss, 'black' , label='Average loss', linestyle= 'dashed')
+    plt.title('Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    self.saveFig(plt, 'validation_loss')
     plt.clf()
 
 
@@ -803,18 +769,47 @@ class Trainer(object):
     '''
       Plot the accuracy for training and validation sets
     '''
-    acc_train = history.history['acc']
-    acc_val = history.history['val_acc']
-    epochs = range(1, len(acc_train)+1)
-   
-    plt.plot(epochs, acc_train, 'g', label='Training accuracy')
-    plt.plot(epochs, acc_val, 'b', label='Validation accuracy')
-    plt.title('Training and Validation Accuracy')
+
+ 
+    average_accuracy = []
+    for n in range(self.nfolds):
+
+      acc_train = history[n].history['acc']
+      average_accuracy.append(np.array(acc_train))
+      epochs = range(1, len(acc_train)+1)
+      plt.plot(epochs, acc_train, 'g', label='Fold {n}')
+
+
+    average_accuracy = sum(average_accuracy)/self.nfolds
+    plt.plot(epochs, average_accuracy, 'black' , label='Average accuracy', linestyle= 'dashed')
+
+    plt.title('Training Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
-    self.saveFig(plt, 'accuracy')
+    self.saveFig(plt, 'training_accuracy')
     plt.clf()
+
+    average_accuracy = []
+    for n in range(self.nfolds):
+
+      acc_val = history[n].history['val_acc']
+      average_accuracy.append(np.array(acc_val))
+      epochs = range(1, len(acc_train)+1)
+      plt.plot(epochs, acc_val, 'b', label='Fold {n}')
+
+    
+    average_accuracy = sum(average_accuracy)/self.nfolds 
+    plt.plot(epochs, average_accuracy, 'black' , label='Average accuracy', linestyle= 'dashed')
+
+    plt.title('Validation Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    self.saveFig(plt, 'validation_accuracy')
+    plt.clf()
+
+
 
 
   def predictScore(self, model, df):
@@ -835,40 +830,64 @@ class Trainer(object):
 
 
    
-  def plotScore(self, model, test_samples, sig, class_label):
+  def plotScore(self, model, xx_train, y_train, xx_val, y_val, sig, class_label):
     '''
       Plot the score of all channels class sig
     '''
 
     channels = [0,1,2,3,4,5]
-
-    # get the score for the test dataframe
-
-    df = {}
-    score = {}
-
-    for chan in channels:
-      df[chan]    = test_samples.loc[test_samples['is_signal'] == chan]
-      score[chan] = self.predictScore(model,df[chan])[:,sig] 
-      np.savetxt(f"{self.outdir}/score_of_class_{chan}_for_class_{sig}.csv",score[chan],delimiter = ",")
-
- 
     col ={0:'c',1:'g',2:'m',3:'r',4:'b',5:'k'}
     linestyles = {0:'solid',1:'dotted',2:'dashed',3:'dashdot',4:(0, (1, 10)),5:(0, (3, 5, 1, 5, 1, 5))}
 
-    fig = plt.figure()
-    import pdb
+    hist_content = {}
 
-    for key in score.keys():
+    for chan in channels:
+
+      dummy = []
+
+      for n in range(self.nfolds):
+  
+        #class predictions 1D
+        #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+        true_1d = np.argmax(y_val[n], axis=1)
+
+        #select only events where the true class is chan...
+        x_chan    = xx_val[n][ true_1d == chan ]
+        #...and predict their score! (data is already scaled!)
+        y_chan    = model.predict(x_chan)[:,sig] 
+
+        np.savetxt(f"{self.outdir}/fold_{n}_score_of_class_{chan}_for_class_{sig}.csv",y_chan,delimiter = ",")
+
+        # Plot data into histo
+        hist = plt.hist(y_chan, bins=np.arange(0,1.025,0.025), color=col[chan], alpha=0.5, label=class_label[chan], histtype='stepfilled',density = True,linestyle = linestyles[chan], linewidth = 1.5)
+  
+        #append the bin content (at index 0) for every fold! 
+        dummy.append(hist[0])
+
+      #average over the folds to get the average histo
+      hist_content[chan] = sum(dummy)/self.nfolds
+
+    import pdb; pdb.set_trace();
+
+    fig = plt.figure()
+
+    for chan in channels:
+
+      #bin edges are at index 1 (the same for all, can take the last one)
+      bin_edges = hist[1]
+      bin_width = np.diff(bin_edges) 
+ 
       # plot the score distributions
-      plt.hist(score[key], bins=np.arange(0,1.025,0.025), color=col[key], alpha=0.5, label=class_label[key], histtype='stepfilled',density = True,linestyle = linestyles[key], linewidth = 1.5)
+      plt.bar(bin_edges[:-1], hist_content[chan], color=col[chan], width = bin_width, align = 'edge', alpha=0.5, label=class_label[chan], linestyle = linestyles[chan], linewidth = 1.5)
+  
+    #plot all channels into same plot 
     plt.legend(loc='upper right')
-    plt.title(f'Score for class ' + class_label[sig])
+    plt.title(f'Score for class ' + class_label[sig] + " (Average over folds)")
     plt.xlabel('score')
     plt.ylabel('events')
     #fig.savefig('outputs/score_' + str(sig) + '.pdf')
     #fig.savefig('outputs/score_' + str(sig) + '.png')
-    self.saveFig(fig, 'score_' + str(sig) )
+    self.saveFig(fig, f'score_' + str(sig) )
     plt.clf()
 
   def plotCorr(self,model, test_df):
@@ -977,52 +996,56 @@ class Trainer(object):
     plt.clf()
 
 
-  def plotROCbinary(self,model,x_train,y_train,x_val,y_val,key):
+  def plotROCbinary(self,model,xx_train,y_train,xx_val,y_val,key):
 
     'plot one vs all roc curve'
 
-    #for one-vs-all roc curve
-    label_binarizer = LabelBinarizer().fit(y_train)
-
     #plot train or test roc curve
     if key == 'Train':
-      x = x_train
+      x = xx_train
       y = y_train
     else:
-      x = x_val
+      x = xx_val
       y = y_val
 
+    label_binarizer = {}
+    y_score         = {}
+    y_onehot_test   = {}
+
     #for one-vs-all roc curve
-    y_score = model.predict(x)
-    y_onehot_test = label_binarizer.transform(y)
-   
+    for n in range(self.nfolds):
+
+      label_binarizer[n] = LabelBinarizer().fit(y[n])
+      y_score[n] = model.predict(x[n])
+      y_onehot_test[n] = label_binarizer[n].transform(y[n])
+     
     plt.figure()
     col =['c','g','m','r','b','k']
     linestyles = ['solid','dotted','dashed', 'dashdot',(0, (1, 10)),(0,(3, 5, 1, 5, 1, 5))]
 
-
+    #plot roc for every class 
     for sig in range(5):
-      #plot roc for every class
-      class_id = np.flatnonzero(label_binarizer.classes_ == sig)[0]
-      fpr,tpr,_ = roc_curve(y_onehot_test[:, class_id],y_score[:, class_id])    
-      #save it
-      np.savetxt(f"{self.outdir}/tprfpr_{sig}_{key}.csv",np.array([fpr,tpr]),delimiter = ",")
-      roc_auc = auc(tpr,fpr)
-      plt.plot(fpr, tpr, label=f'{key} ROC of class {sig}, AUC = {round(roc_auc,2)}',color = col[sig],linestyle = linestyles[sig])
+      #and plot all folds in one plot
+      for n in range(self.nfolds):
 
-    #baseline
-    #true_pos_rate_baseline = 0.5827968065928406 #from ./NNmodels/log_plotter.txt
-    #false_pos_rate_baseline = 0.1972626960662999 # "
 
-    #plt.scatter(false_pos_rate_baseline,true_pos_rate_baseline,marker = 'o', label = 'Baseline',color = 'orange')
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    xy = [i*j for i,j in product([10.**i for i in range(-8, 0)], [1,2,4,8])]+[1]
-    plt.plot(xy, xy, color='grey', linestyle='--',label = 'No skill')
-    plt.yscale('linear')
-    plt.legend()
-    self.saveFig(plt, f'ROC_{key}')
-    plt.clf()
+        #plot roc for every class 
+        class_id = np.flatnonzero(label_binarizer[n].classes_ == sig)[0]
+        fpr,tpr,_ = roc_curve(y_onehot_test[n][:, class_id],y_score[n][:, class_id])    
+        #save it
+        np.savetxt(f"{self.outdir}/tprfpr_{sig}_{key}_fold_{n}.csv",np.array([fpr,tpr]),delimiter = ",")
+        roc_auc = auc(fpr,tpr)
+        plt.plot(fpr, tpr, label=f'Fold {n}, AUC = {round(roc_auc,2)}',color = self.colors[n] ,linestyle = linestyles[sig])
+
+      plt.title(f'{key} ROC of class {sig}')
+      plt.xlabel('False positive rate')
+      plt.ylabel('True positive rate')
+      xy = [i*j for i,j in product([10.**i for i in range(-8, 0)], [1,2,4,8])]+[1]
+      plt.plot(xy, xy, color='grey', linestyle='--',label = 'No skill')
+      plt.yscale('linear')
+      plt.legend()
+      self.saveFig(plt, f'ROC_{key}_class_{sig}')
+      plt.clf()
 
 
 
@@ -1119,7 +1142,6 @@ class Trainer(object):
     print('\n========> preprocessing and defining folds' )
     main_df, qt, xx_folds, y_folds = self.preprocessing(train_notnan, test_notnan)
 
-    import pdb; pdb.set_trace();
     # define the NN
     print('\n========> defining the model' )
     model = self.defineModel()
@@ -1130,33 +1152,32 @@ class Trainer(object):
 
     print('\n========> preparing the inputs') 
     xx_folds, y_folds = self.prepareInputs(xx_folds, y_folds)
-    import pdb; pdb.set_trace();
 
     # do the training
     print('\n========> training...') 
-    history = self.train(model, xx_folds, y_folds, callbacks, weight)
+    history, xx_train, y_train, xx_val, y_val = self.train(model, xx_folds, y_folds, callbacks, weight)
 
     # plotting
     print('\n========> plotting...' )
     self.plotLoss(history)
     self.plotAccuracy(history)
-    self.plotScore(model, main_test_df, 0,class_label)
-    self.plotScore(model, main_test_df, 1,class_label)
-    self.plotScore(model, main_test_df, 2,class_label)
-    self.plotScore(model, main_test_df, 3,class_label)
-    self.plotScore(model, main_test_df, 4,class_label)
-    self.plotScore(model, main_test_df, 5,class_label)
-    self.plotCorr(model, main_test_df)
-    self.plotCM(model, main_test_df, class_label)
-    self.plotROCbinary(model,x_train,y_train,x_val,y_val,'Train')
-    self.plotROCbinary(model,x_train,y_train,x_val,y_val,'Test')
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, -2)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 0)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 1)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 2)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 4)
-    self.plotKSTest(model, x_train, x_val, y_train, y_val, 5)
+    #self.plotScore(model, main_test_df, 0,class_label)
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
+    #self.plotScore(model, main_test_df, 2,class_label)
+    #self.plotScore(model, main_test_df, 3,class_label)
+    #self.plotScore(model, main_test_df, 4,class_label)
+    #self.plotScore(model, main_test_df, 5,class_label)
+    #self.plotCorr(model, main_test_df)
+    #self.plotCM(model, main_test_df, class_label)
+    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
+    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
+    ##self.plotKSTest(model, x_train, x_val, y_train, y_val, -2)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 0)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 1)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 2)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 4)
+    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 5)
     #self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
 
 
@@ -1180,14 +1201,14 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 15
-  batch_size = 122
+  epochs = 1
+  batch_size = 128
   scaler_type = 'robust'
   do_early_stopping = True
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = base_wout_tv
-  nfolds = 5
+  nfolds = 3
 
 
   trainer = Trainer(
