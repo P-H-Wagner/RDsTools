@@ -338,7 +338,7 @@ class Trainer(object):
     self.do_reduce_lr = do_reduce_lr
     self.dirname = dirname + '_' + datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')
     self.baseline_selection = baseline_selection
-    self.nfolds = nfolds
+    self.nfolds      = nfolds
     self.colors = [
     "red",
     "green",
@@ -560,8 +560,8 @@ class Trainer(object):
     for n in range(self.nfolds):
       
       #trick to split into folds using event number! :D
-      x_folds[n] = X[ X["event"] % 5 == n ]
-      y_folds[n] = Y[ Y["event"] % 5 == n ]
+      x_folds[n] = X[ X["event"] % self.nfolds == n ]
+      y_folds[n] = Y[ Y["event"] % self.nfolds == n ]
 
       #delete event columns afterwards!
       x_folds[n].drop("event", axis = 1)
@@ -604,16 +604,18 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(159, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(128,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
-    model.add(tf.keras.layers.Dense(64,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
-    model.add(tf.keras.layers.Dense(64,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
-    model.add(tf.keras.layers.Dense(32,  activation ='relu', kernel_regularizer=regularizers.l2(0.001)))
+    #model.add(tf.keras.layers.Dense(256,  activation ='swish' )) #, kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(128,  activation ='relu' , kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(32,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(20, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
     #model.add(tf.keras.layers.Dropout(.2))
     model.add(tf.keras.layers.Dense(6, activation= 'softmax'))
 
-    opt = keras.optimizers.Adam(learning_rate=0.0005) 
+    opt = keras.optimizers.Adam(learning_rate=0.00005) 
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
     
     print(model.summary())
@@ -626,7 +628,7 @@ class Trainer(object):
     return model
 
 
-  def defineCallbacks(self):
+  def defineCallbacks(self, n):
     '''
       Define the callbacks
     '''
@@ -638,7 +640,7 @@ class Trainer(object):
     reduce_lr = ReduceLROnPlateau(monitor=monitor, mode='auto', factor=0.2, patience=5, min_lr=0.000001, cooldown=10, verbose=True)
     
     # save the model every now and then
-    filepath = '/'.join([self.outdir, 'saved-model-{epoch:04d}_val_loss_{val_loss:.4f}_val_acc_{val_acc:.4f}.h5'])
+    filepath = '/'.join([self.outdir, f'fold_{n}' + '_saved-model-{epoch:04d}_val_loss_{val_loss:.4f}_val_acc_{val_acc:.4f}.h5'])
     save_model = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', period=1)
     
     callbacks = [save_model]
@@ -673,7 +675,7 @@ class Trainer(object):
     return xx_folds, y_folds 
 
 
-  def train(self, model, xx_folds, y_folds, callbacks,weight):
+  def train(self, xx_folds, y_folds, weight):
     '''
       Perform the training
     '''
@@ -682,6 +684,7 @@ class Trainer(object):
     y_train  = {}
     xx_val   = {}
     y_val    = {}
+    model    = {}
     history  = {}
 
     # create cyclic list, f.e. for nfold = 5, this is:
@@ -689,7 +692,7 @@ class Trainer(object):
     cyclic = list(range(self.nfolds)) * 2  
 
     for n in range(self.nfolds):
- 
+
       train_indices = [cyclic[n + (i+1)] for i in range(self.nfolds - 2)  ]
       test_index    = cyclic[ n + self.nfolds - 1]
 
@@ -712,12 +715,16 @@ class Trainer(object):
       y_val[n] = tf.one_hot(y_val[n]['is_signal'].to_numpy(), 6)
       y_val[n] = y_val[n].numpy()
 
+      callbacks = self.defineCallbacks(n)
 
-      history[n] = model.fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n]), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = weight)
+      #define the model every time!! Otherwise you train the same model over and over again lol
+      model[n] = self.defineModel()
+
+      history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n]), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = weight)
     
     print(f"class weights: {weight}")
 
-    return history, xx_train, y_train, xx_val, y_val
+    return model, history, xx_train, y_train, xx_val, y_val
 
 
   def plotLoss(self, history):
@@ -726,6 +733,7 @@ class Trainer(object):
     '''
 
     average_loss = []
+    
 
     for n in range(self.nfolds):
 
@@ -734,6 +742,7 @@ class Trainer(object):
       epochs = range(1, len(loss_train)+1)
       plt.plot(epochs, loss_train, self.colors[n], label=f'Fold {n}')
 
+    #import pdb; pdb.set_trace();
     average_loss = sum(average_loss)/self.nfolds
     plt.plot(epochs, average_loss, 'black' , label='Average loss', linestyle= 'dashed')
 
@@ -753,7 +762,7 @@ class Trainer(object):
       average_loss.append(np.array(loss_val))
       epochs = range(1, len(loss_train)+1)
       epochs = range(1, len(loss_train)+1)
-      plt.plot(epochs, loss_val, self.colors[n], label='Fold {n}')
+      plt.plot(epochs, loss_val, self.colors[n], label=f'Fold {n}')
 
     average_loss = sum(average_loss)/self.nfolds
     plt.plot(epochs, average_loss, 'black' , label='Average loss', linestyle= 'dashed')
@@ -777,7 +786,7 @@ class Trainer(object):
       acc_train = history[n].history['acc']
       average_accuracy.append(np.array(acc_train))
       epochs = range(1, len(acc_train)+1)
-      plt.plot(epochs, acc_train, 'g', label='Fold {n}')
+      plt.plot(epochs, acc_train, self.colors[n], label='Fold {n}')
 
 
     average_accuracy = sum(average_accuracy)/self.nfolds
@@ -796,7 +805,7 @@ class Trainer(object):
       acc_val = history[n].history['val_acc']
       average_accuracy.append(np.array(acc_val))
       epochs = range(1, len(acc_train)+1)
-      plt.plot(epochs, acc_val, 'b', label='Fold {n}')
+      plt.plot(epochs, acc_val, self.colors[n], label=f'Fold {n}')
 
     
     average_accuracy = sum(average_accuracy)/self.nfolds 
@@ -828,6 +837,64 @@ class Trainer(object):
 
     return score
 
+  def plotScoreTauOnly(self, model, xx_train, y_train, xx_val, y_val, class_label):
+    '''
+      Plot the score of all channels class sig
+    '''
+
+    sig = 1 #only interested in tau star
+
+    channels = [0,1]
+    col ={0:'c',1:'g',2:'m',3:'r',4:'b',5:'k'}
+    linestyles = {0:'solid',1:'dotted',2:'dashed',3:'dashdot',4:(0, (1, 10)),5:(0, (3, 5, 1, 5, 1, 5))}
+
+    hist_content = {}
+
+    for chan in channels:
+
+      dummy = []
+
+      for n in range(self.nfolds):
+  
+        #class predictions 1D
+        #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+        true_1d = np.argmax(y_val[n], axis=1)
+
+        #select only events where the true class is chan...
+        x_chan    = xx_val[n][ true_1d == chan ]
+        #...and predict their score! (data is already scaled!)
+        y_chan    = model[n].predict(x_chan)[:,sig] 
+
+        # Plot data into histo
+        hist = plt.hist(y_chan, bins=np.arange(0,1.025,0.025), color=col[chan], alpha=0.5, label=class_label[chan], histtype='stepfilled',density = True,linestyle = linestyles[chan], linewidth = 1.5)
+  
+        #append the bin content (at index 0) for every fold! 
+        dummy.append(hist[0])
+
+      #average over the folds to get the average histo
+      hist_content[chan] = sum(dummy)/self.nfolds
+
+
+    fig = plt.figure()
+
+    for chan in channels:
+
+      #bin edges are at index 1 (the same for all, can take the last one)
+      bin_edges = hist[1]
+      bin_width = np.diff(bin_edges) 
+ 
+      # plot the score distributions
+      plt.bar(bin_edges[:-1], hist_content[chan], color=col[chan], width = bin_width, align = 'edge', alpha=0.5, label=class_label[chan], linestyle = linestyles[chan], linewidth = 1.5)
+  
+    #plot all channels into same plot 
+    plt.legend(loc='upper right')
+    plt.title(f'Score for class ' + class_label[sig] + " (Average over folds)")
+    plt.xlabel('score')
+    plt.ylabel('events')
+    #fig.savefig('outputs/score_' + str(sig) + '.pdf')
+    #fig.savefig('outputs/score_' + str(sig) + '.png')
+    self.saveFig(fig, f'tau_only' )
+    plt.clf()
 
    
   def plotScore(self, model, xx_train, y_train, xx_val, y_val, sig, class_label):
@@ -854,7 +921,7 @@ class Trainer(object):
         #select only events where the true class is chan...
         x_chan    = xx_val[n][ true_1d == chan ]
         #...and predict their score! (data is already scaled!)
-        y_chan    = model.predict(x_chan)[:,sig] 
+        y_chan    = model[n].predict(x_chan)[:,sig] 
 
         np.savetxt(f"{self.outdir}/fold_{n}_score_of_class_{chan}_for_class_{sig}.csv",y_chan,delimiter = ",")
 
@@ -867,7 +934,6 @@ class Trainer(object):
       #average over the folds to get the average histo
       hist_content[chan] = sum(dummy)/self.nfolds
 
-    import pdb; pdb.set_trace();
 
     fig = plt.figure()
 
@@ -890,12 +956,14 @@ class Trainer(object):
     self.saveFig(fig, f'score_' + str(sig) )
     plt.clf()
 
-  def plotCorr(self,model, test_df):
+  def plotCorr(self, model, xx_train, y_train, xx_val, y_val, class_label, fold):
 
-    test_x = pd.DataFrame(test_df, columns = list(set(self.features)))  
 
     #get the score
-    score  =  self.predictScore(model,test_x) #this is a list of length #classes!
+    score  =  model[fold].predict(xx_val[fold]) #this is a list of length #classes!
+
+    test_x = xx_val[fold].copy()
+    test_x = pd.DataFrame(test_x, columns=list(set(self.features)))
 
     #append it to pd such that we can plot it in the corr matrix
     test_x["score0"] = score[:,0]
@@ -923,11 +991,143 @@ class Trainer(object):
     
     # plt.show()
     #plt.figure(figsize=(12, 12))
-    plt.title('linear correlation matrix - signal')
+    plt.title(f'Linear correlation matrix - Fold {fold}')
     plt.tight_layout()
-    self.saveFig(plt, 'corr_sig')
+    self.saveFig(plt, f'corr_sig_fold_{fold}')
     plt.clf()
 
+  def plotScoreOneVsAll(self, model, xx_train, y_train, xx_val, y_val, sig, class_label):
+    '''
+      Plot the score of all channels class sig
+    '''
+
+    channels = [0,1,2,3,4,5]
+    col ={0:ROOT.kCyan,1:ROOT.kGreen,2:ROOT.kMagenta,3:ROOT.kRed,4:ROOT.kBlue,5:ROOT.kGray}
+    linestyles = {0:'solid',1:'dotted',2:'dashed',3:'dashdot',4:(0, (1, 10)),5:(0, (3, 5, 1, 5, 1, 5))}
+
+    hist_content_val = {}
+    hist_content_train = {}
+
+    for chan in channels:
+
+      dummy_val = []
+      dummy_train = []
+
+      for n in range(self.nfolds):
+  
+        #class predictions 1D
+        #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+        true_1d_val   = np.argmax(y_val[n], axis=1)
+        true_1d_train = np.argmax(y_train[n], axis=1)
+
+        #select only events where the true class is chan...
+        x_chan_val    = xx_val[n][ true_1d_val == chan ]
+        x_chan_train  = xx_train[n][ true_1d_train == chan ]
+        #...and predict their score! (data is already scaled!)
+        y_chan_val    = model[n].predict(x_chan_val)[:,sig] 
+        y_chan_train  = model[n].predict(x_chan_train)[:,sig] 
+
+
+        # Plot data into histo
+        hist_val   = plt.hist(y_chan_val, bins=np.arange(0,1.025,0.025))
+        hist_train = plt.hist(y_chan_train, bins=np.arange(0,1.025,0.025))
+  
+        #append the bin content (at index 0) for every fold! 
+        dummy_val.append(hist_val[0])
+        dummy_train.append(hist_train[0])
+
+      #average over the folds to get the average histo
+      hist_content_val[chan]   = sum(dummy_val)/self.nfolds
+      hist_content_train[chan] = sum(dummy_train)/self.nfolds
+
+
+    #holds all histos excect the one which has chan = sig
+    the_rest_val   = [0] * len(hist_content_val[0]) 
+    the_rest_train = [0] * len(hist_content_train[0])
+
+    fig = plt.figure()
+
+    for chan in channels:
+
+      if chan != sig:
+        the_rest_val   = [a+b for a, b in zip(the_rest_val,   hist_content_val[chan])]
+        the_rest_train = [a+b for a, b in zip(the_rest_train, hist_content_train[chan])]
+
+
+    #bin edges are at index 1 (the same for all, can take the last one)
+    bin_edges = hist_val[1]
+    bin_width = np.diff(bin_edges) 
+    n_bins = len(bin_edges) - 1 
+
+
+    sig_val = ROOT.TH1D("","",n_bins, bin_edges)
+    sig_train = ROOT.TH1D("","",n_bins, bin_edges)
+    back_val = ROOT.TH1D("","",n_bins, bin_edges)
+    back_train = ROOT.TH1D("","",n_bins, bin_edges)
+
+    #fill root histo for plotting and KS
+    for i in range(n_bins):
+      sig_val.SetBinContent(i,hist_content_val[sig][i])
+      sig_train.SetBinContent(i,hist_content_train[sig][i])
+      back_val.SetBinContent(i,the_rest_val[i])
+      back_train.SetBinContent(i,the_rest_train[i])
+
+    c1=ROOT.TCanvas()
+    if sig_val.Integral()!=0: sig_val.Scale(1./sig_val.Integral())
+    if sig_train.Integral()!=0: sig_train.Scale(1./sig_train.Integral())
+    if back_val.Integral()!=0: back_val.Scale(1./back_val.Integral())
+    if back_train.Integral()!=0: back_train.Scale(1./back_train.Integral())
+
+    c1.Draw()
+
+    #label axes
+    sig_train.GetXaxis().SetTitle("score")
+    sig_train.GetYaxis().SetTitle("a.u.")
+    sig_train.GetYaxis().SetRangeUser(0, max([sig_val.GetMaximum(),sig_train.GetMaximum(),back_val.GetMaximum(),back_train.GetMaximum()])*1.6)
+
+
+    #signal channel is like given
+    sig_train.SetFillColor(col[sig])
+    sig_train.SetLineColor(col[sig])
+    sig_train.SetFillStyle(3345)
+    sig_train.Draw('HIST')
+ 
+    sig_val.SetLineColor(col[sig])
+    sig_val.SetMarkerColor(col[sig])
+    sig_val.SetMarkerStyle(8)
+    sig_val.Draw('EP SAME')
+ 
+    back_train.SetFillColor(ROOT.kBlack)
+    back_train.SetLineColor(ROOT.kBlack)
+    back_train.SetFillStyle(3345)
+    back_train.Draw('HIST SAME')
+ 
+    back_val.SetLineColor(ROOT.kBlack)
+    back_val.SetMarkerColor(ROOT.kBlack)
+    back_val.SetMarkerStyle(8)
+    back_val.Draw('EP SAME')
+ 
+    ks_score_sig  = sig_val.KolmogorovTest(sig_train)
+    print(ks_score_sig)
+    ks_score_back = back_val.KolmogorovTest(back_train)
+    print(ks_score_back)
+    ks_value = ROOT.TPaveText(0.25, 0.76, 0.88, 0.80, 'nbNDC')
+    ks_value.AddText(f'KS score of class {sig} = {round(ks_score_sig,3)} vs KS score of the rest = {round(ks_score_back,3)}')
+    ks_value.SetFillColor(0)
+    ks_value.Draw('EP SAME')
+
+    leg = ROOT.TLegend(.11,.82,.83,.88)
+    leg.AddEntry(sig_train ,f'Train Class {sig}' ,'F' )
+    leg.AddEntry(sig_val ,f'Test Class {sig}' ,'EP' )
+    leg.AddEntry(back_train ,f'Train - the rest' ,'F' )
+    leg.AddEntry(back_val ,f'Test - the rest' ,'EP' )
+    leg.SetNColumns(4)
+    leg.Draw("SAME")
+
+
+    c1.SaveAs(self.outdir + f'/one_vs_all_KS_test_{sig}.pdf')
+    c1.SaveAs(self.outdir + f'/one_vs_all_KS_test_{sig}.png')
+    #print('KS score: ',ks_score, len(train_pred),len(test_pred))
 
   def plotCM(self, model, test_df, class_label):
     '''
@@ -1016,7 +1216,7 @@ class Trainer(object):
     for n in range(self.nfolds):
 
       label_binarizer[n] = LabelBinarizer().fit(y[n])
-      y_score[n] = model.predict(x[n])
+      y_score[n] = model[n].predict(x[n])
       y_onehot_test[n] = label_binarizer[n].transform(y[n])
      
     plt.figure()
@@ -1050,40 +1250,61 @@ class Trainer(object):
 
 
   
-  def plotKSTest(self, model, x_train, x_val, y_train, y_val,sig):
+  def plotKSTest(self, model, xx_train, y_train, xx_val, y_val,sig):
     '''
       Plot the outcome of the Kolmogorov test
       Used to test the overfitting
     '''
 
-
-    indices_train =list(np.where(y_train["is_signal"] == sig)[0])
-    indices_val = list(np.where(y_val["is_signal"] == sig)[0])
-
-    #only keep signal sig
-    x_train_part = x_train.iloc[indices_train] 
-    x_val_part =x_val.iloc[indices_val] 
-
- 
-    #input has to be numpy array when directly given to .predict:
-    x_train_part = x_train_part.to_numpy()
-    x_val_part = x_val_part.to_numpy()
-
-    #training data
-    score_train = model.predict(x_train_part)
-    #validation data
-    score_val = model.predict(x_val_part)
-
-    np.savetxt(f"{self.outdir}/scoretrain_{sig}.csv",score_train,delimiter = ",")
-    np.savetxt(f"{self.outdir}/scoretest_{sig}.csv",score_val,delimiter = ",")
-
     h1 = ROOT.TH1F(f'train_{sig}', f'train_{sig}', 30, 0, 1)
     h2 = ROOT.TH1F(f'val_{sig}', f'val_{sig}', 30, 0, 1)
-    for st,sv in zip(score_train, score_val):
 
-      #remark st and sv are lists of length 6! -> only keep score of the signal we're interested in
-      h1.Fill(st[sig]) 
-      h2.Fill(sv[sig])
+
+    for n in range(self.nfolds):
+
+      ## VALIDATION
+  
+      #class predictions 1D
+      #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+      true_1d_val = np.argmax(y_val[n], axis=1)
+  
+      #select only events where the true class is chan...
+      x_chan_val    = xx_val[n][ true_1d_val == sig ]
+      #...and predict their score! (data is already scaled!)
+      y_chan_val    = model[n].predict(x_chan_val)[:,sig] 
+  
+  
+      ## TRAINING
+  
+      #class predictions 1D
+      #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+      true_1d_train = np.argmax(y_train[n], axis=1)
+  
+      #select only events where the true class is chan...
+      x_chan_train    = xx_train[n][ true_1d_train == sig ]
+      #...and predict their score! (data is already scaled!)
+      y_chan_train    = model[n].predict(x_chan_train)[:,sig] 
+ 
+      #import pdb
+      #pdb.set_trace()  
+
+ 
+      np.savetxt(f"{self.outdir}/scoretrain_{sig}.csv",y_chan_train,delimiter = ",")
+      np.savetxt(f"{self.outdir}/scoretest_{sig}.csv",y_chan_val,delimiter = ",")
+  
+      h1_dummy = ROOT.TH1F(f'train_{n}_{sig}', f'train_{n}_{sig}', 30, 0, 1)
+      h2_dummy = ROOT.TH1F(f'val_{n}_{sig}', f'val_{n}_{sig}', 30, 0, 1)
+      for st,sv in zip(y_chan_train, y_chan_val):
+  
+        #remark st and sv are lists of length 6! -> only keep score of the signal we're interested in
+        h1_dummy.Fill(st) 
+        h2_dummy.Fill(sv)
+  
+      h1.Add(h1_dummy)
+      h2.Add(h2_dummy)
+
+    h1.Scale(1/self.nfolds) 
+    h2.Scale(1/self.nfolds) 
 
     c1=ROOT.TCanvas()
     if h1.Integral()!=0: h1.Scale(1./h1.Integral())
@@ -1105,7 +1326,7 @@ class Trainer(object):
 
     ks_score = h1.KolmogorovTest(h2)
     ks_value = ROOT.TPaveText(0.5, 0.76, 0.88, 0.80, 'nbNDC')
-    ks_value.AddText(f'KS score of signal {sig} = {round(ks_score,3)}')
+    ks_value.AddText(f'Average KS score of signal {sig} = {round(ks_score,3)}')
     ks_value.SetFillColor(0)
     ks_value.Draw('EP SAME')
 
@@ -1142,43 +1363,53 @@ class Trainer(object):
     print('\n========> preprocessing and defining folds' )
     main_df, qt, xx_folds, y_folds = self.preprocessing(train_notnan, test_notnan)
 
-    # define the NN
-    print('\n========> defining the model' )
-    model = self.defineModel()
-
-    # define the callbacks
-    print('\n========> defining the callbacks' )
-    callbacks = self.defineCallbacks()
 
     print('\n========> preparing the inputs') 
     xx_folds, y_folds = self.prepareInputs(xx_folds, y_folds)
 
     # do the training
     print('\n========> training...') 
-    history, xx_train, y_train, xx_val, y_val = self.train(model, xx_folds, y_folds, callbacks, weight)
+    model, history, xx_train, y_train, xx_val, y_val = self.train(xx_folds, y_folds, weight)
+
+    #save the output dictionaries
+    with open(f'{self.outdir}/xx_val.pck', 'wb') as f:
+      pickle.dump(xx_val,f)
+
+    with open(f'{self.outdir}/xx_train.pck', 'wb') as f:
+      pickle.dump(xx_train,f)
+
+    with open(f'{self.outdir}/y_val.pck', 'wb') as f:
+      pickle.dump(y_val,f)
+
+    with open(f'{self.outdir}/y_train.pck', 'wb') as f:
+      pickle.dump(y_train,f)
 
     # plotting
     print('\n========> plotting...' )
-    self.plotLoss(history)
-    self.plotAccuracy(history)
-    #self.plotScore(model, main_test_df, 0,class_label)
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
-    #self.plotScore(model, main_test_df, 2,class_label)
-    #self.plotScore(model, main_test_df, 3,class_label)
-    #self.plotScore(model, main_test_df, 4,class_label)
-    #self.plotScore(model, main_test_df, 5,class_label)
-    #self.plotCorr(model, main_test_df)
-    #self.plotCM(model, main_test_df, class_label)
-    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
-    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
-    ##self.plotKSTest(model, x_train, x_val, y_train, y_val, -2)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 0)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 1)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 2)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 4)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 5)
-    #self.plotKSTest(model, x_train, x_val, y_train, y_val, 3)
+    #self.plotLoss(history)
+    #self.plotAccuracy(history)
+    #self.plotScoreTauOnly(model, xx_train, y_train, xx_val, y_val,class_label )
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 0,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 2,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 3,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 4,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 5,class_label)
+    #self.plotScoreOneVsAll(model, xx_train, y_train, xx_val, y_val, 1,class_label)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 0)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 1)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 2)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 3)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 4)
+    ####self.plotCM(model, main_test_df, class_label)
+    #self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
+    #self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 0)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 1)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 2)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
 
 
 
@@ -1201,14 +1432,14 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 1
-  batch_size = 128
+  epochs = 30 #30 here
+  batch_size = 128 #128 here
   scaler_type = 'robust'
   do_early_stopping = True
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = base_wout_tv
-  nfolds = 3
+  nfolds = 5
 
 
   trainer = Trainer(
