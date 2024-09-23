@@ -165,7 +165,6 @@ else:
     chainB0,  rdfB0          = getRdf(b0_cons       , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
     chainBplus,  rdfBplus    = getRdf(bplus_cons    , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv"    )#,   debug = True)
     chainData,rdfData        = getRdf(data_cons     , skimmed = "base_wout_tv")#, debug = 1)#,      skimmed = "ma_cut_wout_fv")  #skimmed = "baseline") #pick already skimmed file!
-    print("I count for data events: ", rdfData.Count().GetValue())
   else:
   
     chainSigSB, rdfSigSB     = getRdf(sig_unc       , skimmed = "base_wout_tv" )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
@@ -449,7 +448,7 @@ def getHbScale(selHb, selMu):
     scale_hb = 0
   else:
     scale_hb = muNew.Integral() * pureHb.Integral() / pureMu.Integral()
-  print( "#Hb events for MC sample is:", scale_hb)
+
   return scale_hb
 
 def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, newHb = False):
@@ -486,12 +485,11 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   hComb.SetFillColor(ROOT.kGray)
   hComb.SetLineColor(ROOT.kGray)
   # special error fillstyle 
-  hErr.SetFillColor(ROOT.kGray+1)
-  hErr.SetFillStyle(3344)
+  hErr.SetFillColor(ROOT.kBlack)
+  hErr.SetFillStyle(3244)
 
   #scale hb to other mc
 
-  print("Scale of Hb: ", hb_scale )
   if hb_scale == 0: 
     histos["hb"].Scale(0.0 )
   else:
@@ -508,7 +506,6 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
 
 
   nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
-  print("nsig = ", nSig)
 
   ###################################
   ## Combinatorial treatment       ##
@@ -528,9 +525,9 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
     #hRest.Add(histos["hb"].Clone())
     #scale_b = getSignflipRatio(hComb.Clone(),hRest,histos["data"].Clone())
     hComb.Scale(scale_b)
+    #hComb.Scale(0.6)
 
 
-    print("rs scale is:", rs_scale)
 
 
   else: 
@@ -551,27 +548,33 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
       for i in range(bins):
         hComb.SetBinContent(i+1,fakemass[i])
         hComb.SetBinError(i+1,np.sqrt(fakemass[i]))
-        print( "data now:", histos["data"].GetBinContent(i+1))
-        print("fakemass now:", hComb.GetBinContent(i+1))
       
   nComb = hComb.Integral()
-  
-  # add comb to stack and err 
-  hErr.Add(hComb)
-  hs.Add(hComb)
   
   histos["comb"] = hComb # append to create datacard later
   ###################################
   ## Scale MC to data              ##
   ###################################
 
-  print("tau events before scaling:", histos["dsTau"].Integral() + histos["dsStarTau"].Integral()  )
-  print("comb events from hComb:", hComb.Integral())
 
   for key in histos.keys():
-    if ('comb' not in key) and ('data' not in key):
 
-      histos[key].Scale((histos["data"].Integral() - nComb) / nSig)
+    if constrained:
+      #For signflip method, combinatorial is not yet normalized to data!
+
+      if ('data' not in key):
+        histos[key].Scale((histos["data"].Integral()) / (nSig + nComb) )
+
+    else:
+      #For sideband method, combinatorial is already normalized to data!
+
+      if ('comb' not in key) and ('data' not in key):
+        histos[key].Scale((histos["data"].Integral() - nComb) / nSig)
+
+  # add comb to stack and err 
+  hErr.Add(hComb)
+  hs.Add(hComb)
+
 
   if newHb:
     for key in histos.keys():
@@ -585,10 +588,6 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
         hErr.Add(histos[key])
         hs.Add(histos[key])
 
-  print("tau events after scaling:", histos["dsTau"].Integral() + histos["dsStarTau"].Integral()  )
-  
-
-  print("number of data events", histos["data"].GetEntries())
   ###################################
   ## Create Pads                   ## 
   ###################################
@@ -635,7 +634,7 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   else:
     leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
   leg.AddEntry(histos["data"]       ,'Data','LEP')
-  leg.AddEntry(hComb                           ,'Comb. Bkg.'  ,'F' )
+  leg.AddEntry(histos["comb"]                           ,'Comb. Bkg.'  ,'F' )
   leg.AddEntry(hErr                            ,'Stat. Uncer.'  ,'F' )
   
   #plot mainpad
@@ -656,25 +655,30 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   histos["data"].Draw("EP SAME")
   #draw stat uncertainty of MC, (can not be directly done with a stacked histo)
   hErr.Draw("E2 SAME")
+  #hErr.Draw("E2 SAME")
+
   leg.Draw("SAME")
   ROOT.gPad.RedrawAxis()
   
-  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = 'X fb^{-1}')
+  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = '6.4 fb^{-1}')
   
   #plot ratiopad
   ratio_pad.cd()
   ratio = histos["data"].Clone()
   ratio.SetName(ratio.GetName()+'_ratio')
   ratio.Divide(hErr)
-  ratio_stats = histos["data"].Clone()
+  ratio_stats = hErr.Clone()
   ratio_stats.SetName(ratio.GetName()+'_ratiostats')
   ratio_stats.Divide(hErr)
   ratio_stats.SetMaximum(1.999) # avoid displaying 2, that overlaps with 0 in the main_pad
   ratio_stats.SetMinimum(0.0001) # and this is for symmetry
   ratio_stats.GetYaxis().SetTitle('Data / MC')
+  ratio_stats.GetXaxis().SetTitle(ratio.GetXaxis().GetTitle())
+
   ratio_stats.GetYaxis().SetTitleOffset(0.5)
   ratio_stats.GetYaxis().SetNdivisions(405)
   ratio_stats.GetYaxis().SetTitleOffset(0.5)
+
   ratio_stats.GetXaxis().SetLabelSize(3.* ratio.GetXaxis().GetLabelSize())
   ratio_stats.GetYaxis().SetLabelSize(3.* ratio.GetYaxis().GetLabelSize())
   ratio_stats.GetXaxis().SetTitleSize(3.* ratio.GetXaxis().GetTitleSize())
@@ -698,23 +702,21 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
         h.Divide(hErr)
         norm_stack.Add(h)
 
-  hDummy = hComb.Clone() #do it also for the comb
+  hDummy = histos["comb"].Clone() #do it also for the comb
   hDummy.Divide(hErr)
   norm_stack.Add(hDummy)
   
   norm_stack.Draw('hist same')
 
-  print(f"I count {hComb.Integral()} comb. bkg. events for the variable {var}")
- 
   #subplot
   line = ROOT.TLine(ratio.GetXaxis().GetXmin(), 1., ratio.GetXaxis().GetXmax(), 1.)
   line.SetLineColor(ROOT.kBlack)
   line.SetLineWidth(1)
   ratio_stats.GetYaxis().CenterTitle()
   
-  ratio_stats.Draw('EP')
+  ratio_stats.Draw('E2')
   norm_stack.Draw('hist same')
-  ratio_stats.Draw('EP same')
+  ratio_stats.Draw('E2 same')
   line.Draw('same')
   ratio.Draw('EP same')
   ROOT.gPad.RedrawAxis()
@@ -815,7 +817,6 @@ def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = No
 
 
   nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
-  print("nsig = ", nSig)
 
   ###################################
   ## Combinatorial treatment       ##
@@ -837,7 +838,6 @@ def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = No
     hComb.Scale(scale_b)
 
 
-    print("rs scale is:", rs_scale)
 
 
   else: 
@@ -858,8 +858,6 @@ def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = No
       for i in range(bins):
         hComb.SetBinContent(i+1,fakemass[i])
         hComb.SetBinError(i+1,np.sqrt(fakemass[i]))
-        print( "data now:", histos["data"].GetBinContent(i+1))
-        print("fakemass now:", hComb.GetBinContent(i+1))
       
   nComb = hComb.Integral()
   
@@ -876,8 +874,6 @@ def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = No
   ## Scale MC to data              ##
   ###################################
 
-  print("tau events before scaling:", histos["dsTau"].Integral() + histos["dsStarTau"].Integral()  )
-  print("comb events from hComb:", hComb.Integral())
 
   for key in histos.keys():
     if ('comb' not in key) and ('data' not in key):
@@ -896,10 +892,8 @@ def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = No
         #hErr.Add(histos[key])
         hs.Add(histos[key])
 
-  print("tau events after scaling:", histos["dsTau"].Integral() + histos["dsStarTau"].Integral()  )
   
 
-  print("number of data events", histos["data"].GetEntries())
   ###################################
   ## Create Pads                   ## 
   ###################################
@@ -1206,7 +1200,7 @@ def normPlot(histos, var, constrained, fakemass = None , A = None ,B = None ,C =
   leg.Draw("SAME")
   #ROOT.gPad.RedrawAxis()
   
-  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '        Preliminary', lumi_13TeV = 'X fb^{-1}')
+  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '        Preliminary', lumi_13TeV = '6.4 fb^{-1}')
   #saving
   c1.Modified()
   c1.Update()
@@ -1287,7 +1281,6 @@ def writeDatacard(histos, var, digits = 5, is_2D = None):
 
   if is_2D: name += "_2D"
 
-  print("I AM HERE!!!")
   temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate.txt", "rt")
   card = open(f"/work/pahwagne/RDsTools/fit/datacards/datacard_{var}_{name}.txt", "wt")
 
@@ -1342,7 +1335,7 @@ def createPlots(baseline, constrained = False, newHb = False):
 
   if args.pastNN:
  
-    #score_cut = "&& (score1 > 0.1)" # && (score0 > 0.15)"
+    score_cut = "&& (score5 < 0.3)"
     selec += score_cut  # && (tv_prob > 0.1)"
 
  
@@ -1356,10 +1349,8 @@ def createPlots(baseline, constrained = False, newHb = False):
   selecDsStarMu =  selec + " && (gen_sig == 10)" 
   selecDsStarTau = selec + " && (gen_sig == 11)"
 
-  import pdb
-  pdb.set_trace();
   sigma, h          = getSigma(rdfSigSB, "phiPi_m", selec + "&& (gen_sig == 0)")
-  print("Sigma is: ", sigma)
+
   if not constrained:
 
     #do sideband method
@@ -1386,11 +1377,6 @@ def createPlots(baseline, constrained = False, newHb = False):
   leftSB            = f"&& ({mlow3} < phiPi_m) && (phiPi_m < {mlow2})"
   rightSB           = f"&& ({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})"
 
-  high_mass         = f" && (dsMu_m > {bsMass_})"
-  low_mass          = f" && (dsMu_m < {bsMass_})"
-  wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
-  right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
-
 
   if constrained:
 
@@ -1413,10 +1399,6 @@ def createPlots(baseline, constrained = False, newHb = False):
     #get the ratio
     rs_over_ws_sr     = N_rs_high_mass_sr / N_ws_high_mass_sr
     rs_over_ws        = N_rs_high_mass    / N_ws_high_mass
-
-    print("ratios:")
-    print(rs_over_ws_sr)
-    print(rs_over_ws)
 
   #get proportions from inclusive sample
   hb_tot      = rdfHb.Filter(selecHb).Count().GetValue()
@@ -1512,7 +1494,9 @@ def createPlots(baseline, constrained = False, newHb = False):
     hRest.Add( hbDummy)
 
     global scale_b;
-    scale_b = getSignflipRatio(selec_C_Data_sf["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
+    global scale_n;
+
+    scale_b, scale_n = getSignflipRatio(selec_C_Data_sf["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
     print(f" ====> Scale signflipped comb by {scale_b}")
  
   print("===> total region done...")
@@ -1707,5 +1691,6 @@ def createPlots(baseline, constrained = False, newHb = False):
   """
 
 #createPlots(ma_cut, constrained = args.constrained, newHb = False)
-createPlots(base_wout_tv, constrained = args.constrained, newHb = args.newHb)
+createPlots(base, constrained = args.constrained, newHb = args.newHb)
+#createPlots(base, constrained = args.constrained, newHb = args.newHb)
 
