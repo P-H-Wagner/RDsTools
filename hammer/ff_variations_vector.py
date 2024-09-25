@@ -53,12 +53,12 @@ bgl_coefficients = np.array([
  0.003303529928953319   , # f  a0 --> Hammer b0
 -0.004284980385058838   , # f  a1 --> Hammer b1
  0.17791644334552834    , # f  a2 --> Hammer b2
- #0.000500939732384485   , # F1 a0 --> Hammer c0 <=== MISSING FROM HAMMER
+ #0.000500939732384485  , # F1 a0 --> Hammer c0 <=== MISSING FROM HAMMER
 -0.0018867020644757423  , # F1 a1 --> Hammer c1
  0.022525216948547932   , # F1 a2 --> Hammer c2
  0.03980443778007538    , # F2 a0 --> Hammer d0
 -0.1872442367469107     , # F2 a1 --> Hammer d1
-# 0.004653366641100383   , # F2 a2 --> Hammer d2
+# 0.004653366641100383  , # F2 a2 --> Hammer d2
 ]).astype(np.float64)
 
 bgl_coefficient_uncertainties = np.array([
