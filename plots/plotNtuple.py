@@ -234,6 +234,8 @@ def getColorAndLabelSignalDistinction(key):
               "combL":      ROOT.kGray+1,
               "combR":      ROOT.kGray+1,
               "data_sf":    ROOT.kGray+1,
+              "data_sf_kk":    ROOT.kGray+1,
+              "data_sf_pimu":    ROOT.kGray+1,
               "data":       ROOT.kBlack}
 
   if "hb" in key:
@@ -506,6 +508,8 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
 
 
   nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+  print("==========> number of signals inside stacked", nSig)
+
 
   ###################################
   ## Combinatorial treatment       ##
@@ -513,19 +517,16 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
 
   if constrained:
     #simple: take sign slipped data as comb
-    hComb = histos["data_sf"].Clone()
-    #and rescale it to the nr of righ sign comb events
-    #hComb.Scale(rs_scale)
+    #hComb = histos["data_sf"].Clone()
     #hComb.Scale(0.1)
 
-    #hRest = histos["dsMu"].Clone()
-    #hRest.Add(histos["dsStarMu"].Clone())
-    #hRest.Add(histos["dsTau"].Clone())
-    #hRest.Add(histos["dsStarTau"].Clone())
-    #hRest.Add(histos["hb"].Clone())
-    #scale_b = getSignflipRatio(hComb.Clone(),hRest,histos["data"].Clone())
-    hComb.Scale(scale_b)
-    #hComb.Scale(0.6)
+    hComb      = histos["data_sf_kk"].Clone()
+    hComb_pimu = histos["data_sf_pimu"].Clone()
+
+    hComb.Scale(scale_kk)
+    hComb.Add(hComb_pimu)
+
+    #hComb.Scale(scale_b)
 
 
 
@@ -835,7 +836,7 @@ def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = No
     #hRest.Add(histos["dsStarTau"].Clone())
     #hRest.Add(histos["hb"].Clone())
     #scale_b = getSignflipRatio(hComb.Clone(),hRest,histos["data"].Clone())
-    hComb.Scale(scale_b)
+    #hComb.Scale(scale_b)
 
 
 
@@ -1092,7 +1093,14 @@ def normPlot(histos, var, constrained, fakemass = None , A = None ,B = None ,C =
 
   if constrained:
     #simple: take sign slipped data as comb
-    hComb = histos["data_sf"].Clone()
+    hComb      = histos["data_sf_kk"].Clone()
+    hComb_pimu = histos["data_sf_pimu"].Clone()
+
+    hComb.Scale(scale_kk)
+
+    hComb.Add(hComb_pimu)
+
+
     #and rescale it to the nr of righ sign comb events
     #hComb.Scale(rs_scale) not needed as anyway normalized!
 
@@ -1327,7 +1335,8 @@ def createPlots(baseline, constrained = False, newHb = False):
   low_mass          = f" && (dsMu_m < {bsMass_})"
   wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
   right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
-
+  kk_wrong          = f" && (k1_charge*k2_charge > 0) && (mu_charge*pi_charge < 0)"
+  pimu_wrong        = f" && (mu_charge*pi_charge > 0) && (k1_charge*k2_charge < 0)"
     
   selec = baseline + low_mass + right_sign
 
@@ -1441,7 +1450,9 @@ def createPlots(baseline, constrained = False, newHb = False):
     selec_S_DataR_2D     = create2DHistos(selec          + rightSB,         rdfData       , gen = False)
 
   else: 
-    selec_S_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
+    #selec_S_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
+    selec_S_Data_sf_kk   = createHistos(baseline + score_cut + kk_wrong + low_mass + signalRegion,  rdfData       , gen = False)
+    selec_S_Data_sf_pimu = createHistos(baseline + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)
     selec_S_Data_sf_2D   = create2DHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
 
   print("===> signal region done...")
@@ -1475,7 +1486,9 @@ def createPlots(baseline, constrained = False, newHb = False):
     selec_C_Bplus_2D     = create2DHistos(selecHb        ,                  rdfBplus      , gen = False, massPlot = True)
 
   if constrained:
-    selec_C_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData       , gen = False, massPlot = True)
+    #selec_C_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData       , gen = False, massPlot = True)
+    selec_C_Data_sf_kk   = createHistos(baseline + score_cut + kk_wrong + low_mass ,  rdfData       , gen = False)
+    selec_C_Data_sf_pimu = createHistos(baseline + score_cut + pimu_wrong + low_mass,  rdfData       , gen = False)
     selec_C_Data_sf_2D   = create2DHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData       , gen = False, massPlot = True)
  
 
@@ -1493,12 +1506,12 @@ def createPlots(baseline, constrained = False, newHb = False):
     hRest.Add( selec_C_DsStarTau["phiPi_m"].Clone())
     hRest.Add( hbDummy)
 
-    global scale_b;
-    global scale_n;
+    global scale_kk;
+    global scale_pimu;
 
-    scale_b, scale_n = getSignflipRatio(selec_C_Data_sf["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
-    print(f" ====> Scale signflipped comb by {scale_b}")
+    scale_kk, scale_bkg, scale_n = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
  
+  print("==========> number of signals outside stacked", hRest.Integral())
   print("===> total region done...")
   hb_scale = getHbScale(selecHb, selecDsMu)
 
@@ -1592,7 +1605,9 @@ def createPlots(baseline, constrained = False, newHb = False):
 
       if constrained:
 
-        histos["data_sf"] = selec_S_Data_sf[var] 
+        #histos["data_sf"] = selec_S_Data_sf[var] 
+        histos["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
+        histos["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
         toPass = histos.copy() 
 
         histosScaled = stackedPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
@@ -1635,13 +1650,16 @@ def createPlots(baseline, constrained = False, newHb = False):
                "data"     : selec_C_Data[var]}
 
       if newHb:
-        histos["bs"]    = selec_S_Bs[var] 
-        histos["b0"]    = selec_S_B0[var] 
-        histos["bplus"] = selec_S_Bplus[var] 
+        histos["bs"]    = selec_C_Bs[var] 
+        histos["b0"]    = selec_C_B0[var] 
+        histos["bplus"] = selec_C_Bplus[var] 
 
       if constrained:
  
-        histos["data_sf"] = selec_C_Data_sf[var]
+        #histos["data_sf"]      = selec_C_Data_sf[var]
+        histos["data_sf_kk"]   = selec_C_Data_sf_kk[var] 
+        histos["data_sf_pimu"] = selec_C_Data_sf_pimu[var] 
+
         toPass = histos.copy() 
 
         histosScaled = stackedPlot(toPass, var, hb_scale,  mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)

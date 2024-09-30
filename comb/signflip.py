@@ -53,7 +53,7 @@ ROOT.gStyle.SetPadLeftMargin(0.15)
 outdir = "/work/pahwagne/RDsTools/comb/signflip_fits/"
 
 
-def getSignflipRatio(hBkg, hSig, hData):
+def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
 
   print(" ======> Prepare variables and fit")
   #path to save
@@ -61,11 +61,11 @@ def getSignflipRatio(hBkg, hSig, hData):
 
 
   # initial values
-  n0_bkg    = hBkg.Integral()
+  n0_bkg_kk      = hBkg_kk.Integral()
+  n0_bkg_pimu    = hBkg_pimu.Integral()
   n0_sig    = hSig.Integral()
   n0_Data   = hData.Integral() 
 
-  print(f"We start the fit with {n0_bkg} events and {n0_Data} events")
  
   #scale signal to comb
   #hSig.Scale(n0_bkg / n0_sig)
@@ -81,22 +81,33 @@ def getSignflipRatio(hBkg, hSig, hData):
   dsMass.setRange("complete" ,start ,stop)
 
   # Define a RooDataHist from TH1D
-  hData_Roo   = ROOT.RooDataHist("hData_Roo", "hData_Roo", ROOT.RooArgList(dsMass), hData)
-  hBkg_Roo    = ROOT.RooDataHist("hBkg_Roo" , "hBkg_Roo" , ROOT.RooArgList(dsMass), hBkg)
-  hSig_Roo    = ROOT.RooDataHist("hSig_Roo" , "hSig_Roo" , ROOT.RooArgList(dsMass), hSig)
+  hData_Roo      = ROOT.RooDataHist("hData_Roo", "hData_Roo", ROOT.RooArgList(dsMass), hData)
+  #hBkg_Roo      = ROOT.RooDataHist("hBkg_Roo" , "hBkg_Roo" , ROOT.RooArgList(dsMass), hBkg)
+  hBkg_kk_Roo    = ROOT.RooDataHist("hBkg_kk_Roo" , "hBkg_kk_Roo" , ROOT.RooArgList(dsMass), hBkg_kk)
+  hBkg_pimu_Roo  = ROOT.RooDataHist("hBkg_pimu_Roo" , "hBkg_pimu_Roo" , ROOT.RooArgList(dsMass), hBkg_pimu)
+  hSig_Roo       = ROOT.RooDataHist("hSig_Roo" , "hSig_Roo" , ROOT.RooArgList(dsMass), hSig)
 
   #create pdf from histo
-  pdf_bkg     = ROOT.RooHistPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgSet(dsMass), hBkg_Roo);
+  #pdf_bkg     = ROOT.RooHistPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgSet(dsMass), hBkg_Roo);
+  pdf_bkg_kk     = ROOT.RooHistPdf("pdf_kk_bkg", "pdf_kk_bkg", ROOT.RooArgSet(dsMass), hBkg_kk_Roo);
+  pdf_bkg_pimu   = ROOT.RooHistPdf("pdf_pimu_bkg", "pdf_pimu_bkg", ROOT.RooArgSet(dsMass), hBkg_pimu_Roo);
   pdf_sig     = ROOT.RooHistPdf("pdf_sig", "pdf_sig", ROOT.RooArgSet(dsMass), hSig_Roo);
 
-  bkg_scale   = ROOT.RooRealVar( "bkg_scale",     "bkg_scale",  0.1   ,    0.00001, 5)
+  kk_scale   = ROOT.RooRealVar( "kk_scale",     "kk_scale"      ,  0.5   ,    0.01, 01.0)
+  pimu_scale  = ROOT.RooFormulaVar("pimu_scale", "1.0 - kk_scale", ROOT.RooArgList(kk_scale))
+
+  bkg_scale   = ROOT.RooRealVar( "bkg_scale",     "bkg_scale",  0.8   ,    0.01, 1.0)
+  sig_scale  = ROOT.RooFormulaVar("sig_scale", "1.0 - bkg_scale", ROOT.RooArgList(bkg_scale))
+
   nData       = ROOT.RooRealVar( "nData",          "nData"   , n0_Data,    n0_Data*0.5, n0_Data*1.5)
 
   #sig_scale   = ROOT.RooRealVar( "sig_scale",     "sig_scale",  1  ,    0.00001, 10)
 
   # Define functions
 
-  pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg,pdf_sig), ROOT.RooArgList(bkg_scale))
+  pdf_bkg       = ROOT.RooAddPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgList(pdf_bkg_kk,pdf_bkg_pimu), ROOT.RooArgList(kk_scale, pimu_scale))
+  pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg, pdf_sig), ROOT.RooArgList(bkg_scale, sig_scale ))
+  #pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg,pdf_sig), ROOT.RooArgList(bkg_scale))
   pdf_total_ext = ROOT.RooExtendPdf("pdf_total_scaled", "pdf_total_scaled", pdf_total, nData, "complete") 
  
   #perform the fit
@@ -104,11 +115,17 @@ def getSignflipRatio(hBkg, hSig, hData):
   result = pdf_total_ext.fitTo(hData_Roo, ROOT.RooFit.Range("complete"), ROOT.RooFit.SumW2Error(True))
   
   #get results of parameters
+  k_scale    = round(kk_scale.getVal()  ,5)
+  p_scale    = round(pimu_scale.getVal()  ,5)
   b_scale    = round(bkg_scale.getVal()  ,5)
+  s_scale    = round(sig_scale.getVal()  ,5)
   n_scale    = round(nData.getVal()  ,5)
   #s_scale = round(sig_scale.getVal()  ,5)
 
+  print(f" =======> kk scale is: {k_scale} ")
+  print(f" =======> pimu scale is: {p_scale} ")
   print(f" =======> bkg scale is: {b_scale} ")
+  print(f" =======> sig scale is: {s_scale} ")
   print(f" =======> norm scale is: {n_scale} ")
 
   #plotting
@@ -241,5 +258,5 @@ def getSignflipRatio(hBkg, hSig, hData):
   c2.Update()
   c2.SaveAs(outdir + "signflip_mass.pdf")
 
-  return b_scale, n_scale
+  return k_scale, b_scale, n_scale
 
