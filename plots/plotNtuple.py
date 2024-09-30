@@ -1335,7 +1335,7 @@ def createPlots(baseline, constrained = False, newHb = False):
 
   if args.pastNN:
  
-    score_cut = "&& (score5 < 0.3)"
+    score_cut = "" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
     selec += score_cut  # && (tv_prob > 0.1)"
 
  
@@ -1691,6 +1691,6 @@ def createPlots(baseline, constrained = False, newHb = False):
   """
 
 #createPlots(ma_cut, constrained = args.constrained, newHb = False)
-createPlots(base, constrained = args.constrained, newHb = args.newHb)
+createPlots(base_wout_tv, constrained = args.constrained, newHb = args.newHb)
 #createPlots(base, constrained = args.constrained, newHb = args.newHb)
 
