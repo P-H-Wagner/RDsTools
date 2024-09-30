@@ -63,10 +63,12 @@ def getSignflipRatio(hBkg, hSig, hData):
   # initial values
   n0_bkg    = hBkg.Integral()
   n0_sig    = hSig.Integral()
-  
-  #scale signal to comb
-  hSig.Scale(n0_bkg / n0_sig)
+  n0_Data   = hData.Integral() 
 
+  print(f"We start the fit with {n0_bkg} events and {n0_Data} events")
+ 
+  #scale signal to comb
+  #hSig.Scale(n0_bkg / n0_sig)
 
   # and create ptr to this histo ( for the cosntructor of hRoo)
   #hData_Ptr = hData.GetPtr()
@@ -76,32 +78,38 @@ def getSignflipRatio(hBkg, hSig, hData):
   var = "phiPi_m"
   # Fitting variable
   dsMass = ROOT.RooRealVar(var,r"D_{s} mass", start, stop)
+  dsMass.setRange("complete" ,start ,stop)
 
   # Define a RooDataHist from TH1D
   hData_Roo   = ROOT.RooDataHist("hData_Roo", "hData_Roo", ROOT.RooArgList(dsMass), hData)
-  hBkg_Roo    = ROOT.RooDataHist("hBkg_Roo", "hBkg_Roo", ROOT.RooArgList(dsMass), hBkg)
-  hSig_Roo    = ROOT.RooDataHist("hSig_Roo", "hSig_Roo", ROOT.RooArgList(dsMass), hSig)
+  hBkg_Roo    = ROOT.RooDataHist("hBkg_Roo" , "hBkg_Roo" , ROOT.RooArgList(dsMass), hBkg)
+  hSig_Roo    = ROOT.RooDataHist("hSig_Roo" , "hSig_Roo" , ROOT.RooArgList(dsMass), hSig)
 
   #create pdf from histo
   pdf_bkg     = ROOT.RooHistPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgSet(dsMass), hBkg_Roo);
   pdf_sig     = ROOT.RooHistPdf("pdf_sig", "pdf_sig", ROOT.RooArgSet(dsMass), hSig_Roo);
 
-  bkg_scale   = ROOT.RooRealVar( "bkg_scale",     "bkg_scale",  0.1,    0.00001, 5)
+  bkg_scale   = ROOT.RooRealVar( "bkg_scale",     "bkg_scale",  0.1   ,    0.00001, 5)
+  nData       = ROOT.RooRealVar( "nData",          "nData"   , n0_Data,    n0_Data*0.5, n0_Data*1.5)
+
   #sig_scale   = ROOT.RooRealVar( "sig_scale",     "sig_scale",  1  ,    0.00001, 10)
 
   # Define functions
 
-  pdf_total   = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg,pdf_sig), ROOT.RooArgList(bkg_scale))
-  
+  pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg,pdf_sig), ROOT.RooArgList(bkg_scale))
+  pdf_total_ext = ROOT.RooExtendPdf("pdf_total_scaled", "pdf_total_scaled", pdf_total, nData, "complete") 
+ 
   #perform the fit
-  dsMass.setRange("dsMassRange", start, stop)
-  result = pdf_total.fitTo(hData_Roo, ROOT.RooFit.Range("dsMassRange"), ROOT.RooFit.SumW2Error(True))
+  #result = pdf_total.fitTo(hData_Roo, ROOT.RooFit.Range("dsMassRange"), ROOT.RooFit.SumW2Error(True))
+  result = pdf_total_ext.fitTo(hData_Roo, ROOT.RooFit.Range("complete"), ROOT.RooFit.SumW2Error(True))
   
   #get results of parameters
-  b_scale = round(bkg_scale.getVal()  ,5)
+  b_scale    = round(bkg_scale.getVal()  ,5)
+  n_scale    = round(nData.getVal()  ,5)
   #s_scale = round(sig_scale.getVal()  ,5)
-  
+
   print(f" =======> bkg scale is: {b_scale} ")
+  print(f" =======> norm scale is: {n_scale} ")
 
   #plotting
   print(f" =======> Start plotting")
@@ -110,10 +118,12 @@ def getSignflipRatio(hBkg, hSig, hData):
   frame = dsMass.frame(ROOT.RooFit.Title(var))
   frame.GetXaxis().SetTitle("D_{s} mass")
   frame.GetXaxis().SetTitleOffset(1.5)
+  frame.GetYaxis().SetRangeUser(0, 200000)
+
 
   #first plot data and model, they define the normalization range 
   hData_Roo.plotOn(frame,ROOT.RooFit.Name("data"),  ROOT.RooFit.SumW2Error(True)  )
-  #pdf_total.plotOn(frame,ROOT.RooFit.Name("pdf_total")) #,ROOT.RooFit.Components("cbGauss"))
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kYellow -7 ),       ROOT.RooFit.Name("pdf_total"), ROOT.RooFit.FillColor(ROOT.kYellow  - 7), ROOT.RooFit.DrawOption("F") )
 
   #get reduce chi2, 8 is the number of parameters
   chi2  = round(frame.chiSquare("pdf_total","hData_Roo", 2), 5)
@@ -133,10 +143,14 @@ def getSignflipRatio(hBkg, hSig, hData):
   pad3.Draw()
   
   #plot subcomponents
-  #cbGauss.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kCyan +1), ROOT.RooFit.Name("doubleGauss"), ROOT.RooFit.Components("doubleGauss"))
-  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kCyan +1), ROOT.RooFit.Name("pdf_bkg"), ROOT.RooFit.Components("pdf_bkg"))
-  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kBlue ),   ROOT.RooFit.Name("pdf_sig"),          ROOT.RooFit.Components("pdf_sig")         )
-  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed),ROOT.RooFit.Name("pdf_total")) #,ROOT.RooFit.Components("cbGauss"))
+  #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray),      ROOT.RooFit.FillColor(ROOT.kGray),      ROOT.RooFit.Name("pdf_bkg"),          ROOT.RooFit.Components("pdf_bkg"),         ROOT.RooFit.DrawOption("F"),  ROOT.RooFit.FillStyle(1001))
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed - 7 ),   ROOT.RooFit.Name("pdf_sig"),             ROOT.RooFit.Components("pdf_sig"), ROOT.RooFit.FillColor(ROOT.kRed - 7), ROOT.RooFit.DrawOption("F") , ROOT.RooFit.FillStyle(3444)        )
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed - 7 ),   ROOT.RooFit.Name("pdf_sig"),             ROOT.RooFit.Components("pdf_sig"), ROOT.RooFit.FillColor(ROOT.kRed - 7)        )
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg"),             ROOT.RooFit.Components("pdf_bkg"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg"),             ROOT.RooFit.Components("pdf_bkg"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), )
+
+  #hist_bkg = pdf_bkg.createHistogram("hist_bkg", dsMass)
+  #hist_sig = pdf_sig.createHistogram("hist_sig", dsMass)
 
   #plot data again, s.t. it is visible on top
   hData_Roo.plotOn(frame,ROOT.RooFit.Name("hData_Roo"))
@@ -148,28 +162,34 @@ def getSignflipRatio(hBkg, hSig, hData):
   
   c2.cd()
   pad1.cd()
-  frame.Draw()
-  
-  leg2 = ROOT.TLegend(0.6,0.7,0.8,0.88);
+
+  #hist_bkg.Draw("HIST")
+  #hData.Draw("HIST SAME")
+  #hist_sig.Draw("HIST SAME")
+  frame.Draw("SAME")
+  #hist_bkg.Draw("HIST SAME")
+
+
+  leg2 = ROOT.TLegend(0.55,0.7,0.8,0.88);
   leg2.SetFillColor(ROOT.kWhite);
   leg2.SetLineColor(ROOT.kWhite);
   leg2.SetTextSize(0.030)
   leg2.AddEntry("hData_Roo","Data","EP")
-  leg2.AddEntry("pdf_bkg","  Comb","L")
-  leg2.AddEntry("pdf_sig","  The rest","L")
-  leg2.AddEntry("pdf_total","  Total","L")
+  leg2.AddEntry("pdf_bkg","  Wrong Sign Comb.","F")
+  leg2.AddEntry("pdf_sig","  Signal + Hb","F")
+  leg2.AddEntry("pdf_total","  Total","F")
   leg2.Draw("SAME")
   
-  text = ROOT.TPaveText(.18,.7,.4,.88,"brNDC");
+  text = ROOT.TPaveText(.18,.7,.5,.88,"brNDC");
   text.SetFillColor(0)
   text.SetFillStyle(0)
   text.SetTextAlign(11)
-  leg2.SetTextSize(0.028)
-  text.AddText(" bkg scale  = " + f"{b_scale} ")
+  leg2.SetTextSize(0.035)
+  text.AddText(" Relative Scale = " + f"{b_scale} ")
   text.SetBorderSize(0)
   text.Draw("SAME")
   
-  CMS_lumi(pad1, 4, 0, cmsText = 'CMS', extraText = '  Private work', lumi_13TeV = '')
+  CMS_lumi(pad1, 4, 0, cmsText = '    CMS', extraText = '      Private work', lumi_13TeV = '')
   
   pad2.cd()
   frame2.Draw()
@@ -220,5 +240,6 @@ def getSignflipRatio(hBkg, hSig, hData):
   c2.Modified()
   c2.Update()
   c2.SaveAs(outdir + "signflip_mass.pdf")
-  return b_scale
+
+  return b_scale, n_scale
 
