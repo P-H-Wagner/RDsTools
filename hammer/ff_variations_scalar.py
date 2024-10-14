@@ -16,18 +16,22 @@ names_bgl_coefficients = [
     'f0_a0' ,
     'f0_a1' ,
     'f0_a2' ,
+    'f0_a3' ,
     'fp_a0' ,
     'fp_a1' ,
-    'fp_a2' 
+    'fp_a2' , 
+    'fp_a3' 
 ]
 
 names_bgl_coefficients_hammer = [
-    'a0',
-    'a1',
-    'a2',
-    'b0',
-    'b1',
-    'b2'
+    'ap0',
+    'ap1',
+    'ap2',
+    'ap3',
+    'a00',
+    'a01',
+    'a02',
+    'a03'
 ]
 
 #name the eigenvectors like: "e0, e1, .., e9"
@@ -36,25 +40,25 @@ names_eigenvectors = ['e%d' %i for i in range(len(names_bgl_coefficients_hammer)
 #fill the coefficients according to the paper above 
 # the referenced paper above only considers N = 2 extension, thus coeff a3,b3 and their uncertanties are missing!
 bgl_coefficients = np.array([
- 0.052255946347001495  , # f0  a0 --> Hammer  
--0.16027634967890908   , # f0  a1 --> Hammer  
- 0.014141836205563255  , # f0  a2 --> Hammer  
- 0.0                   , # f0  a3 --> Hammer  
- 0.0017893827864468802 , # f+  b0 --> Hammer  
--0.004691380424494185  , # f+  b1 --> Hammer  
--0.015708534616906505  , # f+  b2 --> Hammer  
- 0.0                   , # f+  b3 --> Hammer  
+ 0.052255946347001495  , # f0  a0 --> Hammer ap0  
+-0.16027634967890908   , # f0  a1 --> Hammer ap1 
+ 0.014141836205563255  , # f0  a2 --> Hammer ap2 
+ 0.0                   , # f0  a3 --> Hammer ap3 
+ 0.0017893827864468802 , # f+  b0 --> Hammer a00 
+-0.004691380424494185  , # f+  b1 --> Hammer a01 
+-0.015708534616906505  , # f+  b2 --> Hammer a02 
+ 0.0                   , # f+  b3 --> Hammer a03 
 ]).astype(np.float64)
 
 bgl_coefficient_uncertainties = np.array([
-0.0007906527485083701  , # f0  a0 --> Hammer  
-0.016991421017241458   , # f0  a1 --> Hammer  
-0.03169323419790213    , # f0  a2 --> Hammer  
-0.0                    , # f0  a3 --> Hammer  
-0.00004543889976730505 , # f+  b0 --> Hammer  
-0.0008662317680431299  , # f+  b1 --> Hammer  
-0.0047035296806361825  , # f+  b2 --> Hammer  
-0.0                    , # f+  b3 --> Hammer  
+0.0007906527485083701  , # f0  a0 --> Hammer ap0
+0.016991421017241458   , # f0  a1 --> Hammer ap1
+0.03169323419790213    , # f0  a2 --> Hammer ap2
+0.0                    , # f0  a3 --> Hammer ap3
+0.00004543889976730505 , # f+  b0 --> Hammer a00
+0.0008662317680431299  , # f+  b1 --> Hammer a01
+0.0047035296806361825  , # f+  b2 --> Hammer a02
+0.0                    , # f+  b3 --> Hammer a03
 ]).astype(np.float64)
 
 
