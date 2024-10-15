@@ -132,6 +132,14 @@ if args.pastNN:
 
   print("Producing post-NN plots")
 
+  #save the NN name
+  import re
+  pattern = r"\d{2}[A-Za-z]{3}\d{4}_\d{2}h\d{2}m\d{2}s"
+  match = re.search(pattern,sig_cons_pastNN)
+  nnModel = match.group(0)
+
+
+
   if args.constrained:
     print("constrained data after NN not processed yet..")
     chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN       , pastNN = args.pastNN )#, debug = 10)#,     skimmed = "ma_cut_wout_fv"   ) # FOR SB FIT
@@ -521,15 +529,18 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
     #hComb.Scale(0.1)
 
     hComb      = histos["data_sf_kk"].Clone()
+    hComb.Scale(1.0/hComb.Integral())
+
     hComb_pimu = histos["data_sf_pimu"].Clone()
+    hComb_pimu.Scale(1.0/hComb_pimu.Integral())
 
     hComb.Scale(scale_kk)
+    hComb_pimu.Scale(1.0 - scale_kk)
     hComb.Add(hComb_pimu)
 
-    #hComb.Scale(scale_b)
-
-
-
+    hComb.Scale(scale_bkg/hComb.Integral())
+    print("sclae bkg is: ", scale_bkg)
+    print("hcomb has now integral: ", hComb.Integral())
 
   else: 
     #do sideband method
@@ -558,17 +569,34 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   ###################################
 
 
-  for key in histos.keys():
+  if constrained:
 
-    if constrained:
-      #For signflip method, combinatorial is not yet normalized to data!
+    #histos['comb'].Scale( histos["data"].Integral()  )
 
+    nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+
+    for key in histos.keys():
+
+      #normalize and scale the signals and hb
+      if ('comb' not in key) and ('data' not in key):
+        histos[key].Scale(1.0/nSig)
+        histos[key].Scale(1.0 - scale_bkg)
+
+    nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+
+    print("nsig has integral:", nSig)
+
+    for key in histos.keys():
+      #normalize to data!
       if ('data' not in key):
-        histos[key].Scale((histos["data"].Integral()) / (nSig + nComb) )
+        histos[key].Scale( histos["data"].Integral() / (nSig + nComb))
+        #print("scale_n inside :", histos["data"].Integral())
+        print("rescaling...", key)
+  else:
+    #For sideband method, combinatorial is already normalized to data!
+    nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
 
-    else:
-      #For sideband method, combinatorial is already normalized to data!
-
+    for key in histos.keys():
       if ('comb' not in key) and ('data' not in key):
         histos[key].Scale((histos["data"].Integral() - nComb) / nSig)
 
@@ -727,11 +755,6 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   c1.Update()
 
 
-  toSave = "/work/pahwagne/RDsTools/plots/cmsplots/"
-
-  if not os.path.exists(toSave): 
-    os.makedirs(toSave)
-    os.makedirs(toSave + "/log")  
 
   if constrained: name = "constrained"
   else: name = "unconstrained"
@@ -739,16 +762,25 @@ def stackedPlot(histos, var, hb_scale, mlow, mhigh, constrained, rs_scale = None
   if newHb: name += "_newHb"
   else: name += ""
 
-  if args.pastNN: name += "_pastNN"
-  else: name += ""
+  if args.pastNN: 
+    name += "_pastNN"
+    folder = nnModel
+  else: 
+    name += ""
+    folder = "/"
 
+  toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+    os.makedirs(toSave + "/log")  
 
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/log/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/log/{var}_{name}.png")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/log/{var}_{name}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/log/{var}_{name}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{var}_{name}.png")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/{var}_{name}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/{var}_{name}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 
@@ -1097,6 +1129,7 @@ def normPlot(histos, var, constrained, fakemass = None , A = None ,B = None ,C =
     hComb_pimu = histos["data_sf_pimu"].Clone()
 
     hComb.Scale(scale_kk)
+    hComb_pimu.Scale(1.0 - scale_kk)
 
     hComb.Add(hComb_pimu)
 
@@ -1213,11 +1246,6 @@ def normPlot(histos, var, constrained, fakemass = None , A = None ,B = None ,C =
   c1.Modified()
   c1.Update()
 
-  toSave = "/work/pahwagne/RDsTools/plots/normplots/"
-
-  if not os.path.exists(toSave): 
-    os.makedirs(toSave)
-    os.makedirs(toSave + "/log")  
 
   if constrained: name = "constrained"
   else: name = "unconstrained"
@@ -1225,15 +1253,26 @@ def normPlot(histos, var, constrained, fakemass = None , A = None ,B = None ,C =
   if newHb: name += "_newHb"
   else: name += ""
 
-  if args.pastNN: name += "_pastNN"
-  else: name += ""
+  if args.pastNN: 
+    name += "_pastNN"
+    folder = nnModel
+  else: 
+    name += ""
+    folder = "/"
+
+  toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+    os.makedirs(toSave + "/log")  
+
 
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/log/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/log/{var}_{name}.png")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/log/{var}_{name}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/log/{var}_{name}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{var}_{name}.png")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/{var}_{name}.pdf")
+    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/{var}_{name}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 def methodDistinction(histos,name, selection,norm = True):
@@ -1344,7 +1383,7 @@ def createPlots(baseline, constrained = False, newHb = False):
 
   if args.pastNN:
  
-    score_cut = "" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
+    score_cut = "&& (score5 < 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
     selec += score_cut  # && (tv_prob > 0.1)"
 
  
@@ -1418,6 +1457,8 @@ def createPlots(baseline, constrained = False, newHb = False):
  
   #create histos returns a dictionary !:)
   
+  hb_scale_S = getHbScale(selecHb + signalRegion, selecDsMu + signalRegion)
+
   #for all variables except mass plot only signal region (indicated with 'S')
   selec_S_DsMu           = createHistos(selecDsMu      + signalRegion,    rdfSig        , gen = False)
   selec_S_DsTau          = createHistos(selecDsTau     + signalRegion,    rdfSig        , gen = False)
@@ -1458,7 +1499,7 @@ def createPlots(baseline, constrained = False, newHb = False):
   print("===> signal region done...")
 
 
-  hb_scale = getHbScale(selecHb + signalRegion, selecDsMu + signalRegion)
+  hb_scale_C = getHbScale(selecHb , selecDsMu )
   
   # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
   selec_C_DsMu           = createHistos(selecDsMu      ,                  rdfSig        , gen = False, massPlot = True)
@@ -1495,10 +1536,10 @@ def createPlots(baseline, constrained = False, newHb = False):
     #get the signflip scale by fitting the ds mass peak
   
     hbDummy = selec_C_Hb["phiPi_m"].Clone()
-    if hb_scale == 0:
+    if hb_scale_C == 0:
       hbDummy.Scale(0.0 )
     else:
-      hbDummy.Scale(hb_scale / hbDummy.Integral())
+      hbDummy.Scale(hb_scale_C / hbDummy.Integral())
 
     hRest    = selec_C_DsMu["phiPi_m"].Clone()
     hRest.Add( selec_C_DsStarMu["phiPi_m"].Clone())
@@ -1507,11 +1548,12 @@ def createPlots(baseline, constrained = False, newHb = False):
     hRest.Add( hbDummy)
 
     global scale_kk;
-    global scale_pimu;
+    global scale_bkg;
+    global scale_n;
 
     scale_kk, scale_bkg, scale_n = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
  
-  print("==========> number of signals outside stacked", hRest.Integral())
+    print("==========> number of signals outside stacked", hRest.Integral())
   print("===> total region done...")
   hb_scale = getHbScale(selecHb, selecDsMu)
 
@@ -1548,7 +1590,7 @@ def createPlots(baseline, constrained = False, newHb = False):
         histos2D["data_sf"] = selec_S_Data_sf_2D[var] 
         toPass = histos2D.copy() 
 
-        histos2DScaled = stacked2DPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histos2DScaled = stacked2DPlot(toPass, var, hb_scale_S, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         #normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, newHb = newHb)
         #normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, newHb = newHb, log = True)
 
@@ -1558,7 +1600,7 @@ def createPlots(baseline, constrained = False, newHb = False):
         histos2D["combR"] = selec_S_DataR_2D[var] 
         toPass = histos2D.copy() 
 
-        histos2DScaled = stacked2DPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histos2DScaled = stacked2DPlot(toPass, var, hb_scale_S, mlow, mhigh, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         #normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, newHb = newHb)
         #normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True, newHb = newHb)
 
@@ -1610,7 +1652,7 @@ def createPlots(baseline, constrained = False, newHb = False):
         histos["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
         toPass = histos.copy() 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histosScaled = stackedPlot(toPass, var, hb_scale_S, mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, newHb = newHb, log = True)
 
@@ -1620,7 +1662,7 @@ def createPlots(baseline, constrained = False, newHb = False):
         histos["combR"] = selec_S_DataR[var] 
         toPass = histos.copy() 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histosScaled = stackedPlot(toPass, var, hb_scale_S, mlow, mhigh, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True, newHb = newHb)
 
@@ -1662,7 +1704,7 @@ def createPlots(baseline, constrained = False, newHb = False):
 
         toPass = histos.copy() 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale,  mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histosScaled = stackedPlot(toPass, var, hb_scale_C,  mlow, mhigh, constrained = constrained, rs_scale = rs_over_ws, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, log = True)
 
@@ -1670,7 +1712,7 @@ def createPlots(baseline, constrained = False, newHb = False):
 
         toPass = histos.copy() 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale, mlow, mhigh, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
+        histosScaled = stackedPlot(toPass, var, hb_scale_C, mlow, mhigh, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, newHb = newHb)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, constrained = constrained, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True)
 
