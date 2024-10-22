@@ -46,7 +46,7 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
   #print('principal components')
   principal_comp = np.atleast_2d(eUncs*eVecs).T
   #print(principal_comp)
-  
+ 
   print('\n\n')
   
   variations = dict()

@@ -5,33 +5,35 @@ import sys
 import argparse
 import re #for pattern matchin
 import subprocess
+sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
+from helper import *
 
 #example task: 240802_091822:pahwagne_crab_20240802_111807
 #example command line: python create_submitter.py -f 0 -i  240802_091822 -p 2 20240802_111807 data t2
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('date_time') # second number sequence of crab task name
 parser.add_argument('channel') # sig, data, hb, bs , ...
-#parser.add_argument('site')  # t3 or t2 (from crab)
+parser.add_argument('-g','--gen')  # gen production 
+parser.add_argument('-dt','--date_time') # second number sequence of crab task name
 #parser.add_argument('-f','--folder')  # nr of directory on the t2, f.e. nDir = 2 means: 0002 
 #parser.add_argument('-i','--crab_id') # first number sequence of crab task name 
 #parser.add_argument('-p','--part')    #1,2,3,4,5 - specifies the part of the dataset (BPH1, BPH2, ..., BPH5) 
 args = parser.parse_args()
+ 
+#print(args.date_time)
 
-
-queue = 'short' 
-#time = 60
+queue = 'standard' 
+time = 60
 nevents = -1
 
-#naming
-if args.channel == 'sig': naming = 'all_signals'
-elif args.channel == 'hb': naming = 'hb_inclusive'
-elif args.channel == 'b0': naming = 'b0'
-elif args.channel == 'bs': naming = 'bs'
-elif args.channel == 'lambdab': naming = 'lambdab'
-elif args.channel == 'bplus': naming = 'bplus'
-else: naming = 'data'
+#naming (for now only hammer for signals)
+if args.channel == 'sig': 
+  naming = 'sig' 
+  fname = sig_cons_pastNN 
+
+
+#get date_time of evaluated signal root tree
 
 
 def list_files_gfal(path):
@@ -51,45 +53,60 @@ def list_files_gfal(path):
 
   return files
 
-#load flats
-path       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/" 
-directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/"
-inputfiles = os.listdir(directory)
+if args.gen == "True":
 
+  #load flats
+  path       = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/" 
+  #directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}"                     else:
+  #inputfiles = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/{fname}.root"  #only one file!
+  #print(path)
 
-#inputfiles = inputfiles[0:1] #debug
+  inputfiles = [path + f for f in os.listdir(path)]
+  fname = args.channel
+  naming = args.channel
+
+else:
+
+  #load flats
+  path       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
+  #directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}"
+  inputfiles = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}.root"  #only one file!
+
+  inputfiles = [inputfiles]
 #print(inputfiles)
 
-if not os.path.exists(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{args.date_time}"):
-
-  os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{args.date_time}")
-  os.makedirs(f"hammer_{args.date_time}/logs")
-  os.makedirs(f"hammer_{args.date_time}/errs")
+os.makedirs(f"hammer_{fname}/logs")
+os.makedirs(f"hammer_{fname}/errs")
 
 #inputfiles = inputfiles[0:1]
+#print(inputfiles)
 
 for fin in inputfiles:
 
-
+  #print(fin)
   #get chunk nr
   pattern = r'([^_]+)_flatChunk_(\d+)\.root'
   match = re.search(pattern, fin)
-  if match: chunkNr = match.group(2)      
+  if match: chunkNr = match.group(2)
+  else: chunkNr = '0'
 
-  print(chunkNr)
+  if args.gen == "True":
+    temp = open("hammer_all_gen_temp.py", "rt")
 
-  #template
-  temp = open("hammer_dsstar_tau_temp.py", "rt")
+  else:
+    temp = open("hammer_all_temp.py", "rt")
   #file to write to
-  cfg = open(f"hammer_{args.date_time}/cfg_chunk_{chunkNr}.py","wt")
+  cfg = open(f"hammer_{fname}/cfg_chunk_{chunkNr}.py","wt")
   #file to save things
-  fout = f"{naming}_hammerChunk_{chunkNr}.root"  
+  fout = f"{naming}_flatChunk_{chunkNr}.root"
 
   for line in temp:
-    if "HOOK_FILE_IN" in line:       line = line.replace("HOOK_FILE_IN", fin)
-    if "HOOK_DATE_TIME" in line:   line = line.replace("HOOK_DATE_TIME", args.date_time)
-    if "HOOK_FILE_OUT" in line:    line = line.replace("HOOK_FILE_OUT", f"/scratch/pahwagne/{args.date_time}/{fout}")
+    if "HOOK_FILE_IN"    in line:       line = line.replace("HOOK_FILE_IN", fin)
+    if "HOOK_MAX_EVENTS" in line:       line = line.replace("HOOK_MAX_EVENTS", str(nevents))
+    if "HOOK_FILE_OUT"   in line:    line = line.replace("HOOK_FILE_OUT", f"/scratch/pahwagne/{fname}/{fout}")
 
+
+    #print(f"/scratch/pahwagne/{fname}/{fout}")
     cfg.write(line)
 
   temp.close()
@@ -100,14 +117,14 @@ for fin in inputfiles:
          'cd /work/pahwagne/RDsTools/hammer',
          'eval "$(conda shell.bash hook)"',
          'conda activate /work/pahwagne/environments/hammer3p8',
-         f'mkdir -p /scratch/pahwagne/{args.date_time}',
-         f'python hammer_{args.date_time}/cfg_chunk_{chunkNr}.py',
-         f'xrdcp /scratch/pahwagne/{args.date_time}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{args.date_time}/{fout}',
-         f'rm /scratch/pahwagne/{args.date_time}/{fout}',
+         f'mkdir -p /scratch/pahwagne/{fname}',
+         f'python hammer_{fname}/cfg_chunk_{chunkNr}.py',
+         f'xrdcp /scratch/pahwagne/{fname}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{fout}',
+         f'rm /scratch/pahwagne/{fname}/{fout}',
          '',
      ])
 
-  with open(f"hammer_{args.date_time}/submitter_chunk_{chunkNr}.sh", "wt") as flauncher:
+  with open(f"hammer_{fname}/submitter_chunk_{chunkNr}.sh", "wt") as flauncher:
     flauncher.write(to_write)
 
 
@@ -116,12 +133,12 @@ for fin in inputfiles:
         'sbatch',
         f'-p {queue}',
         '--account=t3',
-        f'-o hammer_{args.date_time}/logs/chunk_{chunkNr}.log',
-        f'-e hammer_{args.date_time}/errs/chunk_{chunkNr}.err',
+        f'-o hammer_{fname}/logs/chunk_{chunkNr}.log',
+        f'-e hammer_{fname}/errs/chunk_{chunkNr}.err',
         #f'--mem=2000M',
-        f'--job-name=HAMMER_{chunkNr}_{naming}',
-        #f'--time=20',
-        f'hammer_{args.date_time}/submitter_chunk_{chunkNr}.sh',
+        f'--job-name=HAMMER_{naming}',
+        #f'--time={time}',
+        f'hammer_{fname}/submitter_chunk_{chunkNr}.sh',
      ])
 
   print(command_sh_batch)
