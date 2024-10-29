@@ -38,19 +38,20 @@ ROOT.TH1.SetDefaultSumw2() #apply weights!
 
 def getRdf(dateTimes, debug = None, skimmed = None, pastNN = None):
 
-
+  print(dateTimes)
   chain = ROOT.TChain("tree")
 
   if ((not pastNN) and (not isinstance(dateTimes, list))):
     print("dateTimes must be a list of strings")
 
   if pastNN:
-
-    print(f"picking past NN file ...") #only one per channel, already chained!
-    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}.root"
+    print(f"picking past NN files ...")
+    #dateTimes here is a string like: "data_26Sep..._cons"
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}/*"
+    print(files)
     n = chain.Add(files)
-    if n > 1: print("alert, finding more than one past NN tree for this channel!")
-    import pdb
+    print(f"Chaining {n} files for this channel")
+
     rdf = ROOT.RDataFrame(chain)
     return (chain,rdf)
   
@@ -1386,7 +1387,7 @@ def createPlots(baseline, constrained = False, newHb = False):
 
   if args.pastNN:
  
-    score_cut = "&& (score5 <= 1.0)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
+    score_cut = "&& (score5 <= 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
     selection_H += score_cut  # && (tv_prob > 0.1)"
     selection   += score_cut  # && (tv_prob > 0.1)"
 
