@@ -107,25 +107,62 @@ class createDf(object):
 
 
   def convertRootToDF(self, sample, training_info, treename, selection, weights, var, channel):
-   
+  
+
     #add weights to extra_columns if any 
     #features are the same for all folds, so we can pick fold 0
     branches = dc(training_info[0].features) + var 
+
     if weights:
       branches += weights
-    if channel != "data":
-      branches += ["gen_sig"] 
-      branches += ["gen_match_success"] 
 
+    if channel != "data":
+      branches += [
+       "gen_sig",
+       "gen_match_success",
+       "gen_tau_pt",
+       "gen_ds_pt",
+       "gen_dsStar_pt",
+       "gen_bs_pt",
+    
+       "gen_tau_eta",
+       "gen_ds_eta",
+       "gen_dsStar_eta",
+       "gen_bs_eta",
+    
+       "gen_tau_phi",
+       "gen_ds_phi",
+       "gen_dsStar_phi",
+       "gen_bs_phi",
+    
+       "gen_tau_pdgid",
+       "gen_ds_pdgid",
+       "gen_dsStar_pdgid",
+       "gen_bs_pdgid",
+    
+       "gen_ds_charge",
+       "gen_bs_charge"
+       ]
       
     print(branches)   
     #evaluation on MC data
     #we can evaluate on the whole MC sample, since we checked that overtraining is not a problem :)
 
-    f = ROOT.TFile(sample)
-    tree_obj = f.Get(treename)
-    arr = tree2array(tree_obj,selection = selection, branches = branches)
-    df = pd.DataFrame(arr)
+
+    #use uproot!!
+    with uproot.open(sample) as f:
+      tree = f[treename]
+      print(selection)
+      selection = selection.replace("&&", "&")
+      print(selection)
+      selection = selection.replace("||", "|")
+      print(selection)
+      df   = tree.arrays(branches, library = "pd", entry_start=None, entry_stop=None, cut=selection)
+
+    #f = ROOT.TFile(sample)
+    #tree_obj = f.Get(treename)
+    #arr = tree2array(tree_obj,selection = selection, branches = branches)
+    #df = pd.DataFrame(arr)
     #df = read_root(sample, treename, where=baseline_selection, warn_missing_tree=True, columns=training_info.features+extra_columns)
     
     pd.options.mode.chained_assignment = None   
@@ -162,8 +199,16 @@ class createDf(object):
     df = pd.concat([self.convertRootToDF(ifile, training_info, treename, selection, weights, var, channel) for ifile in files], sort=False)
     print("before removing nans i have:", len(df))
     # remove inf and nan
+
+
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df.dropna(inplace=True) 
+    #collect all columns except the gen ones
+    non_nan = [col for col in df.keys() if ("gen_" not in col)]
+    #df.dropna(inplace=True) #like this we loose almost all events since gen contains nan if not Ds* tau 
+
+    #select only rows in which we dont have nans in the "non_nan" columns. 
+    #gen can contain nans, as not for every event we have tau or dsstar!
+    df.dropna(subset = non_nan, inplace = True) #inplace allows to directly overwrite the df and avoid df = df.dropna(...)
 
     # re-index
     df = df.reset_index(drop=True)
@@ -234,6 +279,7 @@ class createDf(object):
       This tree is going to be used for the rest of the analysis (see fitter)
       Note that both the baseline selection and category definition have to be applied
     '''
+
     # get the training information
     training_info = self.getTrainingInfo(training_path)
 
@@ -301,18 +347,21 @@ class createDf(object):
 
 
     #put all into one file
-    if constrained: name = "_cons"
-    else: name = "_unc"
+    if constrained: 
+      name = "_cons"
+    else:            
+      name = "_unc"
 
     # create file
     root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}{name}.root"
-
+  
     with uproot.recreate(root_filename) as f:
-
+  
       f["tree"] = pd.concat([ x_folds[n] for n in range(self.nfolds) ])
 
-    #else:
 
+    #else: 
+    #  name = "_unc"
     #  #one file for every fold
     #  for n in range(self.nfolds):
    
@@ -487,7 +536,7 @@ if __name__ == '__main__':
    'mu_rel_iso_03',
    'phiPi_deltaR',
    #'phiPi_m',              #only for constrained fitter!
-   #'dsMu_m',
+   'dsMu_m',
    #'pt_miss_....',        #too similar to m2 miss?
    
    #'q2_reco_weighted',
@@ -571,7 +620,7 @@ if __name__ == '__main__':
    #'cosPlaneBs_reco_weighted',
 
    "cosPiK1",
-   'lxy_ds_sig',
+   #'lxy_ds_sig',
    'dxy_mu_sig',
    'pv_prob',
 
@@ -595,7 +644,7 @@ if __name__ == '__main__':
 
    #if not constrained: 
    #  print("appending mass...")
-   #  extra_vars.append("phiPi_m")
+   extra_vars.append("phiPi_m")
 
 
    var = {}
@@ -607,31 +656,9 @@ if __name__ == '__main__':
    #with open('massfit.pickle', 'rb') as handle:
    #  massfit = pickle.load(handle)
 
-
-   sigma = 0.008
-   #sigma = massfit["sigma"]
-
-   #signal region
-   mlow   = dsMass_ - nSignalRegion*sigma
-   mhigh  = dsMass_ + nSignalRegion*sigma
- 
-   #sideband start
-   mlow2  = dsMass_ - nSidebands*sigma
-   mhigh2 = dsMass_ + nSidebands*sigma
- 
-   #sideband stops
-   mlow3  = mlow2  - sbWidth*sigma
-   mhigh3 = mhigh2 + sbWidth*sigma
- 
-   signalRegion = f"(({mlow} < phiPi_m) & (phiPi_m < {mhigh}))"
-   leftSB       = f"(({mlow3} < phiPi_m) & (phiPi_m < {mlow2}))"
-   rightSB      = f"(({mhigh2} < phiPi_m) & (phiPi_m < {mhigh3}))"
-
-
    #selection for mc, exlude hb from the inclusive sample and include it explicitly with the hb only sample
    selections = {"sig":base_wout_tv, "data":base_wout_tv, "bs":base_wout_tv ,"b0":base_wout_tv , "bplus": base_wout_tv , "hb": base_wout_tv}
 
-   print(mlow,mlow2,mhigh2,mhigh3) 
 
    print(f"========> Evaluating on {channel} ...")
 
