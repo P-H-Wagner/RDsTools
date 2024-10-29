@@ -273,7 +273,7 @@ class createDf(object):
     return score
 
 
-  def createFileWithAnalysisTree(self, training_path, files, selection, weights, label, treename ,var, channel, constrained):
+  def createFileWithAnalysisTree(self, training_path, files, selection, weights, label, treename ,var, channel, constrained, nchunks):
     '''
       Create tree that contains q2_new,cospiK and the score and store it in a root file
       This tree is going to be used for the rest of the analysis (see fitter)
@@ -353,11 +353,19 @@ class createDf(object):
       name = "_unc"
 
     # create file
-    root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}{name}.root"
-  
-    with uproot.recreate(root_filename) as f:
-  
-      f["tree"] = pd.concat([ x_folds[n] for n in range(self.nfolds) ])
+    #root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}{name}.root"
+
+    #concat all folds
+    df_tot = pd.concat([ x_folds[n] for n in range(self.nfolds) ]) 
+
+    #split df into n chunks for better post-processing 
+    chunks = np.array_split(df_tot, nchunks)
+
+    for i, chunk in enumerate(chunks):
+      root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}_chunk_{i}.root"
+
+      with uproot.recreate(root_filename) as f:
+        f["tree"] = chunk 
 
 
     #else: 
@@ -443,8 +451,10 @@ if __name__ == '__main__':
    constrained  = os.getenv("constrained") 
    channel      = os.getenv("channel") 
    modelpath    = os.getenv("modelpath") 
+   nchunks      = os.getenv("nchunks")
    print("parsing command line... evaluate on: ", channel)   
 
+   nchunks = int(nchunks)
    if constrained == 'True': constrained = True
    else: constrained = False
 
@@ -468,11 +478,11 @@ if __name__ == '__main__':
      files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
      files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
      files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
- 
 
-   training_path = f'/work/pahwagne/RDsTools/classification/outputs/{modelpath}' #mu and tau in same class  (adam) uncon.
-   date_time   = modelpath[5:] 
-   print("date_time:", date_time)
+
+   training_path = f'/work/pahwagne/RDsTools/classification/outputs/test_{modelpath}' #mu and tau in same class  (adam) uncon.
+   #date_time   = modelpath[5:] 
+   #print("date_time:", date_time)
 
 
    print(f"=====> Using model {modelpath}.") 
@@ -663,10 +673,10 @@ if __name__ == '__main__':
    print(f"========> Evaluating on {channel} ...")
 
    #create df on which we want to evaluate
-   tools = createDf(date_time, channel) 
+   tools = createDf(modelpath, channel) 
 
    #create tree
-   FileWithScore = tools.createFileWithAnalysisTree(training_path, files[channel], selections[channel], weights, labels[channel], treename, extra_vars,channel, constrained = constrained)
+   FileWithScore = tools.createFileWithAnalysisTree(training_path, files[channel], selections[channel], weights, labels[channel], treename, extra_vars,channel, constrained = constrained, nchunks = nchunks)
 
    #/work/pahwagne/ma22/programs/Kinematical_variable_programs/outputs/test_18Jan2023_09h36m59s is the last test we did of trainer.py with class_weight == class_weights
 
