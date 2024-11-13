@@ -730,8 +730,9 @@ def getABCS( rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop,
   print(f"we are consisten if check = 0, and check is: {check}")
   
   #save bin content and fakemass histogram as csv
-  np.savetxt("mass_bincontent.csv",bin_content,delimiter = ",")
-  np.savetxt("fakemass.csv", fake_mass, delimiter=",")
+
+  try: np.savetxt("mass_bincontent.csv",bin_content,delimiter = ","); np.savetxt("fakemass.csv", fake_mass, delimiter=",");
+  except: print("not allowed to write fakemass")
   
 
   return A, B, C, S

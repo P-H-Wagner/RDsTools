@@ -52,6 +52,7 @@ ROOT.gStyle.SetPadLeftMargin(0.15)
 
 outdir = "/work/pahwagne/RDsTools/comb/signflip_fits/"
 
+#this command is a test for git
 
 def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
 
