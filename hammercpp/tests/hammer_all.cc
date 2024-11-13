@@ -58,13 +58,26 @@ string getBGLVariations(string channel){
 
 // input files
 
-const char* getInputFile(){
+const char* getInputFile (const char* signal){
 
-
-  //TODO; make this command line available
+  // old
   //const char* fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/29_08_2024_09_46_52/all_signals_flatChunk_0.root";
   //const char* fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/09_10_2024_14_41_07/dsstartau_flatChunk_0.root"; 
-  const char* fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/08_10_2024_08_30_13/dstau_flatChunk_0.root";
+  //const char* fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/08_10_2024_08_30_13/dstau_flatChunk_0.root";
+  //const char* fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/15_10_2024_14_06_09/dsmu_flatChunk_0.root";
+
+  const char* fin;
+
+  // use string comparison to compare char* 
+  if      (strcmp(signal, "dsmu") == 0)      fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_18_37_40/dsmu_flatChunk_1.root";
+  else if (strcmp(signal, "dsstarmu") == 0)  fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_21_02_57/dsstarmu_flatChunk_1.root";
+  else if (strcmp(signal, "dstau") == 0)     fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_21_06_31/dstau_flatChunk_1.root";
+  else if (strcmp(signal, "dsstartau") == 0) fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_22_07_42/dsstartau_flatChunk_1.root";
+  else{
+    cout << "Not a valid signal channel, choose dsmu, dsstarmu, dstau or dsstartau. Aborting ...." << endl;  
+    exit(1);
+  }
+
   return fin;
 }
 
@@ -80,7 +93,7 @@ void prepareHammer(Hammer::Hammer& ham, string decay, string hadronicDecay, stri
   ham.setFFInputScheme({{hadronicDecay, inputScheme}});
 
   //define target
-  cout << "scheme" + decay << " " << hadronicDecay << " " << targetScheme << endl;
+  cout << "scheme= " + decay << " " << hadronicDecay << " " << targetScheme << endl;
   ham.addFFScheme( decay , {{hadronicDecay, targetScheme}});
 
   //define units and start run
@@ -183,7 +196,16 @@ vector<double> getVariationWeights(Hammer::Hammer& ham, vector<string> pars, YAM
 
 };
 
-int main(){
+int main(int nargs, char* args[]){
+
+  // check if command line arg is given
+  if (nargs < 2) {
+    //./hammer_all.cc counts already as 1!
+    cout << "Please specify signal: dsmu, dstau, dsstarmu, dsstartau";
+    exit(1);
+  }
+
+
 
   // start setting up hammer
   Hammer::IOBuffer fbBuffer;
@@ -191,32 +213,33 @@ int main(){
   // need one hammer instance for every signal!
   Hammer::Hammer hamDsTau;
   Hammer::Hammer hamDsStarTau;
+  Hammer::Hammer hamDsMu;
+  Hammer::Hammer hamDsStarMu;
   
   // define input/output FF for every signal
   prepareHammer(hamDsTau,     "BsDsTauNu",  "BsDs",  "ISGW2", "BGLVar");
   prepareHammer(hamDsStarTau, "BsDs*TauNu", "BsDs*", "ISGW2", "BGLVar");
+  prepareHammer(hamDsMu,      "BsDsMuNu",   "BsDs",  "CLN",   "BGLVar");
+  prepareHammer(hamDsStarMu,  "BsDs*MuNu",  "BsDs*", "CLN",   "BGLVar");
   
   //get parameter and variations
   vector<string> parsDsTau     = getBGLParameters("BsDs");
   vector<string> parsDsStarTau = getBGLParameters("BsDs*");
+  vector<string> parsDsMu      = getBGLParameters("BsDs");
+  vector<string> parsDsStarMu  = getBGLParameters("BsDs*");
   
   string pathDsTau             = getBGLVariations("BsDs"); 
   string pathDsStarTau         = getBGLVariations("BsDs*"); 
+  string pathDsMu              = getBGLVariations("BsDs"); 
+  string pathDsStarMu          = getBGLVariations("BsDs*"); 
   
   YAML::Node varsDsTau         = YAML::LoadFile(pathDsTau);
   YAML::Node varsDsStarTau     = YAML::LoadFile(pathDsStarTau);
+  YAML::Node varsDsMu          = YAML::LoadFile(pathDsMu);
+  YAML::Node varsDsStarMu      = YAML::LoadFile(pathDsStarMu);
   
-  // Define important strings
-  vector<string> directions = {"up", "down"};
-  
-  // Define dictionary (map) which holds variations
-  map<string, double> variations_central;
-  map<string, double> variations;
-  
-  
-  
-  //load root File
-  unique_ptr<TFile> fin(TFile::Open( getInputFile() ));
+  //load root File for signal given in command line (dsmu, dstau, dsstar mu, dsstar tau)
+  unique_ptr<TFile> fin(TFile::Open( getInputFile(args[1]) ));
   
   if (!fin || fin->IsZombie()) {
     cout << "Could not open file!" << endl;
@@ -238,58 +261,72 @@ int main(){
   double bs_pt          = 0;
   double bs_eta         = 0;
   double bs_phi         = 0;
-  double bs_m           = 5.366;
+  double bs_m           = 0;
   double bs_pdgid       = 0;
+
+  double mu_pt          = 0;
+  double mu_eta         = 0;
+  double mu_phi         = 0;
+  double mu_m           = 0;
+  double mu_pdgid       = 0; 
   
   double tau_pt         = 0;
   double tau_eta        = 0;
   double tau_phi        = 0;
-  double tau_m          = 1.776;
-  int    tau_pdgid      = 0; 
+  double tau_m          = 0;
+  double tau_pdgid      = 0; 
   
   double ds_pt          = 0;
   double ds_eta         = 0;
   double ds_phi         = 0;
-  double ds_m           = 1.968;
+  double ds_m           = 0;
   double ds_charge      = 0;
-  int    ds_pdgid       = 0;
+  double ds_pdgid       = 0;
   
   double dsStar_pt      = 0;
   double dsStar_eta     = 0;
   double dsStar_phi     = 0;
-  double dsStar_m       = 2.112;
-  int    dsStar_pdgid   = 0;
+  double dsStar_m       = 0;
+  double dsStar_pdgid   = 0;
   
-  int    nu_pdgid       = 0; 
+  double nu_pdgid       = 0; 
   
   double sig            = 0;
   double event          = 0;
   
-  tree->SetBranchAddress("genSIM_bs_pt",      &bs_pt);
+  tree->SetBranchAddress("gen_bs_pt",        &bs_pt);
+  tree->SetBranchAddress("gen_bs_eta",       &bs_eta);
+  tree->SetBranchAddress("gen_bs_phi",       &bs_phi);
+  tree->SetBranchAddress("gen_bs_m",         &bs_m);
+  tree->SetBranchAddress("gen_bs_pdgid",     &bs_pdgid);
+
+  tree->SetBranchAddress("gen_mu_pt",        &mu_pt);
+  tree->SetBranchAddress("gen_mu_eta",       &mu_eta);
+  tree->SetBranchAddress("gen_mu_phi",       &mu_phi);
+  tree->SetBranchAddress("gen_mu_m",         &mu_m);
+  tree->SetBranchAddress("gen_mu_pdgid",     &mu_pdgid);
   
-  tree->SetBranchAddress("genSIM_bs_eta",     &bs_eta);
-  tree->SetBranchAddress("genSIM_bs_phi",     &bs_phi);
-  //tree->SetBranchAddress("genSIM_bs_m",     &bs_m);
-  tree->SetBranchAddress("genSIM_bs_pdgid",   &bs_pdgid);
+  tree->SetBranchAddress("gen_tau_pt",       &tau_pt);
+  tree->SetBranchAddress("gen_tau_eta",      &tau_eta);
+  tree->SetBranchAddress("gen_tau_phi",      &tau_phi);
+  tree->SetBranchAddress("gen_tau_m",        &tau_m);
+  tree->SetBranchAddress("gen_tau_pdgid",    &tau_pdgid);
   
-  tree->SetBranchAddress("genSIM_tau_pt",     &tau_pt);
-  tree->SetBranchAddress("genSIM_tau_eta",    &tau_eta);
-  tree->SetBranchAddress("genSIM_tau_phi",    &tau_phi);
-  //tree->SetBranchAddress("genSIM_tau_m",    &tau_m);
+  tree->SetBranchAddress("gen_ds_pt",        &ds_pt);
+  tree->SetBranchAddress("gen_ds_eta",       &ds_eta);
+  tree->SetBranchAddress("gen_ds_phi",       &ds_phi);
+  tree->SetBranchAddress("gen_ds_m",         &ds_m);
+  tree->SetBranchAddress("gen_ds_pdgid",     &ds_pdgid);
+  tree->SetBranchAddress("gen_ds_charge",    &ds_charge);
   
-  tree->SetBranchAddress("genSIM_ds_pt",      &ds_pt);
-  tree->SetBranchAddress("genSIM_ds_eta",     &ds_eta);
-  tree->SetBranchAddress("genSIM_ds_phi",     &ds_phi);
-  //tree->SetBranchAddress("genSIM_m",        &ds_m);
-  tree->SetBranchAddress("genSIM_ds_charge",  &ds_charge);
+  tree->SetBranchAddress("gen_dsStar_pt",    &dsStar_pt);
+  tree->SetBranchAddress("gen_dsStar_eta",   &dsStar_eta);
+  tree->SetBranchAddress("gen_dsStar_phi",   &dsStar_phi);
+  tree->SetBranchAddress("gen_dsStar_m",     &dsStar_m);
+  tree->SetBranchAddress("gen_dsStar_pdgid", &dsStar_pdgid);
   
-  tree->SetBranchAddress("genSIM_dsStar_pt",  &dsStar_pt);
-  tree->SetBranchAddress("genSIM_dsStar_eta", &dsStar_eta);
-  tree->SetBranchAddress("genSIM_dsStar_phi", &dsStar_phi);
-  //tree->SetBranchAddress("genSIM_dsStar_m", &dsStar_m);
-  
-  tree->SetBranchAddress("genSIM_sig",        &sig);
-  tree->SetBranchAddress("event",             &event);
+  tree->SetBranchAddress("gen_sig",          &sig);
+  tree->SetBranchAddress("event",            &event);
   
   cout << "To be processed events: " << maxevents << endl;
   
@@ -308,7 +345,7 @@ int main(){
     cout << " bs pt " << bs_pt << " tau pt " << tau_pt << endl;
   
     // Define the decays for which you set up hammer    
-    set<int> validDecays = {1,11};
+    set<int> validDecays = {0,1,10,11};
   
     if (validDecays.find(int(sig)) == validDecays.end()){
       cout << "Signal ID is " << sig << ", skipping event ..." << endl;
@@ -328,15 +365,30 @@ int main(){
   
     //create the process
     Hammer::Process process;
+ 
+    if (sig == 0){
+      //////////////////////////
+      // Bs -> Ds + Mu + Nu   //
+      //////////////////////////
+
+      lep.pt = mu_pt;     lep.phi = mu_phi;     lep.eta = mu_eta;     lep.mass = mu_m;     lep.pdgid = mu_pdgid;
+      hc.pt  = ds_pt;     hc.phi  = ds_phi;     hc.eta  = ds_eta;     hc.mass  = ds_m;     hc.pdgid  = ds_pdgid;
   
+      // define decay chain, particle p4 and start process 
+      defineDecay(hamDsMu, process, bs, lep, hc);
+  
+      // get central weight
+      double central_weight = getCentralWeight(hamDsMu, parsDsMu, "BsDsMuNu", "BstoDs", "BGLVar");
+     
+      //get variation weights
+      vector<double> weights = getVariationWeights(hamDsMu, parsDsMu, varsDsMu, "BsDsMuNu", "BstoDs", "BGLVar");
+  
+    }
+ 
     if (sig == 1){
       //////////////////////////
       // Bs -> Ds + Tau + Nu  //
       //////////////////////////
-  
-      tau_pdgid    = int(15 * ds_charge);
-      nu_pdgid     = int(16 * -1 * ds_charge);
-      ds_pdgid     = int(431 * ds_charge);
   
       lep.pt = tau_pt;    lep.phi = tau_phi;    lep.eta = tau_eta;    lep.mass = tau_m;    lep.pdgid = tau_pdgid;
       hc.pt  = ds_pt;     hc.phi  = ds_phi;     hc.eta  = ds_eta;     hc.mass  = ds_m;     hc.pdgid  = ds_pdgid;
@@ -351,15 +403,30 @@ int main(){
       vector<double> weights = getVariationWeights(hamDsTau, parsDsTau, varsDsTau, "BsDsTauNu", "BstoDs", "BGLVar");
   
     }
+ 
+    if (sig == 10){
+      //////////////////////////
+      // Bs -> Ds* + Mu + Nu  //
+      //////////////////////////
   
+      lep.pt = mu_pt;     lep.phi = mu_phi;     lep.eta = mu_eta;     lep.mass = mu_m;     lep.pdgid = mu_pdgid;
+      hc.pt  = dsStar_pt; hc.phi  = dsStar_phi; hc.eta  = dsStar_eta; hc.mass  = dsStar_m; hc.pdgid  = dsStar_pdgid;
+  
+      // define decay chain, particle p4 and start process 
+      defineDecay(hamDsStarMu, process, bs, lep, hc);
+  
+      // get central weight
+      double central_weight = getCentralWeight(hamDsStarMu, parsDsStarMu, "BsDs*MuNu", "BstoDs*", "BGLVar");
+     
+      //get variation weights
+      vector<double> weights = getVariationWeights(hamDsStarMu, parsDsStarMu, varsDsStarMu, "BsDs*MuNu", "BstoDs*", "BGLVar");
+  
+    }
+ 
     if (sig == 11){
       //////////////////////////
       // Bs -> Ds* + Tau + Nu //
       //////////////////////////
-  
-      tau_pdgid    = int(15 * ds_charge);
-      nu_pdgid     = int(16 * -1 * ds_charge);
-      dsStar_pdgid = int(433 * ds_charge);
   
       lep.pt = tau_pt;    lep.phi = tau_phi;    lep.eta = tau_eta;    lep.mass = tau_m;    lep.pdgid = tau_pdgid;
       hc.pt  = dsStar_pt; hc.phi  = dsStar_phi; hc.eta  = dsStar_eta; hc.mass  = dsStar_m; hc.pdgid  = dsStar_pdgid;
