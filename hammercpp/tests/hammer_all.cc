@@ -14,6 +14,8 @@
 #include <boost/math/special_functions/sign.hpp>
 //#include "Math/Point3D.h"
 
+#include <ROOT/RDataFrame.hxx>
+
 #include <iostream>
 using namespace std;
 
@@ -56,6 +58,67 @@ string getBGLVariations(string channel){
   return path;
 }
 
+string getCLNParameters(string decay){
+
+  string paras = "{";
+
+  if (decay == "BsDsMuNu"){
+
+    cout << "Adapting scalar HQET --> CLN" << endl;
+
+    // EvtGen settings
+    double evtrho2  = 1.17;
+    double evtv1_1  = 1.074;
+
+    // TODO
+    double d_m      = 1.96834;
+    double b_m      = 5.36688;
+
+    double rC       = d_m / b_m ; 
+    double clnRhoSq = evtrho2;
+    double clnG1    = evtv1_1 * 2 * sqrt(rC) / (1 + rC);
+   
+    paras += "RhoSq: " + to_string(clnRhoSq) + ", ";
+    paras += "G1: "    + to_string(clnG1)    + ", ";
+    paras += "}";    
+
+  }
+
+  else if (decay == "BsDs*MuNu"){
+
+    cout << "Adapting vectorial HQET --> CLN" << endl;
+
+    // EvtGen settings
+    double evtrho2   = 1.16;
+    double evtha1_1  = 0.921;
+    double evtr1     = 1.37;
+    double evtr2     = 0.845;
+ 
+    double clnRhoSq  = evtrho2;
+    double clnF1     = evtha1_1;
+    double clnR1     = evtr1;
+    double clnR2     = evtr2;
+
+    paras += "RhoSq: " + to_string(clnRhoSq) + ", ";
+    paras += "F1: "    + to_string(clnF1)    + ", ";
+    paras += "R1: "    + to_string(clnR1)    + ", ";
+    paras += "R2: "    + to_string(clnR2)    + ", ";
+    paras += "}";    
+
+
+  }
+
+  else{
+
+    cout << "Not a valid decay for getCLNParameters(), choose BsDsMuNu or BsDs*MuNu, aborting ..." << endl;
+    exit(1);
+
+  }
+
+  return paras;
+
+};
+
 // input files
 
 const char* getInputFile (const char* signal){
@@ -91,6 +154,20 @@ void prepareHammer(Hammer::Hammer& ham, string decay, string hadronicDecay, stri
   //set input scheme
   cout << hadronicDecay << " " << inputScheme << " " << endl;
   ham.setFFInputScheme({{hadronicDecay, inputScheme}});
+
+  if (inputScheme == "CLN"){
+
+    // if input scheme is CLN, we have to adapt parameters from HQET (EvtGen) -> CLN (Hammer)
+    string paras = getCLNParameters(decay);
+
+    // string is of type ham.setOptions("BstoDsBGL: {ChiT: 0.01, ChiL: 0.002}");
+    string key;
+
+    if(decay.find("Ds*") != string::npos) key = "BstoDs*CLNVar: " + paras;
+    else                                  key = "BstoDsCLNVar: "  + paras;
+    ham.setOptions(key);
+
+  }
 
   //define target
   cout << "scheme= " + decay << " " << hadronicDecay << " " << targetScheme << endl;
@@ -134,8 +211,6 @@ void defineDecay(Hammer::Hammer& ham, Hammer::Process& pr, particle b, particle 
   // add process
   auto processId = ham.addProcess(pr);
 
-  // process event
-  ham.processEvent();
 
 };
 
@@ -144,10 +219,13 @@ double getCentralWeight(Hammer::Hammer& ham, vector<string> pars, string decay, 
   map<string, double> variations_central;
 
   // Set all variations to zero to first calculate the central weights
-  for(auto name: pars) variations_central["delta_" + name] = 0;
+  for(auto name: pars) variations_central["delta_" + name] = 0.0;
 
   // Set these variations
   ham.setFFEigenvectors(hadronicDecay, targetScheme, variations_central);
+
+  // process event
+  ham.processEvent();
 
   // print central weight
   double weight = ham.getWeight(decay);
@@ -159,36 +237,43 @@ double getCentralWeight(Hammer::Hammer& ham, vector<string> pars, string decay, 
 
 };
 
-vector<double> getVariationWeights(Hammer::Hammer& ham, vector<string> pars, YAML::Node vars, string decay, string hadronicDecay, string targetScheme){
+map<string, double> getVariationWeights(Hammer::Hammer& ham, vector<string> pars, YAML::Node vars, string decay, string hadronicDecay, string targetScheme){
 
   map<string, double> variations;
   vector<string> directions = {"up","down"};
-  vector<double> weights;
+  map<string, double> weights;
 
+  int counter = 0;
   //Now we loop over every parameter, and calculate its up/down variation weight
   for(auto name: pars){
     for(auto dir: directions){
 
-      cout << "setting weights for parameter " << name << "in direction " << dir << endl;
+      //cout << "setting weights for parameter " << name << "in direction " << dir << endl;
 
       //now for parameter <name> in direction <dir> we set the variations:
       for(auto varPar: pars){
 
         variations["delta_"+varPar] = vars[name][dir]["delta_" +varPar].as<double>();
-        cout << "delta_"+varPar+" has value " << vars[name][dir]["delta_" +varPar].as<double>() <<endl;
+        //cout << "delta_"+varPar+" has value " << vars[name][dir]["delta_" +varPar].as<double>() <<endl;
 
       }
 
-      printVariations(variations);
+      //printVariations(variations);
 
       ham.setFFEigenvectors(hadronicDecay, targetScheme, variations);
+
+      // process event
+      ham.processEvent();
+
       double weight = ham.getWeight(decay);
-      cout << " ====> Gives variation weight delta_" +name+dir + " " << weight <<endl;
-  
-      weights.push_back(weight);
+      //cout << " ====> Gives variation weight delta_" +name+dir + " " << weight <<endl;
+ 
+      cout << "key is " << "e"+to_string(counter)+"_"+dir << endl; 
+      weights["e"+to_string(counter)+"_"+dir] = weight;
 
     }
 
+    ++counter;
 
   }
 
@@ -252,11 +337,32 @@ int main(int nargs, char* args[]){
     cout << "Could not open tree!" << endl;
     exit(-1);
   }
-  
-  
+
+  //output root file
+  //TFile fout("test.root", "RECREATE");
+
+  // copy the old tree
+  //TTree* treeNew = tree->CloneTree(1);
+
+  // for the weights
+  //float central_w_leaf;
+  //std::vector<float> var_w_leaf;
+ 
+  // define new branches
+  //treeNew->Branch("var_w_leaf",     &var_w_leaf); 
+  //treeNew->Branch("central_w_leaf", &central_w_leaf, "central_w_leaf/F"); 
+
   //max nr of events to loop over
   int maxevents = 1;
-  
+
+  //define a place holder for the central_weights
+  map<int, double> central_weights;
+  //and one for the variational weights (nested map, since we have several parameters)
+  map<int, map<string,double>> var_weights;
+
+  ROOT::RDataFrame df_full("tree",  getInputFile(args[1]) );
+  auto df = df_full.Range(0,maxevents);
+ 
   //get pt, eta, phi of involved particles
   double bs_pt          = 0;
   double bs_eta         = 0;
@@ -337,12 +443,14 @@ int main(int nargs, char* args[]){
     //start event
     hamDsTau.initEvent();
     hamDsStarTau.initEvent();
+    hamDsMu.initEvent();
+    hamDsStarMu.initEvent();
   
     // load entry i into memory 
     tree->GetEntry(i);
   
-    cout << "NEW EVENT with id " << int(sig) << endl;
-    cout << " bs pt " << bs_pt << " tau pt " << tau_pt << endl;
+    cout << " --------- NEW EVENT of signal " << int(sig) << " -------------" << endl;
+    cout << " bs pt " << bs_pt << " mu pt " << mu_pt << endl;
   
     // Define the decays for which you set up hammer    
     set<int> validDecays = {0,1,10,11};
@@ -365,6 +473,10 @@ int main(int nargs, char* args[]){
   
     //create the process
     Hammer::Process process;
+
+    //placeholders for weights
+    double central_weight;
+    map<string, double> weights;
  
     if (sig == 0){
       //////////////////////////
@@ -378,10 +490,10 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsMu, process, bs, lep, hc);
   
       // get central weight
-      double central_weight = getCentralWeight(hamDsMu, parsDsMu, "BsDsMuNu", "BstoDs", "BGLVar");
+      central_weight = getCentralWeight(hamDsMu, parsDsMu, "BsDsMuNu", "BstoDs", "BGLVar");
      
       //get variation weights
-      vector<double> weights = getVariationWeights(hamDsMu, parsDsMu, varsDsMu, "BsDsMuNu", "BstoDs", "BGLVar");
+      weights = getVariationWeights(hamDsMu, parsDsMu, varsDsMu, "BsDsMuNu", "BstoDs", "BGLVar");
   
     }
  
@@ -397,10 +509,10 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsTau, process, bs, lep, hc);
   
       // get central weight
-      double central_weight = getCentralWeight(hamDsTau, parsDsTau, "BsDsTauNu", "BstoDs", "BGLVar");
-     
+      central_weight = getCentralWeight(hamDsTau, parsDsTau, "BsDsTauNu", "BstoDs", "BGLVar");
+    
       //get variation weights
-      vector<double> weights = getVariationWeights(hamDsTau, parsDsTau, varsDsTau, "BsDsTauNu", "BstoDs", "BGLVar");
+      weights = getVariationWeights(hamDsTau, parsDsTau, varsDsTau, "BsDsTauNu", "BstoDs", "BGLVar");
   
     }
  
@@ -416,10 +528,10 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsStarMu, process, bs, lep, hc);
   
       // get central weight
-      double central_weight = getCentralWeight(hamDsStarMu, parsDsStarMu, "BsDs*MuNu", "BstoDs*", "BGLVar");
-     
+      central_weight = getCentralWeight(hamDsStarMu, parsDsStarMu, "BsDs*MuNu", "BstoDs*", "BGLVar");
+    
       //get variation weights
-      vector<double> weights = getVariationWeights(hamDsStarMu, parsDsStarMu, varsDsStarMu, "BsDs*MuNu", "BstoDs*", "BGLVar");
+      weights = getVariationWeights(hamDsStarMu, parsDsStarMu, varsDsStarMu, "BsDs*MuNu", "BstoDs*", "BGLVar");
   
     }
  
@@ -435,14 +547,57 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsStarTau, process, bs, lep, hc);
   
       // get central weight
-      double central_weight = getCentralWeight(hamDsStarTau, parsDsStarTau, "BsDs*TauNu", "BstoDs*", "BGLVar");
-     
+      central_weight = getCentralWeight(hamDsStarTau, parsDsStarTau, "BsDs*TauNu", "BstoDs*", "BGLVar");
+    
       //get variation weights
-      vector<double> weights = getVariationWeights(hamDsStarTau, parsDsStarTau, varsDsStarTau, "BsDs*TauNu", "BstoDs*", "BGLVar");
+      weights = getVariationWeights(hamDsStarTau, parsDsStarTau, varsDsStarTau, "BsDs*TauNu", "BstoDs*", "BGLVar");
   
     } //closing if
-  
+
+    // assign it to tree variable
+    //central_w_leaf = central_weight;
+    // fill it
+    //cout << "filling now" << endl;
+    //treeNew->Fill();
+  cout << " ====> saving " << central_weight << " for event nr " << int(event) << endl; 
+  central_weights[int(event)] = central_weight; 
+  var_weights[int(event)]     = weights; 
+
   } // closing event loop
+ 
+  //save central weights 
+  df = df.Define("central_w", [central_weights](double nr) { return central_weights.at(int(nr)); }, {"event"});
+
+  //save variation weights
+
+  // first, get the maximum of the nr of parameters of all channels
+  int n_vars = max({int(parsDsMu.size()), int(parsDsStarMu.size()), int(parsDsTau.size()), int(parsDsStarTau.size())}); 
+
+  
+  vector<string> directions = {"up","down"};
+  int counter = 0;
+
+  for(size_t i = 0; i < n_vars; ++i){
+    for(auto dir:directions){
+
+      string key = "e"+to_string(counter)+"_"+dir;
+      cout << key << endl;
+ 
+      df = df.Define(key, [counter, key, var_weights](double nr) { 
+        if (int(var_weights.at(int(nr)).size()) < counter ) return -1.0; 
+        else return var_weights.at(int(nr)).at(key); 
+        }, {"event"});
+
+    }
+    ++counter;
+  }
+
+  cout << "max number of paras is: " << n_vars << endl;
+
+  df.Snapshot("tree", "test_rdf.root");
+
+  //treeNew->Write();
+  //fout.Close();
 
 } //closing main
 

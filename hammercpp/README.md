@@ -30,3 +30,13 @@ make
 ctest -V      # test the installation (optional)
 make install
 ```
+
+## Change from CLN to HQET2 (used in EvtGen)
+
+The correspondance between Hammers CLN and EvtGens HQET2 parameters is defined in ```getCLNParameters``` in ```hammer_all.cc```. Since EvtGen sets ```f0m``` to zero (corresponds to ```Fz``` in Hammer), we have to modify the hammer source code in https://gitlab.com/mpapucci/Hammer/-/blob/master/src/FormFactors/CLN/FFBtoDCLN.cc?ref_type=heads#L104:
+
+```
+const double Fz = 0.0; 
+```
+
+
