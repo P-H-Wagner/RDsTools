@@ -8,6 +8,11 @@
 #include <TStyle.h>
 #include <yaml-cpp/yaml.h>
 
+/////////////////////////////////////////////////////////////////////////////
+// Command line args:                                                      //
+// args[1] = BGLVar (i.e. the target model over which we want to average)  //
+/////////////////////////////////////////////////////////////////////////////
+
 using namespace std;
 
 // define input files
@@ -29,42 +34,67 @@ int main(int nargs, char* args[]){
 
   gStyle->SetOptStat(0);
 
-  //variable for which we want to compute the average weight
-  string var(args[2]); //f.e. q2
+  ROOT::RDataFrame* df_dsMu_tot     = nullptr;
+  ROOT::RDataFrame* df_dsTau_tot    = nullptr;
+  ROOT::RDataFrame* df_dsStarMu_tot = nullptr;
+  ROOT::RDataFrame* df_dsStarTau_tot= nullptr;
 
-  //load bins, start and stop (produced with histModels.py)
-  YAML::Node settings = YAML::LoadFile("average_models.yaml");
-  int bins   = settings[var]["bins"].as<int>();
-  double min = settings[var]["xmin"].as<double>();
-  double max = settings[var]["xmax"].as<double>();
-
-  cout << getInputFile(args[1]) << endl;
-
-  ROOT::RDataFrame* df = nullptr;
-
+  // load gen production file
   try{
-    df = new ROOT::RDataFrame("tree",  getInputFile(args[1]).c_str());  
+    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1])).c_str());  
+    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1])).c_str());  
+    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1])).c_str());  
+    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1])).c_str());  
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
+
+  auto df_dsMu       = df_dsMu_tot     ->Filter("gen_sig == 0").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsTau      = df_dsTau_tot    ->Filter("gen_sig == 1").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsStarMu   = df_dsStarMu_tot ->Filter("gen_sig == 10").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsStarTau  = df_dsStarTau_tot->Filter("gen_sig == 11").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
+
 
   //where to save the average weights
   YAML::Node average_weights;
 
-  //auto h                = df->Histo1D({"h", "", bins, min, max}, var, "central_w");
-  float average_central = df->Mean("central_w").GetValue(); 
+  // access central weights and take average
+  float average_central_dsmu      = df_dsMu.Mean("central_w").GetValue(); 
+  float average_central_dstau     = df_dsTau.Mean("central_w").GetValue(); 
+  float average_central_dsstarmu  = df_dsStarMu.Mean("central_w").GetValue(); 
+  float average_central_dsstartau = df_dsStarTau.Mean("central_w").GetValue(); 
 
-  cout << "Integral of weighted central_w is: " << average_central;
-  average_weights["central_w"] = average_central; 
+  cout << "Average of dsmu weighted central_w is: "      << average_central_dsmu;
+  cout << "Average of dstau weighted central_w is: "     << average_central_dstau;
+  cout << "Average of dsstarmu weighted central_w is: "  << average_central_dsstarmu;
+  cout << "Average of dsstartau weighted central_w is: " << average_central_dsstartau;
 
+  average_weights["central_w_dsmu"]      = average_central_dsmu; 
+  average_weights["central_w_dstau"]     = average_central_dstau; 
+  average_weights["central_w_dsstarmu"]  = average_central_dsstarmu; 
+  average_weights["central_w_dsstartau"] = average_central_dsstartau; 
+
+  // access variation weights and take average
   vector<string> directions = {"up","down"};
+
   for (size_t i = 0; i < 10; i++){
     for(auto dir:directions){
-      //auto h_dummy = df->Histo1D({"h", "", bins, min, max}, var, "e"+to_string(i)+"_"+dir); 
-      float average_var =  df->Mean("e"+to_string(i)+"_"+dir).GetValue();//h_dummy.GetPtr()->Integral();
-      cout << "\nIntegral of weighted e" << i << "_"<<dir<<" is: \n" << average_var;
-      average_weights["e"+to_string(i)+"_"+dir] = average_var;
-    }
+      float average_var_dsMu       =  df_dsMu.Mean("e"+to_string(i)+"_"+dir).GetValue();
+      float average_var_dsTau      =  df_dsTau.Mean("e"+to_string(i)+"_"+dir).GetValue();
+      float average_var_dsStarMu   =  df_dsStarMu.Mean("e"+to_string(i)+"_"+dir).GetValue();
+      float average_var_dsStarTau  =  df_dsStarTau.Mean("e"+to_string(i)+"_"+dir).GetValue();
 
+      cout << "\nAverage of dsmu variation weight " << i << "_"<<dir<<" is: \n" << average_var_dsMu;
+      cout << "\nAverage of dstau variation weight " << i << "_"<<dir<<" is: \n" << average_var_dsTau;
+      cout << "\nAverage of dsstarmu variation weight " << i << "_"<<dir<<" is: \n" << average_var_dsStarMu;
+      cout << "\nAverage of dsstartau variation weight " << i << "_"<<dir<<" is: \n" << average_var_dsStarTau;
+
+
+      average_weights["e"+to_string(i)+"_"+dir+"_dsmu"] = average_var_dsMu;
+      average_weights["e"+to_string(i)+"_"+dir+"_dstau"] = average_var_dsTau;
+      average_weights["e"+to_string(i)+"_"+dir+"_dsstarmu"] = average_var_dsStarMu;
+      average_weights["e"+to_string(i)+"_"+dir+"_dsstartau"] = average_var_dsStarTau;
+
+    }
   }
  
   //save it

@@ -42,7 +42,7 @@ void printVariations(const std::map<std::string, double>& variations) {
 }
 
 // get BGL parameter names
-vector<string> getBGLParameters(string channel){
+vector<string> getBGLNames(string channel){
 
   vector<string> pars;
 
@@ -62,11 +62,78 @@ string getBGLVariations(string channel){
   return path;
 }
 
+// get BGL parameters to set via setOptions()
+
+string getBGLParameters(string decay){
+
+  string paras = "{";
+
+  if ((decay == "BsDsMuNu") or (decay == "BsDsTauNu")){
+    cout << "Setting scalar BGL central values" << endl;
+
+    // TODO: import from yaml file
+    double a00 = 0.052255946347001495;
+    double a01 = -0.16027634967890908;
+    double a02 = 0.014141836205563255;
+    double a03 = 0.0;
+    double ap0 = 0.0017893827864468802;
+    double ap1 = -0.004691380424494185;
+    double ap2 = -0.015708534616906505;
+    double ap3 = 0.0;
+
+    paras += "a00: " + to_string(a00) + ", ";
+    paras += "a01: " + to_string(a01) + ", ";
+    paras += "a02: " + to_string(a02) + ", ";
+    paras += "a03: " + to_string(a03) + ", ";
+    paras += "ap0: " + to_string(ap0) + ", ";
+    paras += "ap1: " + to_string(ap1) + ", ";
+    paras += "ap2: " + to_string(ap2) + ", ";
+    paras += "ap3: " + to_string(ap3) + ", ";
+    paras += "}";    
+
+  }
+
+  else{
+    cout << "Setting vector BGL central values" << endl;
+
+    // TODO: import from yaml file
+    double a0 = 0.004605664681641084; 
+    double a1 = -0.002140593040599278; 
+    double a2 = 0.15566982447466055;
+    double b0 = 0.003303529928953319; 
+    double b1 = -0.004284980385058838;
+    double b2 = 0.17791644334552834;
+    //double c0 = missing in hammer
+    double c1 = -0.0018867020644757423;  
+    double c2 = 0.022525216948547932;
+    double d0 = 0.03980443778007538;
+    double d1 = -0.1872442367469107; 
+    //double d2 = missing in hammer
+
+    paras += "a0: " + to_string(a0) + ", ";
+    paras += "a1: " + to_string(a1) + ", ";
+    paras += "a2: " + to_string(a2) + ", ";
+    paras += "b0: " + to_string(b0) + ", ";
+    paras += "b1: " + to_string(b1) + ", ";
+    paras += "b2: " + to_string(b2) + ", ";
+    paras += "c1: " + to_string(c1) + ", ";
+    paras += "c2: " + to_string(c2) + ", ";
+    paras += "d0: " + to_string(d0) + ", ";
+    paras += "d1: " + to_string(d1) + ", ";
+    paras += "}";    
+
+  }
+
+  return paras;
+
+}
+
+// get CLN parameters to set via setOptions()
 string getCLNParameters(string decay){
 
   string paras = "{";
 
-  if (decay == "BsDsMuNu"){
+  if ((decay == "BsDsMuNu") or (decay == "BsDsTauNu")){
 
     cout << "Adapting scalar HQET --> CLN" << endl;
 
@@ -88,7 +155,7 @@ string getCLNParameters(string decay){
 
   }
 
-  else if (decay == "BsDs*MuNu"){
+  else if ((decay == "BsDs*MuNu") or (decay == "BsDs*TauNu")){
 
     cout << "Adapting vectorial HQET --> CLN" << endl;
 
@@ -167,13 +234,10 @@ const char* getInputFile(const char* signal, const char* file){
 
   else if (strcmp(signal, "signal") == 0){
 
-    fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/26_07_2024_14_46_03/" + file_str;
+    fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/sig_26Sep2024_07h46m21s_cons/" + file_str;
     fin = fin_str.c_str();
 
   }
-  //else if (strcmp(signal, "dsstarmu") == 0)  fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_21_02_57/*";
-  //else if (strcmp(signal, "dstau") == 0)     fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_21_06_31/*";
-  //else if (strcmp(signal, "dsstartau") == 0) fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/12_11_2024_22_07_42/*";
   else{
     cout << "Not a valid signal channel, choose dsmu, dsstarmu, dstau or dsstartau. Aborting ...." << endl;  
     exit(1);
@@ -190,10 +254,17 @@ void prepareHammer(Hammer::Hammer& ham, string decay, string hadronicDecay, stri
   ham.includeDecay(decay);
   
   //set input scheme
-  cout << hadronicDecay << " " << inputScheme << " " << endl;
+  cout << "===> Input scheme of " << decay  << " is " << inputScheme << " " << endl;
   ham.addFFScheme("schemeInput", {{hadronicDecay, inputScheme}});
   ham.setFFInputScheme({{hadronicDecay, inputScheme}});
 
+  //define target
+  cout << "===> Target scheme of " + decay << " is " << targetScheme << endl;
+  ham.addFFScheme( "scheme"+decay , {{hadronicDecay, targetScheme}});
+
+  //////////////////////////////
+  // Adapt central CLN values //
+  //////////////////////////////
   if ((inputScheme == "CLN") || (targetScheme == "CLN")){
 
     // if input scheme is CLN, we have to adapt parameters from HQET (EvtGen) -> CLN (Hammer)
@@ -204,14 +275,26 @@ void prepareHammer(Hammer::Hammer& ham, string decay, string hadronicDecay, stri
 
     if(decay.find("Ds*") != string::npos) key = "BstoDs*CLN: " + paras;
     else                                  key = "BstoDsCLN: "  + paras;
-    cout << "the key is: " << key << endl;
     ham.setOptions(key);
 
   }
 
-  //define target
-  cout << "scheme= " + decay << " " << hadronicDecay << " " << targetScheme << endl;
-  ham.addFFScheme( "scheme"+decay , {{hadronicDecay, targetScheme}});
+  //////////////////////////////
+  // Adapt central BGL values //
+  //////////////////////////////
+  if ((inputScheme == "BGLVar") || (targetScheme == "BGLVar")){
+
+    // if input scheme is CLN, we have to adapt parameters from HQET (EvtGen) -> CLN (Hammer)
+    string paras = getBGLParameters(decay);
+
+    // string is of type ham.setOptions("BstoDsBGL: {ChiT: 0.01, ChiL: 0.002}");
+    string key;
+
+    if(decay.find("Ds*") != string::npos) key = "BstoDs*BGLVar: " + paras;
+    else                                  key = "BstoDsBGLVar: "  + paras;
+    ham.setOptions(key);
+
+  }
 
   //define units and start run
   ham.setUnits("GeV");
@@ -344,16 +427,38 @@ int main(int nargs, char* args[]){
   Hammer::Hammer hamDsStarMu;
   Hammer::Hammer hamDsTau;
   Hammer::Hammer hamDsStarTau;
-  
+ 
+  //
+  string inputDsMu      = "CLN"; 
+  string inputDsTau     = "ISGW2"; 
+  string inputDsStarMu  = "CLN"; 
+  string inputDsStarTau = "ISGW2"; 
+
+  if (string(args[2]) != "default"){
+    inputDsMu       = args[2];
+    inputDsTau      = args[2];
+    inputDsStarMu   = args[2];
+    inputDsStarTau  = args[2];
+
+  }
+
+  cout << "Input scheme is: " << inputDsStarMu << endl;
+ 
   // define input/output FF for every signal
-  prepareHammer(hamDsMu,      "BsDsMuNu",   "BsDs",  args[2],   args[3]);
+  prepareHammer(hamDsMu,          "BsDsMuNu",       "BsDs",   inputDsMu,       args[3]);
+  prepareHammer(hamDsStarMu,      "BsDs*MuNu",      "BsDs*",  inputDsStarMu,   args[3]);
+  prepareHammer(hamDsTau,         "BsDsTauNu",      "BsDs",   inputDsTau,      args[3]);
+  prepareHammer(hamDsStarTau,     "BsDs*TauNu",     "BsDs*",  inputDsStarTau,  args[3]);
   
   //get parameter and variations
-  vector<string> parsDsMu      = getBGLParameters("BsDs");
+  vector<string> parsDs        = getBGLNames("BsDs");
+  vector<string> parsDsStar    = getBGLNames("BsDs*");
   
-  string pathDsMu              = getBGLVariations("BsDs"); 
+  string pathDs                = getBGLVariations("BsDs"); 
+  string pathDsStar            = getBGLVariations("BsDs*"); 
   
-  YAML::Node varsDsMu          = YAML::LoadFile(pathDsMu);
+  YAML::Node varsDs            = YAML::LoadFile(pathDs);
+  YAML::Node varsDsStar        = YAML::LoadFile(pathDsStar);
   
   //load root File for signal given in command line (dsmu, dstau, dsstar mu, dsstar tau)
   TChain* tree = new TChain("tree");
@@ -514,7 +619,7 @@ int main(int nargs, char* args[]){
   outputTree->Branch("e9_down", &e9_down, "e9_down/F");
 
   // get max nr of parameters
-  int n_vars = max({int(parsDsMu.size())});
+  int n_vars = max({int(parsDs.size()),int(parsDsStar.size()) });
  
   for(size_t i = 0; i < maxevents; ++i){
   
@@ -522,6 +627,9 @@ int main(int nargs, char* args[]){
   
     //start event
     hamDsMu.initEvent();
+    hamDsStarMu.initEvent();
+    hamDsTau.initEvent();
+    hamDsStarTau.initEvent();
   
     // load entry i into memory 
     tree->GetEntry(i);
@@ -530,7 +638,7 @@ int main(int nargs, char* args[]){
     //cout << " bs pt " << bs_pt << " mu pt " << mu_pt << endl;
   
     // Define the decays for which you set up hammer    
-    set<int> validDecays = {0};
+    set<int> validDecays = {0,1,10,11};
   
     if (validDecays.find(int(sig)) == validDecays.end()){
       //cout << "Signal ID is " << sig << ", skipping event ..." << event << endl;
@@ -578,12 +686,12 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsMu, process, bs, lep, hc);
   
       // get central weight
-      central_weight = getCentralWeight(hamDsMu, parsDsMu, "BsDsMuNu", "BstoDs", args[2]);
+      central_weight = getCentralWeight(hamDsMu, parsDs, "BsDsMuNu", "BstoDs", args[2]);
 
       if (strcmp(args[3],"BGLVar") == 0){
        
         //get variation weights
-        getVariationWeights(hamDsMu, parsDsMu, varsDsMu, "BsDsMuNu", "BstoDs", "BGLVar", weights);
+        getVariationWeights(hamDsMu, parsDs, varsDs, "BsDsMuNu", "BstoDs", "BGLVar", weights);
 
       } 
  
@@ -591,6 +699,85 @@ int main(int nargs, char* args[]){
       //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
     }
  
+    if (sig == 1){
+      //////////////////////////
+      // Bs -> Ds + Tau+ Nu   //
+      //////////////////////////
+
+      lep.pt = tau_pt;     lep.phi = tau_phi;     lep.eta = tau_eta;     lep.mass = tau_m;     lep.pdgid = tau_pdgid;
+      hc.pt  = ds_pt;     hc.phi  = ds_phi;     hc.eta  = ds_eta;     hc.mass  = ds_m;     hc.pdgid  = ds_pdgid;
+  
+      // define decay chain, particle p4 and start process 
+      defineDecay(hamDsTau, process, bs, lep, hc);
+  
+      // get central weight
+      central_weight = getCentralWeight(hamDsTau, parsDs, "BsDsTauNu", "BstoDs", args[2]);
+
+      if (strcmp(args[3],"BGLVar") == 0){
+       
+        //get variation weights
+        getVariationWeights(hamDsTau, parsDs, varsDs, "BsDsTauNu", "BstoDs", "BGLVar", weights);
+
+      } 
+ 
+      //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
+      //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
+    }
+
+    if (sig == 10){
+      //////////////////////////
+      // Bs -> Ds* + Mu+ Nu   //
+      //////////////////////////
+
+      lep.pt = mu_pt;     lep.phi = mu_phi;     lep.eta = mu_eta;     lep.mass = mu_m;     lep.pdgid = mu_pdgid;
+      hc.pt  = dsStar_pt;     hc.phi  = dsStar_phi;     hc.eta  = dsStar_eta;     hc.mass  = dsStar_m;     hc.pdgid  = dsStar_pdgid;
+  
+      // define decay chain, particle p4 and start process 
+      defineDecay(hamDsStarMu, process, bs, lep, hc);
+  
+
+      // get central weight
+      central_weight = getCentralWeight(hamDsStarMu, parsDsStar, "BsDs*MuNu", "BstoDs*", args[2]);
+
+      if (strcmp(args[3],"BGLVar") == 0){
+       
+        //get variation weights
+        getVariationWeights(hamDsStarMu, parsDsStar, varsDsStar, "BsDs*MuNu", "BstoDs*", "BGLVar", weights);
+
+      } 
+ 
+      //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
+      //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
+    
+     }
+
+    if (sig == 11){
+      //////////////////////////
+      // Bs -> Ds* + Tau+ Nu  //
+      //////////////////////////
+
+      lep.pt = tau_pt;     lep.phi = tau_phi;     lep.eta = tau_eta;     lep.mass = tau_m;     lep.pdgid = tau_pdgid;
+      hc.pt  = dsStar_pt;     hc.phi  = dsStar_phi;     hc.eta  = dsStar_eta;     hc.mass  = dsStar_m;     hc.pdgid  = dsStar_pdgid;
+  
+      // define decay chain, particle p4 and start process 
+      defineDecay(hamDsStarTau, process, bs, lep, hc);
+  
+      // get central weight
+      central_weight = getCentralWeight(hamDsStarTau, parsDsStar, "BsDs*TauNu", "BstoDs*", args[2]);
+
+      if (strcmp(args[3],"BGLVar") == 0){
+       
+        //get variation weights
+        getVariationWeights(hamDsStarTau, parsDsStar, varsDsStar, "BsDs*TauNu", "BstoDs*", "BGLVar", weights);
+
+      } 
+ 
+      //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
+      //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
+    }
+
+
+
     central_w = central_weight;
     e0_up     = weights["e0_up"]  ; 
     e0_down   = weights["e0_down"];
@@ -623,47 +810,7 @@ int main(int nargs, char* args[]){
   outputTree->Write();
   outputFile.Close();
  
-  //save central weights 
-  //df = df.Define("central_w", [central_weights](double nr, double id) { 
-
-  //  long long nr_int = static_cast<long long>(nr);
-  //  //cout << "i am at event: " << nr_int << " and  signal ID is: " << int(id) << " and I save " << central_weights.at(nr_int) << endl;
-  //  return central_weights.at(nr_int); 
-  //}, {"event", "gen_sig"});
-
-  //save variation weights
-
-  // first, get the maximum of the nr of parameters of all channels
-  /*
-  int n_vars = max({int(parsDsMu.size()), int(parsDsStarMu.size()), int(parsDsTau.size()), int(parsDsStarTau.size())}); 
-
-  
-  vector<string> directions = {"up","down"};
-  int counter = 0;
-
-  for(size_t i = 0; i < n_vars; ++i){
-    for(auto dir:directions){
-
-      string key = "e"+to_string(counter)+"_"+dir;
-      //cout << key << endl;
-
-      df = df.Define(key, [counter, key, var_weights](double nr) { 
-
-        if (int(var_weights.at(int(nr)).size() / 2) <= counter ) {
-          //cout << "returning -1" << endl; 
-          return -1.0;} 
-        else { 
-          //cout << "accessing weight" << endl; 
-          return var_weights.at(int(nr)).at(key);} 
-        }, {"event"});
-
-    }
-    ++counter;
-  }
-  */
-  //cout << "max number of paras is: " << n_vars << endl;
   cout << "saving to: " << "/scratch/pahwagne/hammer/" + string(args[1]) + "_circ.root" << endl;
-  //df.Snapshot("tree", "/scratch/pahwagne/hammer/" + string(args[1]) + "_circ.root");
   //df.Snapshot("tree", string(args[1]) + "_circ.root");
 
 

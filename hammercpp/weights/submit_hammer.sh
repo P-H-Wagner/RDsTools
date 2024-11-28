@@ -9,10 +9,11 @@ export nmax=$4
 
 mkdir -p /work/pahwagne/RDsTools/hammercpp/weights/${channel}/
 mkdir -p /pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/${channel}_${target}/ 
+
 make
 
 if [ "$channel" = "signal" ]; then
-    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/26_07_2024_14_46_03"
+    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/sig_26Sep2024_07h46m21s_cons"
     echo "signal"
 fi
 
@@ -26,13 +27,29 @@ if [ "$channel" = "dsmu_isgw2" ]; then
     echo "dsmu_isgw2"
 fi
 
+if [ "$channel" = "dsstarmu" ]; then
+    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/15_11_2024_09_43_21"
+    echo "dsstarmu"
+fi
+
+if [ "$channel" = "dstau" ]; then
+    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/15_11_2024_13_50_26"
+    echo "dstau"
+fi
+
+if [ "$channel" = "dsstartau" ]; then
+    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/16_11_2024_09_45_34"
+    echo "dsstartau"
+fi
+
 #write submitter file for each chunk
 
 counter=0
 
-
 for file in "$path"/*; do
 
+    echo $file
+    echo $path
     
     if (( nmax >= 0 && counter > nmax - 1)); then
         echo "n > nmax, breaking the loop"
