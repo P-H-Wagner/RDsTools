@@ -10,6 +10,7 @@ conda create -n hammerpp root=6.22.6
 conda activate hammercpp
 conda install cmake=3.20.2
 conda install boost=1.76.0 #Dont pick a newer boost version than this!
+conda install -c conda-forge eigen
 ```
 
 3. Set up hammer itself. We keep all examples, force the yamlcpp and hepmc installation as we don't have them, and install hammer with root. Choose static libraries ```(-DBUILD_SHARED_LIBS=OFF)``` over shared ones:
