@@ -23,6 +23,9 @@
 
 #include "bglSettings.h"
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 using namespace std;
 
 // before the event loop, lets get the lattice corr and cov matrix!
@@ -138,7 +141,14 @@ map<string, map<string, map<string,double>>> getBGLSettings(Hammer::Hammer& ham,
     //cout << "d after: " << d.Pt() << endl;
     double pPrime2 = d.Vect().Mag2();   
     //cout << "pPrime2 is: " << pPrime2 <<  endl;
+   
+    double md      = 1.96834;
+    double mb      = 5.36688;
  
+    double edp = (mb*mb+md*md-q2)/(2*mb);  
+    double momsq = edp*edp-md*md;
+    //cout << "momq2 is: " << momsq <<  endl;
+
     // get change of basis
     Eigen::MatrixXd baseChange     = getBaseChangeMatrix(q2, pPrime2, false);
 
@@ -354,18 +364,8 @@ void prepareHammer(Hammer::Hammer& ham, string decay, string hadronicDecay, stri
 
   if ((inputScheme == "BGLVar") || (targetScheme == "BGLVar")){
 
-    //string paras = "{"; 
-    //paras += "avec: [0.026667, -0.048823, -0.001545],";
-    //paras += "bvec: [0.413130, -0.075637, -0.250136],";
-    //paras += "cvec: [1.206462, 2.327528],";
-    //paras += "dvec: [0.209480, -0.861254]";
- 
-    //paras += "}";
-
-    //string key = "BstoDs*BGLVar: " + paras;
-    //ham.setOptions(key);
     
-    // if input scheme is BGL, we want to adapt parameter naming from a00, .. -> e0, .. 
+    // if input scheme is BGL, we want to adapt eigenvector naming from a00, .. -> e0, .. 
     setBGLNames(ham, hadronicDecay);   
 
   }
@@ -387,9 +387,6 @@ void defineDecay(Hammer::Hammer& ham, Hammer::Process& pr, particle b, particle 
   //set pdg id of neutrino:
   int nu_pdgid = (abs(l.pdgid) + 1) * (-1) * boost::math::sign(l.pdgid);
   //cout << int(b.pdgid) << " " << int(l.pdgid) << " " << int(h.pdgid) << " " << int(nu_pdgid) << endl;
-  //cout << "lepton " << l.pt << l.eta << l.phi << endl;
-  //cout << "b " << b.pt << b.eta << b.phi << endl;
-  //cout << "h " << h.pt << h.eta << h.phi << endl;
 
 
   Hammer::Particle bPar(  { bTlv.e(),  bTlv.px(),  bTlv.py(),  bTlv.pz()},  b.pdgid) ;
@@ -542,7 +539,7 @@ int main(int nargs, char* args[]){
   Hammer::Hammer hamDsTau;
   Hammer::Hammer hamDsStarTau;
  
-  //
+  //default models 
   string inputDsMu      = "CLN"; 
   string inputDsTau     = "ISGW2"; 
   string inputDsStarMu  = "CLN"; 
@@ -678,7 +675,7 @@ int main(int nargs, char* args[]){
   tree->SetBranchAddress("event",            &event);
   
   cout << "To be processed events: " << maxevents << endl;
- 
+
   string dest_str = "/scratch/pahwagne/hammer/" + string(args[1]) + "_" + string(args[3]) + "_" + string(args[5]) + ".root";  
   //string dest_str = string(args[1]) + "_circ.root";  
   const char* dest = dest_str.c_str();
@@ -688,6 +685,13 @@ int main(int nargs, char* args[]){
   TFile outputFile(dest, "RECREATE");
   TTree* outputTree = tree->CloneTree(0);
 
+  if (access(dest_str.c_str(), W_OK) == 0) {
+        std::cout << "Write permission granted for: " << dest_str << std::endl;
+    } else {
+        std::cerr << "Write permission denied for: " << dest_str << std::endl;
+        std::cerr << "Error: " << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE); // Exit if permission is not granted
+  }
 
   double central_w;
   double e1_up;
@@ -950,8 +954,9 @@ int main(int nargs, char* args[]){
 
   outputTree->Write();
   outputFile.Close();
- 
-  cout << "saving to: " << "/scratch/pahwagne/hammer/" + string(args[1]) + "_circ.root" << endl;
+
+  cout << "saved!" << endl; 
+  //cout << "saving to: " << "/scratch/pahwagne/hammer/" + string(args[1]) + "_circ.root" << endl;
   //df.Snapshot("tree", string(args[1]) + "_circ.root");
 
 

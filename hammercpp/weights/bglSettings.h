@@ -80,7 +80,7 @@ tuple<Eigen::MatrixXd, Eigen::MatrixXd> getCorrCovMatrix(bool print){
 
 
   vector< vector <double>> a2_v = {
-      { 0.01155 , -0.025, -0.000755, 3.602e-05},
+      { 0.01155 , -0.025, -0.000755, -3.602e-05},
       { -0.002784, 0.04992, 0.001724 , 8.523e-05},
       {0.003861, -0.002808, 0.0001025, 7.013e-06},
       {0.0008794, 4.2e-05, 2.166e-05, 1.227e-06}
@@ -94,16 +94,16 @@ tuple<Eigen::MatrixXd, Eigen::MatrixXd> getCorrCovMatrix(bool print){
   };
 
   vector< vector <double>> a1_a0 = {
-      {0.2776, 0.04791, 0.01723, 0.003371},
-      {-0.02225, 0.0006896, 0.03742, -0.008893},
-      {0.1044, -0.2142, 0.0506, 0.0279},
-      {0.01322, -0.02751, -0.003768, 0.006599}
+      {0.2776,   0.04791,   -0.01723,  0.003371},
+      {-0.02225, 0.0006896, 0.03742,   -0.008893},
+      {0.1044,   -0.2142,   0.0506,    0.0279},
+      {0.01322,  -0.02751,  -0.003768, 0.006599}
   };
 
   vector< vector <double>> a2_a0 = {
-      {-0.3816, 0.03317, 0.1246, 0.005469},
-      {0.2939, -0.4783, -0.2087, -0.001225},
-      {-0.09207, 0.1869, -0.01677, -0.03466},
+      {-0.3816,   0.03317, 0.1246,   0.005469},
+      {0.2939,    -0.4783, -0.2087,  -0.001225},
+      {-0.09207,  0.1869,  -0.01677, -0.03466},
       {-0.006694, 0.01545, 0.004254, -0.004052}
   };
 
@@ -115,10 +115,10 @@ tuple<Eigen::MatrixXd, Eigen::MatrixXd> getCorrCovMatrix(bool print){
   };
 
   vector< vector <double>> a2_a1 = {
-      {0.3327, 0.4326, -0.3016, -0.005564},
-      {-0.09657, 0.04303, 0.5087, -0.007639},
-      {0.066, -0.1541, 0.485, 0.1149},
-      {0.01124, -0.02324, 0.05027, 0.01492}
+      {0.3327,   0.4326,   -0.3016, -0.005564},
+      {-0.09657, 0.04303,  0.5087,  -0.007639},
+      {0.066,    -0.1541,  0.485,   0.1149},
+      {0.01124,  -0.02324, 0.05027, 0.01492}
   };
 
   vector< vector <double>> a2_a2 = {
@@ -154,37 +154,37 @@ tuple<Eigen::MatrixXd, Eigen::MatrixXd> getCorrCovMatrix(bool print){
        cov( i + size, j)              = corr(i + size, j) * sqrt(a0_var[i]) * sqrt(v_var[j]);
  
        corr(i, j + size)              = a0_v[j][i];
-       cov( i, j + size)              = corr(i, j + size) * sqrt(a0_var[i]) * sqrt(v_var[j]);
+       cov( i, j + size)              = corr(i, j + size) * sqrt(v_var[i]) * sqrt(a0_var[j]);
  
        corr(i + 2*size, j)            = a1_v[i][j];
        cov( i + 2*size, j)            = corr(i + 2*size, j) * sqrt(a1_var[i]) * sqrt(v_var[j]);
  
        corr(i, j + 2*size)            = a1_v[j][i];
-       cov( i, j + 2*size)            = corr(i, j + 2*size) * sqrt(a1_var[i]) * sqrt(v_var[j]);
+       cov( i, j + 2*size)            = corr(i, j + 2*size) * sqrt(v_var[i]) * sqrt(a1_var[j]);
  
        corr(i + 3* size, j)           = a2_v[i][j];
        cov( i + 3*size,  j)           = corr(i + 3*size, j) * sqrt(a2_var[i]) * sqrt(v_var[j]);
  
        corr(i, j + 3* size)           = a2_v[j][i];
-       cov( i, j + 3* size)           = corr(i, j + 3*size) * sqrt(a2_var[i]) * sqrt(v_var[j]);
+       cov( i, j + 3* size)           = corr(i, j + 3*size) * sqrt(v_var[i]) * sqrt(a2_var[j]);
  
        corr(i + 2*size, j + size)     = a1_a0[i][j];
        cov( i + 2*size, j + size)     = corr(i + 2*size, j + size) * sqrt(a1_var[i]) * sqrt(a0_var[j]);
  
        corr(i + size, j + 2*size)     = a1_a0[j][i];
-       cov( i + size, j + 2*size)     = corr(i + size, j + 2*size) * sqrt(a1_var[i]) * sqrt(a0_var[j]);
+       cov( i + size, j + 2*size)     = corr(i + size, j + 2*size) * sqrt(a0_var[i]) * sqrt(a1_var[j]);
  
        corr(i + 3*size, j + size)     = a2_a0[i][j];
        cov( i + 3*size, j + size)     = corr(i + 3*size, j + size) * sqrt(a2_var[i]) * sqrt(a0_var[j]);
  
        corr(i + size, j + 3*size)     = a2_a0[j][i];
-       cov( i + size, j + 3*size)     = corr(i + size, j + 3*size) * sqrt(a2_var[i]) * sqrt(a0_var[j]);
+       cov( i + size, j + 3*size)     = corr(i + size, j + 3*size) * sqrt(a0_var[i]) * sqrt(a2_var[j]);
  
        corr(i + 3*size, j + 2* size)  = a2_a1[i][j];
        cov( i + 3*size, j + 2* size)  = corr(i + 3*size, j + 2*size) * sqrt(a2_var[i]) * sqrt(a1_var[j]);
  
        corr(i + 2*size, j + 3* size)  = a2_a1[j][i];
-       cov( i + 2*size, j + 3* size)  = corr(i + 2*size, j + 3*size) * sqrt(a2_var[i]) * sqrt(a1_var[j]);
+       cov( i + 2*size, j + 3* size)  = corr(i + 2*size, j + 3*size) * sqrt(a1_var[i]) * sqrt(a2_var[j]);
  
      }
    }
@@ -194,7 +194,7 @@ tuple<Eigen::MatrixXd, Eigen::MatrixXd> getCorrCovMatrix(bool print){
      cout << "----- 16x16 CORRELATION MATRIX -----" << endl;
      for (size_t i = 0; i < corr.rows(); ++i){
        for(size_t j = 0; j < corr.cols(); ++j){
-         cout << setw(10) << corr(i,j) << " ";
+         cout << setw(14) << corr(i,j) << " ";
        }
        cout << endl;
      }
@@ -203,7 +203,7 @@ tuple<Eigen::MatrixXd, Eigen::MatrixXd> getCorrCovMatrix(bool print){
      cout << "----- 16x16 COVARIANCE MATRIX -----" << endl;
      for (size_t i = 0; i < cov.rows(); ++i){
        for(size_t j = 0; j < cov.cols(); ++j){
-         cout << setw(10) << cov(i,j) << " ";
+         cout << setw(14) << cov(i,j) << " ";
        }
        cout << endl;
      }
@@ -362,8 +362,9 @@ void printMat(Eigen::MatrixXd mat){
 
   for (size_t i = 0; i < mat.rows(); ++i){
     for(size_t j = 0; j < mat.cols(); ++j){
-      cout << setw(14) << mat(i,j) << endl;
+      cout << setw(14) << mat(i,j) << ", ";
     }
+  cout << endl;
   }
 };
 
