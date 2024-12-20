@@ -7,8 +7,10 @@ export input=$2
 export target=$3
 export nmax=$4
 
+datetime=$(date +"%d_%m_%Y_%H_%M_%S")
+
 mkdir -p /work/pahwagne/RDsTools/hammercpp/weights/${channel}/
-mkdir -p /pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/${channel}_${target}/ 
+mkdir -p /pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/${channel}_${target}_${datetime}/ 
 
 make
 
@@ -59,22 +61,25 @@ for file in "$path"/*; do
     echo $counter
     #write submitter file for each chunk
     submitter="/work/pahwagne/RDsTools/hammercpp/weights/${channel}/submitter_${counter}.sh"
-    cat >"$submitter" <<'EOF'
+    cat >"$submitter" <<EOF
 #!/bin/bash
 
-export channel=$1 #channel dsmu, dsmu_isgw2
-export input=$2 #input scheme
-export target=$3 #target scheme
-export file=$4 #file to hammer
-export counter=$5 #counter 
+export channel=\$1 #channel dsmu, dsmu_isgw2
+export input=\$2   #input scheme
+export target=\$3  #target scheme
+export file=\$4    #file to hammer
+export counter=\$5 #counter 
 
-eval "$(conda shell.bash hook)"
+datetime=$datetime
+
+eval "\$(conda shell.bash hook)"
 
 cd /work/pahwagne/RDsTools/hammercpp/weights
 mkdir -p /scratch/pahwagne/hammer/
-./hammer_temp $channel $input $target $file $counter 
-xrdcp /scratch/pahwagne/hammer/${channel}_${target}_${counter}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/${channel}_${target}/
-rm /scratch/pahwagne/hammer/${channel}_${target}_${counter}.root 
+./hammer_temp \$channel \$input \$target \$file \$counter
+xrdcp /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/\${channel}_\${target}_\${datetime}/
+rm /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root
+
 
 EOF
 

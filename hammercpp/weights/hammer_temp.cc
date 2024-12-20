@@ -150,7 +150,7 @@ map<string, map<string, map<string,double>>> getBGLSettings(Hammer::Hammer& ham,
     //cout << "momq2 is: " << momsq <<  endl;
 
     // get change of basis
-    Eigen::MatrixXd baseChange     = getBaseChangeMatrix(q2, pPrime2, false);
+    Eigen::MatrixXd baseChange     = getBaseChangeMatrix(q2, pPrime2, true);
 
     //transform the central values!
     Eigen::VectorXd bglCentral  = baseChange * latticeCentral;
@@ -158,7 +158,7 @@ map<string, map<string, map<string,double>>> getBGLSettings(Hammer::Hammer& ham,
     Eigen::MatrixXd bglCov      = baseChange * latticeCov * baseChange.transpose();
  
     //remove parameters which are not given in Hammer
-    auto[redBglCentral, redBglCov]  = reduce(bglCentral, bglCov, false);
+    auto[redBglCentral, redBglCov]  = reduce(bglCentral, bglCov, true);
     //cout << "before diagonalizing" << endl;
 
     //cout << "Chek reduced correlation matrix!!" << endl;
@@ -178,7 +178,7 @@ map<string, map<string, map<string,double>>> getBGLSettings(Hammer::Hammer& ham,
     paras += "bvec: ["  + to_string(redBglCentral(3)) + ", " + to_string(redBglCentral(4)) + ", " + to_string(redBglCentral(5)) + "],";
     paras += "cvec: ["  + to_string(redBglCentral(6)) + ", " + to_string(redBglCentral(7)) + ", " +                               "],";
     paras += "dvec: ["  + to_string(redBglCentral(8)) + ", " + to_string(redBglCentral(9)) + ", " +                               "],";
-
+    paras += "Vcb: 0.99344,";
     //paras += "avec: ["  +  to_string(0.004605664681641084)    + ", " + to_string(-0.002140593040599278) + ", " + to_string(0.15566982447466055) + "],";
     //paras += "bvec: ["  +  to_string(0.003303529928953319)    + ", " + to_string(-0.004284980385058838) + ", " + to_string(0.17791644334552834) + "],";
     //paras += "cvec: ["  +  to_string(-0.0018867020644757423)  + ", " + to_string(0.022525216948547932)  + ", " +                               "],";
@@ -206,6 +206,21 @@ map<string, map<string, map<string,double>>> getBGLSettings(Hammer::Hammer& ham,
   }
   //set central values via setOptions
   ham.setOptions(key);
+
+  //set outer functions
+  double chim = 0.00737058/(4.9*4.9);
+  double chip = 0.0126835/(4.9*4.9);
+  double chipl = 0.00450115;
+  double chiml = 0.0249307;
+  string outer = "";
+  outer += "{Chim: " + to_string(chim) +","; 
+  outer += "Chip: " + to_string(chip) +","; 
+  outer += "ChiL: " + to_string(chiml) +",";
+  outer += "ChipL: " + to_string(chipl) +",";
+  outer += "}"; 
+  cout << outer << endl;
+  //ham.setOptions("BstoDs*BGLVar: " + outer);
+
 
   return variations;
 
@@ -389,9 +404,9 @@ void defineDecay(Hammer::Hammer& ham, Hammer::Process& pr, particle b, particle 
   //cout << int(b.pdgid) << " " << int(l.pdgid) << " " << int(h.pdgid) << " " << int(nu_pdgid) << endl;
 
 
-  Hammer::Particle bPar(  { bTlv.e(),  bTlv.px(),  bTlv.py(),  bTlv.pz()},  b.pdgid) ;
-  Hammer::Particle lPar(  { lTlv.e(),  lTlv.px(),  lTlv.py(),  lTlv.pz()},  l.pdgid) ;
-  Hammer::Particle hPar(  { hTlv.e(),  hTlv.px(),  hTlv.py(),  hTlv.pz()},  h.pdgid) ;
+  Hammer::Particle bPar(  { bTlv.e(),  bTlv.px(),  bTlv.py(),  bTlv.pz()},  int(b.pdgid)) ;
+  Hammer::Particle lPar(  { lTlv.e(),  lTlv.px(),  lTlv.py(),  lTlv.pz()},  int(l.pdgid)) ;
+  Hammer::Particle hPar(  { hTlv.e(),  hTlv.px(),  hTlv.py(),  hTlv.pz()},  int(h.pdgid)) ;
   Hammer::Particle nuPar( { nuTlv.e(), nuTlv.px(), nuTlv.py(), nuTlv.pz()}, nu_pdgid);
 
   // get all involved indices    
@@ -676,8 +691,8 @@ int main(int nargs, char* args[]){
   
   cout << "To be processed events: " << maxevents << endl;
 
-  string dest_str = "/scratch/pahwagne/hammer/" + string(args[1]) + "_" + string(args[3]) + "_" + string(args[5]) + ".root";  
-  //string dest_str = string(args[1]) + "_circ.root";  
+  //string dest_str = "/scratch/pahwagne/hammer/" + string(args[1]) + "_" + string(args[3]) + "_" + string(args[5]) + ".root";  
+  string dest_str = string(args[1]) + "_circ.root";  
   const char* dest = dest_str.c_str();
 
   cout << "destination is " << dest << endl;
@@ -939,7 +954,7 @@ int main(int nargs, char* args[]){
     e10_up    = weights["e10_up"]  ; 
     e10_down  = weights["e10_down"]; 
 
-    //cout << "central w is " << central_w << endl;
+    cout << "central w is " << central_w << endl;
     //for(int i = 1 ; i < 11 ; ++i){
 
     //  cout << "variation weight " << i << " is " << weights["e"+to_string(i)+"_up"] << endl;
