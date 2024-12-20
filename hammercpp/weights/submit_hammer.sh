@@ -76,7 +76,7 @@ eval "\$(conda shell.bash hook)"
 
 cd /work/pahwagne/RDsTools/hammercpp/weights
 mkdir -p /scratch/pahwagne/hammer/
-./hammer_temp \$channel \$input \$target \$file \$counter
+./checkHammer \$channel \$input \$target \$file \$counter
 xrdcp /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/\${channel}_\${target}_\${datetime}/
 rm /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root
 
