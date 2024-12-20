@@ -11,6 +11,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // Command line args:                                                      //
 // args[1] = BGLVar (i.e. the target model over which we want to average)  //
+// args[2] = paper (i.e. the paper we used, f.e. cohen, harrison, ... )    //
 /////////////////////////////////////////////////////////////////////////////
 
 using namespace std;
@@ -41,27 +42,37 @@ int main(int nargs, char* args[]){
 
   // load gen production file
   try{
-    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1])).c_str());  
-    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1])).c_str());  
-    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1])).c_str());  
-    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1])).c_str());  
+
+    if (strcmp(args[2], "cohen") == 0){
+    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1]) + "_13_12_2024_14_17_38").c_str());  
+    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1]) + "_13_12_2024_14_24_08").c_str());  
+    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_13_12_2024_14_20_50").c_str());  
+    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1]) + "_13_12_2024_14_24_19").c_str());  
+    }
+    else{
+    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1]) + "_13_12_2024_18_40_09").c_str());  
+    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1]) + "_13_12_2024_19_18_10").c_str());  
+    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_18_12_2024_10_36_23").c_str());  
+    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1]) + "_18_12_2024_10_36_07").c_str());  
+  
+    }
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
 
-  auto df_dsMu       = df_dsMu_tot     ->Filter("gen_sig == 0").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
-  auto df_dsTau      = df_dsTau_tot    ->Filter("gen_sig == 1").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
-  auto df_dsStarMu   = df_dsStarMu_tot ->Filter("gen_sig == 10").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
-  auto df_dsStarTau  = df_dsStarTau_tot->Filter("gen_sig == 11").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsMu       = df_dsMu_tot     ->Filter("gen_sig == 0").Filter([](double x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsTau      = df_dsTau_tot    ->Filter("gen_sig == 1").Filter([](double  x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsStarMu   = df_dsStarMu_tot ->Filter("gen_sig == 10").Filter([](float  x) { return !std::isnan(x); }, {"central_w"});
+  auto df_dsStarTau  = df_dsStarTau_tot->Filter("gen_sig == 11").Filter([](float  x) { return !std::isnan(x); }, {"central_w"});
 
 
   //where to save the average weights
   YAML::Node average_weights;
 
   // access central weights and take average
-  float average_central_dsmu      = df_dsMu.Mean("central_w").GetValue(); 
-  float average_central_dstau     = df_dsTau.Mean("central_w").GetValue(); 
-  float average_central_dsstarmu  = df_dsStarMu.Mean("central_w").GetValue(); 
-  float average_central_dsstartau = df_dsStarTau.Mean("central_w").GetValue(); 
+  double average_central_dsmu      = df_dsMu.Mean("central_w").GetValue(); 
+  double average_central_dstau     = df_dsTau.Mean("central_w").GetValue(); 
+  double average_central_dsstarmu  = df_dsStarMu.Mean("central_w").GetValue(); 
+  double average_central_dsstartau = df_dsStarTau.Mean("central_w").GetValue(); 
 
   cout << "Average of dsmu weighted central_w is: "      << average_central_dsmu;
   cout << "Average of dstau weighted central_w is: "     << average_central_dstau;
@@ -76,7 +87,7 @@ int main(int nargs, char* args[]){
   // access variation weights and take average
   vector<string> directions = {"up","down"};
 
-  for (size_t i = 0; i < 10; i++){
+  for (size_t i = 1; i < 11; i++){
     for(auto dir:directions){
       float average_var_dsMu       =  df_dsMu.Mean("e"+to_string(i)+"_"+dir).GetValue();
       float average_var_dsTau      =  df_dsTau.Mean("e"+to_string(i)+"_"+dir).GetValue();
@@ -98,7 +109,7 @@ int main(int nargs, char* args[]){
   }
  
   //save it
-  ofstream fout("average_weights.yaml");
+  ofstream fout("average_weights" + string(args[2]) + ".yaml");
   fout << average_weights;
 
 }
