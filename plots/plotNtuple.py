@@ -5,6 +5,7 @@ import sys
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
+
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio
 from helper import * 
@@ -34,6 +35,11 @@ ROOT.gStyle.SetOptTitle(0)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(True)
 ROOT.TH1.SetDefaultSumw2() #apply weights!
+
+##############################
+# Load chain into RDataFrame #
+##############################
+
 
 
 def getRdf(dateTimes, debug = None, skimmed = None, pastNN = None):
@@ -476,6 +482,36 @@ def getHbScale(selHb, selMu):
     scale_hb = muNew.Integral() * pureHb.Integral() / pureMu.Integral()
 
   return scale_hb
+
+
+def plotSignFlipShapes(kk,pimu,both,var):
+    c = ROOT.TCanvas("test", "test", 800,800)
+
+    print("Flip shape for variable:", var)
+    h1 = kk[var].Clone() 
+    h1.Scale(1/h1.Integral())
+    h1.SetLineColor(ROOT.kRed)
+
+    h2 = pimu[var].Clone()
+    h2.Scale(1/h2.Integral())
+    h2.SetLineColor(ROOT.kBlue)
+
+    h3 = both[var].Clone()
+    h3.Scale(1/h3.Integral())
+    h3.SetLineColor(ROOT.kGreen)
+
+    lege = getLegend("easy")
+    lege.AddEntry(h1, "KK wrong", "L")
+    lege.AddEntry(h2, "#pi #mu wrong", "L")
+    lege.AddEntry(h3, "KK and #pi#mu wrong", "L")
+    h1.SetMaximum(0.20)
+    h1.Draw("NORM HIST")
+    h2.Draw("NORM HIST SAME")
+    h3.Draw("NORM HIST SAME")
+    lege.Draw("SAME")
+    c.SaveAs(f"shapes_wrong_sign_{var}.pdf") 
+
+
 
 def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh, constrained, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, newHb = False):
 
@@ -1376,6 +1412,7 @@ def createPlots(baseline, constrained = False, newHb = False):
   right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
   kk_wrong          = f" && (k1_charge*k2_charge > 0) && (mu_charge*pi_charge < 0)"
   pimu_wrong        = f" && (mu_charge*pi_charge > 0) && (k1_charge*k2_charge < 0)"
+  both_wrong        = f" && (mu_charge*pi_charge > 0) && (k1_charge*k2_charge > 0)"
   
 
   # Define selections which hold all important selections next to baseline  
@@ -1498,6 +1535,10 @@ def createPlots(baseline, constrained = False, newHb = False):
     global scale_S_bkg;
     global scale_S_n;
 
+    print("===> signflip fit...")
+    print("We have ",selec_S_Data_sf_kk["phiPi_m"].GetEntries(), "wrong kk sign events")
+    print("We have ",selec_S_Data_sf_pimu["phiPi_m"].GetEntries(), "wrong pimu sign events")
+
     scale_S_kk, scale_S_bkg, scale_S_n = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_S_Data["phiPi_m"].Clone())
 
   print("===> signal region done...")
@@ -1536,8 +1577,9 @@ def createPlots(baseline, constrained = False, newHb = False):
 
   if constrained:
     #selec_C_Data_sf     = createHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData        , gen = False, massPlot = True, variables = ["phiPi_m"])
-    selec_C_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   + low_mass,      rdfData       , gen = False, massPlot = True, variables = ["phiPi_m"])
-    selec_C_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong + low_mass,      rdfData       , gen = False, massPlot = True, variables = ["phiPi_m"])
+    selec_C_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
+    selec_C_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
+    selec_C_Data_sf_both = createHistos(  baseline + score_cut + both_wrong + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
     selec_C_Data_sf_2D   = create2DHistos(baseline + score_cut + wrong_sign + low_mass,      rdfData       , gen = False, massPlot = True)
  
 
@@ -1559,7 +1601,13 @@ def createPlots(baseline, constrained = False, newHb = False):
     global scale_C_bkg;
     global scale_C_n;
 
+
+    for var in selec_C_Data_sf_both.keys():
+
+      plotSignFlipShapes(selec_C_Data_sf_kk,selec_C_Data_sf_pimu,selec_C_Data_sf_both,var)
+
     scale_C_kk, scale_C_bkg, scale_C_n = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
+    print("I AM HERE!!")
  
   print("===> total region done...")
 
