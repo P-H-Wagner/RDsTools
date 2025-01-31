@@ -14,20 +14,27 @@ from helper import *
 parser = argparse.ArgumentParser()
 
 parser.add_argument('channel') # sig, data, hb, bs , ...
-parser.add_argument('gen')  # hammer gen production for average weight? 
+parser.add_argument('-g','--gen')  # gen production 
+parser.add_argument('-dt','--date_time') # second number sequence of crab task name
+#parser.add_argument('-f','--folder')  # nr of directory on the t2, f.e. nDir = 2 means: 0002 
+#parser.add_argument('-i','--crab_id') # first number sequence of crab task name 
+#parser.add_argument('-p','--part')    #1,2,3,4,5 - specifies the part of the dataset (BPH1, BPH2, ..., BPH5) 
 args = parser.parse_args()
  
+#print(args.date_time)
+
 queue = 'standard' 
 time = 60
 nevents = -1
 
-#for now only hammer for signals
+#naming (for now only hammer for signals)
 if args.channel == 'sig': 
+  naming = 'sig' 
   fname = sig_cons_pastNN 
 
-#datetime of gen productions are specified in helper.py
-if args.channel == "dstau":     gen_input = dstau_gen
-if args.channel == "dsstartau": gen_input = dsstartau_gen
+
+#get date_time of evaluated signal root tree
+
 
 def list_files_gfal(path):
 
@@ -49,53 +56,54 @@ def list_files_gfal(path):
 if args.gen == "True":
 
   #load flats
-  path       = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/flat_{gen_input}/" 
+  path       = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/" 
+  #directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}"                     else:
+  #inputfiles = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/{fname}.root"  #only one file!
+  #print(path)
+
   inputfiles = [path + f for f in os.listdir(path)]
   fname = args.channel
+  naming = args.channel
 
 else:
 
   #load flats
-  path       = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}/" 
-  inputfiles = [path + f for f in os.listdir(path)]
+  path       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
+  #directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}"
+  inputfiles = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{fname}.root"  #only one file!
+
+  inputfiles = [inputfiles]
 #print(inputfiles)
 
 os.makedirs(f"hammer_{fname}/logs")
 os.makedirs(f"hammer_{fname}/errs")
 
-inputfiles = inputfiles[0:1]
+#inputfiles = inputfiles[0:1]
 #print(inputfiles)
 
 for fin in inputfiles:
 
-
-  #only simulated samples are divided into chunks
+  #print(fin)
   #get chunk nr
   pattern = r'([^_]+)_flatChunk_(\d+)\.root'
   match = re.search(pattern, fin)
   if match: chunkNr = match.group(2)
-  else: chunkNr = ''
+  else: chunkNr = '0'
 
   if args.gen == "True":
-    template_file = "hammer_all_gen_temp.py"
+    temp = open("hammer_all_gen_temp.py", "rt")
 
   else:
-    template_file = "hammer_all_temp.py"
-
-  cfg_file      = f"hammer_{fname}/cfg_chunk_{chunkNr}.py"
-  output_file   = f"{fname}_flatChunk_{chunkNr}.root"
-  output_dir    = fname
-  submit_file   = f"hammer_{fname}/submitter_chunk_{chunkNr}.sh"
-
-  temp    = open(template_file,"rt")
-  cfg     = open(cfg_file,"wt")
-  fout    = output_file 
-  foutdir = output_dir 
+    temp = open("hammer_all_temp.py", "rt")
+  #file to write to
+  cfg = open(f"hammer_{fname}/cfg_chunk_{chunkNr}.py","wt")
+  #file to save things
+  fout = f"{naming}_flatChunk_{chunkNr}.root"
 
   for line in temp:
     if "HOOK_FILE_IN"    in line:       line = line.replace("HOOK_FILE_IN", fin)
     if "HOOK_MAX_EVENTS" in line:       line = line.replace("HOOK_MAX_EVENTS", str(nevents))
-    if "HOOK_FILE_OUT"   in line:       line = line.replace("HOOK_FILE_OUT", f"/scratch/pahwagne/{foutdir}/{fout}")
+    if "HOOK_FILE_OUT"   in line:    line = line.replace("HOOK_FILE_OUT", f"/scratch/pahwagne/{fname}/{fout}")
 
 
     #print(f"/scratch/pahwagne/{fname}/{fout}")
@@ -109,14 +117,14 @@ for fin in inputfiles:
          'cd /work/pahwagne/RDsTools/hammer',
          'eval "$(conda shell.bash hook)"',
          'conda activate /work/pahwagne/environments/hammer3p8',
-         f'mkdir -p /scratch/pahwagne/{foutdir}',
-         f'python {cfg_file}',
-         f'xrdcp /scratch/pahwagne/{foutdir}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{foutdir}/{fout}',
-         f'rm /scratch/pahwagne/{foutdir}/{fout}',
+         f'mkdir -p /scratch/pahwagne/{fname}',
+         f'python hammer_{fname}/cfg_chunk_{chunkNr}.py',
+         f'xrdcp /scratch/pahwagne/{fname}/{fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{fout}',
+         f'rm /scratch/pahwagne/{fname}/{fout}',
          '',
      ])
 
-  with open(submit_file, "wt") as flauncher:
+  with open(f"hammer_{fname}/submitter_chunk_{chunkNr}.sh", "wt") as flauncher:
     flauncher.write(to_write)
 
 
@@ -128,11 +136,9 @@ for fin in inputfiles:
         f'-o hammer_{fname}/logs/chunk_{chunkNr}.log',
         f'-e hammer_{fname}/errs/chunk_{chunkNr}.err',
         #f'--mem=2000M',
-        f'--job-name=HAMMER_{fname}',
+        f'--job-name=HAMMER_{naming}',
         #f'--time={time}',
-        f'{submit_file}',
-        '--ntasks=1',
-        '--cpus-per-task=8' 
+        f'hammer_{fname}/submitter_chunk_{chunkNr}.sh',
      ])
 
   print(command_sh_batch)

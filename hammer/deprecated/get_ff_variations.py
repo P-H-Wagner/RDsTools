@@ -10,18 +10,18 @@ from itertools import combinations
 import yaml
 import json
 
-np.set_printoptions(precision=10, suppress=True, linewidth=200)
-
-killOrders = True
+np.set_printoptions(precision=5, suppress=True, linewidth=200)
 
 def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
 
   print(names_hammer)
+  print(coeff)
+  print(coeff_uncertainties)
 
-  isBGLScalar = False
+  isBGL = False
 
   if "bgl" in model and "scalar" in model:
-    isBGLScalar = True
+    isBGL = True
   
     #remove zero columns/rows with index 3 and 7
     corr_new                = np.delete(np.delete(corr, [3, 7], axis=0), [3, 7], axis=1)
@@ -33,18 +33,14 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
     coeff = coeff_new
     coeff_uncertainties = coeff_uncertainties_new
     names_hammer = list(names_hammer_new)
- 
- 
+  
+  #name the eigenvectors like
+  names_eigenvectors = names_hammer 
+
   # here we need elementwise multiplication, not matrix multiplication
   # need to use atleast_2d to really traspose the vector
   
   # Covariance = Correlation * sigma_x * sigma_y 
-  #cov = np.zeros_like(corr)
-  #for i in range(len(cov)):
-  #  for j in range(len(cov)):
-  #    cov[i,j]  = corr[i,j] * coeff_uncertainties[i] * coeff_uncertainties[j]  
-  #print(cov) #this is the same as the next line:
-
   cov = np.atleast_2d(coeff_uncertainties).T * corr * coeff_uncertainties
   print("CORRELATION MATRIX")
   print(corr)
@@ -58,9 +54,10 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
 
   for i,eig in enumerate(eVals):
     if eig < 0: 
-      print(f"!! Eigenvalue is negative: {eig} ====> setting to 0.0")
+      #print(f"!! Eigenvalue is negative: {eig} ====> setting to 0.0")
       eVals[i] = 0.0      
 
+  #print(eVals)
   # eigenvalues matrix
   diag = np.identity(len(coeff)) * eVals
   print("EIGENVALUES")
@@ -74,28 +71,21 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
   # rotate back to original basis
   cov_new = eVecs.dot(diag.dot(eVecs.T))
   rtol = 1e-5
-  print("closure test: rebuild the covariance matrix from the eigenvectors, eigenvalues")
-  print("\tpassed at {} level?".format(rtol), np.isclose(cov, cov_new, rtol=1e-5).all())
+  #print("closure test: rebuild the covariance matrix from the eigenvectors, eigenvalues")
+  #print("\tpassed at {} level?".format(rtol), np.isclose(cov, cov_new, rtol=1e-5).all())
   
   # sigmas should be squared root of the eigenvalues
   eUncs = np.nan_to_num(np.sqrt(eVals))
-
+  
   # principal components
-
-  pc = np.zeros_like(cov_new)
-
-  for i,l in enumerate(eUncs):
-    for j in range(len(eUncs)):
-      pc[j,i] = eUncs[i]*eVecs[j,i]
-
-    print("principal component ", i)
-    print(l*eVecs[:,i])
+  #print("principal components")
+  principal_comp = np.atleast_2d(eUncs*eVecs).T
+  #print(principal_comp)
  
   print("\n\n")
   
   variations = dict()
-  variations.clear()  
- 
+  
   # create a structure, i.e. a dictionary that allows:
   # for each movement along the direction of the j-th eigenvector
   # define two possible ways, up and down
@@ -103,8 +93,8 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
   names_to_fill = names_hammer.copy()
   names_to_fill = list(names_to_fill)
 
-  if isBGLScalar:
-    names_to_fill.append("e4"); names_to_fill.append("e8")
+  if isBGL:
+    names_to_fill.append("a03"); names_to_fill.append("ap3")
 
   for name1 in names_to_fill:
 
@@ -123,28 +113,28 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
           variations[name1]["down"]["delta_"+name2] = float(0.)
 
   print("PRINCIPAL COMP")
-  print(pc)
+  print(principal_comp)
  
   # now fill this dictionary
   for i,name1 in enumerate(names_hammer):
     for j,name2 in enumerate(names_hammer):
+
       name1 = str(name1) #keep this for saving into yaml file!
       name2 = str(name2) #keep this for saving into yaml file!
      
-      variations[name1]["up"  ]["delta_" + name2] = float(pc[j, i])
-      variations[name1]["down"]["delta_" + name2] = float(-pc[j, i])
+      print("i is ", i, "j is ", j)
+      print("setting: " + name1 + "up" + "delta_" + name2 + " to ", float(principal_comp[j, i]))
+      variations[name2]["up"  ]["delta_" + name1] = float(principal_comp[j, i])
+      variations[name2]["down"]["delta_" + name1] = float(-principal_comp[j, i])
 
-  #print("AFTER") 
-  #print(json.dumps(variations, indent=4, sort_keys=True))
-  print("PRINCIPAL COMPONENT MATRIX") 
-  print(pc)
+  print("AFTER") 
+  print(json.dumps(variations, indent=4, sort_keys=True))
 
   # save values of up/down variations
-  with open(f"{model}_variations.yaml", "w") as fout:
-      yaml.dump(variations, fout, default_flow_style=False)
   with open(f"{model}_variations.py", "w") as fout:
-       print("variations =", variations, file=fout)
- 
+      print("variations =", variations, file=fout)
+      #yaml.dump(variations, fout, default_flow_style=False)
+  
   # Plot 2D correlations
   
   for i,j in combinations(range(11),2): 
@@ -164,7 +154,7 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
       minicov = cov[np.ix_([i,j],[i,j])]
       
       # extract the relevant principal components
-      mini_pc = pc.T[np.ix_([i,j],[i,j])]
+      mini_principal_comp = principal_comp.T[np.ix_([i,j],[i,j])]
       
   #     xmin = -2.*uncs[0] + cval[0]
   #     xmax =  2.*uncs[0] + cval[0]
@@ -217,7 +207,7 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
       subplt.clabel(contours, contours.levels[:-1], inline=True, fmt=fmt)
       
       origin = np.array([np.ones(2)*cval[0], np.ones(2)*cval[1]])
-      subplt.quiver(*origin, mini_pc[:,0], mini_pc[:,1], units="xy", color=["r","b"], angles="xy", scale_units="xy", scale=1.)
+      subplt.quiver(*origin, mini_principal_comp[:,0], mini_principal_comp[:,1], units="xy", color=["r","b"], angles="xy", scale_units="xy", scale=1.)
   
       plt.xlabel(names_hammer[i])
       plt.ylabel(names_hammer[j])
@@ -236,7 +226,7 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
   
   # closure test
   # rebuild the covariance matrix from the principal components
-  cov_from_pc = pc.T.dot(np.identity(len(pc)).dot(pc))
+  cov_from_pc = principal_comp.T.dot(np.identity(len(principal_comp)).dot(principal_comp))
   rtol = 1e-5
   #print("closure test: rebuild the covariance matrix from the principal components")
   #print("\tpassed at {} level?".format(rtol), np.isclose(cov, cov_from_pc, rtol=1e-5).all())
@@ -245,4 +235,4 @@ def get_ff_variations( names_hammer, coeff, coeff_uncertainties, corr, model):
   #print("principal components + multivariate gaus mean")
   #print(principal_comp+coeff)
   
-  return 
+  return  

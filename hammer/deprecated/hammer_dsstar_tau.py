@@ -38,25 +38,11 @@ ham.set_ff_input_scheme(ff_input_scheme)
 ff_schemes  = dict()
 ff_schemes['bglvar' ] = {'BsDs*':'BGLVar' }
 
-key = "{"
-#cohen
-#key += "avec: ["  +  str(0.004605664681641084)    + ", " + str(-0.002140593040599278) + ", " + str(0.15566982447466055) + "],";
-#key += "bvec: ["  +  str(0.003303529928953319)    + ", " + str(-0.004284980385058838) + ", " + str(0.17791644334552834) + "],";
-#key += "cvec: ["  +  str(-0.0018867020644757423)  + ", " + str(0.022525216948547932)  + ", " +                               "],";
-#key += "dvec: ["  +  str(0.03980443778007538)     + ", " + str(-0.1872442367469107)   + ", " +                               "],";
 
-#harrison
-key += "avec: [0.026667, -0.048823, -0.001545],"; 
-key += "bvec: [0.413130, -0.075637, -0.250136],";
-key += "cvec: [1.206462, 2.327528],";
-key += "dvec: [0.209480, -0.861254]";
-key += "}"
-paras = "BstoDs*BGLVar: " + key
-#ham.set_options(paras)
 
-#for i, j in product(range(6), ['up', 'down']):
-#        unc = 'e%d%s'%(i,j)
-#        ff_schemes['bglvar_%s'%unc] = {'BsDs*':'BGLVar_%s'%unc  }
+for i, j in product(range(6), ['up', 'down']):
+        unc = 'e%d%s'%(i,j)
+        ff_schemes['bglvar_%s'%unc] = {'BsDs*':'BGLVar_%s'%unc  }
 
 for k, v in ff_schemes.items():
         ham.add_ff_scheme(k, v)
@@ -78,8 +64,6 @@ for i, j in product(range(6), ['up', 'down']):
 
 fname = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/22_07_2024_11_23_05/all_signals_flatChunk_0.root"
 fname = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/29_08_2024_09_46_52/all_signals_flatChunk_0.root"
-fname = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/16_11_2024_09_45_34/dsstartau_flatChunk_0.root"
-
 fin = ROOT.TFile.Open(fname)
 tree = fin.Get('tree')
 maxevents = 10
@@ -142,10 +126,10 @@ for i, ev in enumerate(tree):
     ham.process_event()
     for k in ff_schemes.keys():
             weights[k].append(ham.get_weight(k))
-            print(k, "has weight: ", ham.get_weight(k) )    
+            #print(k, "has weight: ", ham.get_weight(k) )    
     if i>maxevents: break
 
 reduced_tree = tree_df[:len(weights[k])].copy()
 for k in ff_schemes.keys():
         reduced_tree['hammer_'+k] = np.nan_to_num(np.array(weights[k])) 
-#to_root(reduced_tree, 'hammer_output_tau_star_v2.root', key='tree')
+to_root(reduced_tree, 'hammer_output_tau_star_v2.root', key='tree')

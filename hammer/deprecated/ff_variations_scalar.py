@@ -24,14 +24,14 @@ names_bgl_coefficients = [
 ]
 
 names_bgl_coefficients_hammer = [
-    'e1',
-    'e2',
-    'e3',
-    'e4',
-    'e5',
-    'e6',
-    'e7',
-    'e8',
+    'a00',
+    'a01',
+    'a02',
+    'a03',
+    'ap0',
+    'ap1',
+    'ap2',
+    'ap3'
 ]
 
 #name the eigenvectors like: "e0, e1, .., e9"
@@ -48,7 +48,7 @@ bgl_coefficients = np.array([
 -0.004691380424494185  , # f+   --> Hammer ap1 
 -0.015708534616906505  , # f+   --> Hammer ap2 
  0.0                   , # f+   --> Hammer ap3 
-])#.astype(np.float64)
+]).astype(np.float64)
 
 bgl_coefficient_uncertainties = np.array([
 0.0007906527485083701  , # f0   --> Hammer a00
@@ -59,7 +59,7 @@ bgl_coefficient_uncertainties = np.array([
 0.0008662317680431299  , # f+   --> Hammer ap1
 0.0047035296806361825  , # f+   --> Hammer ap2
 0.0                    , # f+   --> Hammer ap3
-])#.astype(np.float64)
+]).astype(np.float64)
 
 
 # correlation matrix (normalised covariance matrix)
@@ -69,12 +69,12 @@ correlation_complete = np.array([
     [ 1.00000, -0.26188, -0.07456, 0.0,   0.43994, -0.00314,  0.13858, 0.0],
     [-0.26188,  1.00000, -0.18571, 0.0,   0.28968,  0.10064, -0.09532, 0.0],
     [-0.07456, -0.18571,  1.00000, 0.0,  -0.16234,  0.12522, -0.21066, 0.0],
-    [     0.0,      0.0,      0.0, 1.0,       0.0,      0.0,      0.0, 0.0],    
+    [     0.0,      0.0,      0.0, 0.0,       0.0,      0.0,      0.0, 0.0],    
     [ 0.43994,  0.28968, -0.16234, 0.0,   1.00000, -0.72825, -0.23200, 0.0],
     [-0.00314,  0.10064,  0.12522, 0.0,  -0.72825,  1.00000,  0.12053, 0.0],
     [ 0.13858, -0.09532, -0.21066, 0.0,  -0.23200,  0.12053,  1.00000, 0.0],
-    [     0.0,      0.0,      0.0, 0.0,       0.0,      0.0,      0.0, 1.0]    
-])#.astype(np.float64)
+    [     0.0,      0.0,      0.0, 0.0,       0.0,      0.0,      0.0, 0.0]    
+]).astype(np.float64)
 
 corr  = correlation_complete
 

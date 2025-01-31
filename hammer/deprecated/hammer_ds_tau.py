@@ -28,32 +28,23 @@ ham.set_ff_input_scheme(ff_input_scheme)
 
 ff_schemes  = dict()
 ff_schemes['bglvar' ] = {'BsDs':'BGLVar' }
-#for i, j in product(range(6), ['up', 'down']):
-#        unc = 'e%d%s'%(i,j)
-#        ff_schemes['bglvar_%s'%unc] = {'BsDs':'BGLVar_%s'%unc  }
-key = "{"
-key += "a0: ["  +  str(0.052255946347001495)    + ", " + str(-0.16027634967890908) + ", " + str(0.014141836205563255) + ", " + str(0.0) + "],";
-#key += "a0: ["  +  str(0.0)    + ", " + str(0.0) + ", " + str(0.0) + ", " + str(0.0) + "],";
-key += "ap: ["  +  str(0.0017893827864468802)   + ", " + str(-0.004691380424494185) + ", " + str( -0.015708534616906505) + ", " + str(0.0) + "],"
-#key += "ap: ["  +  str(0.0)   + ", " + str(0.0) + ", " + str( 0.0) + ", " + str(0.0) + "],"
-key += "}"
-paras = "BstoDsBGLVar: " + key
-
-ham.set_options(paras)
+for i, j in product(range(6), ['up', 'down']):
+        unc = 'e%d%s'%(i,j)
+        ff_schemes['bglvar_%s'%unc] = {'BsDs':'BGLVar_%s'%unc  }
 
 for k, v in ff_schemes.items():
         ham.add_ff_scheme(k, v)
 ham.set_units("GeV")
 ham.init_run()
 
-#for i, j in product(range(6), ['up', 'down']):
-#        unc = 'e%d%s'%(i,j)
-#        ham.set_ff_eigenvectors('BstoDs', 'BGLVar_%s'%unc, variations['e%d'%i][j])
+for i, j in product(range(6), ['up', 'down']):
+        unc = 'e%d%s'%(i,j)
+        ham.set_ff_eigenvectors('BstoDs', 'BGLVar_%s'%unc, variations['e%d'%i][j])
 
-fname = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/dstau_BGLVar_13_12_2024_14_24_08/dstau_BGLVar_0.root"
+fname = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/22_07_2024_11_23_05/all_signals_flatChunk_0.root"
 fin = ROOT.TFile.Open(fname)
 tree = fin.Get('tree')
-maxevents = 3
+maxevents = 100
 tree_df = read_root(fname, 'tree', where='(gen_sig == 1)')
 
 pids = []
@@ -113,7 +104,7 @@ for i, ev in enumerate(tree):
     ham.process_event()
     for k in ff_schemes.keys():
             weights[k].append(ham.get_weight(k))
-            print(k, "has weight: ", ham.get_weight(k) )    
+    
     if i>maxevents: break
 
 reduced_tree = tree_df[:len(weights[k])].copy()

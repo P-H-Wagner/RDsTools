@@ -79,7 +79,7 @@ def get_tree_with_weights( hammer_instances, ff_schemes, input_tree):
   #sys.exit()
   for i, ev in enumerate(tree):
  
-      #print("Event:", i) 
+      print("Event:", i) 
 
       if (i+1)>maxevents:
           break
@@ -92,14 +92,14 @@ def get_tree_with_weights( hammer_instances, ff_schemes, input_tree):
 
       if (ev.gen_sig == 1): 
 
-        #print(" =====> This is a Ds Tau event!")
+        print(" =====> This is a Ds Tau event!")
 
         decay = "BsDsTauNu"   
  
         #ham.init_event()
         hammer_instances[decay].init_event()
    
-        #print(ev.gen_tau_pt, ev.gen_ds_pt, ev.gen_bs_pt, ev.gen_bs_pdgid, ev.gen_sig)
+        print(ev.gen_tau_pt, ev.gen_ds_pt, ev.gen_bs_pt, ev.gen_bs_pdgid, ev.gen_sig)
     
         # Bs -> Ds Tau Nu
         thebs_p4    = ROOT.Math.LorentzVector('ROOT::Math::PtEtaPhiM4D<double>')(ev.gen_bs_pt,   ev.gen_bs_eta,  ev.gen_bs_phi,  5.366)
@@ -135,15 +135,15 @@ def get_tree_with_weights( hammer_instances, ff_schemes, input_tree):
         for i,k in enumerate(ff_schemes[default].keys()):
                 #weights[k].append(ham.get_weight(k))
                 
-                #print(k)
+                print(k)
                 if i < 17: 
-                  #print("filling weight: ", hammer_instances[decay].get_weight(k) ); 
+                  print("filling weight: ", hammer_instances[decay].get_weight(k) ); 
                   weights[k].append(hammer_instances[decay].get_weight(k))
                 else: weights[k].append(-1.0)
 
       if (ev.gen_sig == 11): 
 
-        #print(" =====> This is a Ds* Tau event!")
+        print(" =====> This is a Ds* Tau event!")
 
         decay = "BsDs*TauNu"   
  
@@ -154,24 +154,24 @@ def get_tree_with_weights( hammer_instances, ff_schemes, input_tree):
         thebs_p4    = ROOT.Math.LorentzVector('ROOT::Math::PtEtaPhiM4D<double>')(ev.gen_bs_pt,       ev.gen_bs_eta,      ev.gen_bs_phi,      5.366)
         thetau_p4   = ROOT.Math.LorentzVector('ROOT::Math::PtEtaPhiM4D<double>')(ev.gen_tau_pt,      ev.gen_tau_eta,     ev.gen_tau_phi,     1.776)#ev.gen_tau_m)
         thedsStar_p4= ROOT.Math.LorentzVector('ROOT::Math::PtEtaPhiM4D<double>')(ev.gen_dsStar_pt,   ev.gen_dsStar_eta,  ev.gen_dsStar_phi,  2.112)#ev.gen_ds_m)
-        thenu_p4    = thebs_p4 - thetau_p4 - thedsStar_p4
+        thenu_p4    = thebs_p4 - thetau_p4 - theds_p4
     
         thebs       = Particle(FourMomentum(thebs_p4.e(),      thebs_p4.px(),      thebs_p4.py(),      thebs_p4.pz()),      ev.gen_bs_pdgid)
         thetau      = Particle(FourMomentum(thetau_p4.e(),     thetau_p4.px(),     thetau_p4.py(),     thetau_p4.pz()),     int(15*ev.gen_ds_charge))
-        thedsStar   = Particle(FourMomentum(thedsStar_p4.e(),  thedsStar_p4.px(),  thedsStar_p4.py(),  thedsStar_p4.pz()),  433 * ev.gen_ds_charge)
+        thedsStar   = Particle(FourMomentum(thedsStar_p4.e(),  thedsStar_p4.px(),  thedsStar_p4.py(),  thedsStar_p4.pz()),  433 * ev.genSIM_ds_charge)
         thenu       = Particle(FourMomentum(thenu_p4.e(),      thenu_p4.px(),      thenu_p4.py(),      thenu_p4.pz()),      int(16 * -1 * ev.gen_ds_charge))
      
     
         Bc2JpsiLNu = Process()
         
         # each of these add_particle operations returns an index, needed to define vertices 
-        thebs_idx       = Bc2JpsiLNu.add_particle(thebs  )
-        thedsStar_idx   = Bc2JpsiLNu.add_particle(thedsStar  )
-        thetau_idx      = Bc2JpsiLNu.add_particle(thetau  )
-        thenu_idx       = Bc2JpsiLNu.add_particle(thenu  )
+        thebs_idx   = Bc2JpsiLNu.add_particle(thebs  )
+        theds_idx   = Bc2JpsiLNu.add_particle(theds  )
+        thetau_idx  = Bc2JpsiLNu.add_particle(thetau  )
+        thenu_idx   = Bc2JpsiLNu.add_particle(thenu  )
     
         # define decay vertex
-        Bc2JpsiLNu.add_vertex(thebs_idx, [thedsStar_idx, thetau_idx, thenu_idx])
+        Bc2JpsiLNu.add_vertex(thebs_idx, [theds_idx, thetau_idx, thenu_idx])
     
         # save process id to later retrieve the per-event weight
         #pid = ham.add_process(Bc2JpsiLNu)
@@ -182,8 +182,8 @@ def get_tree_with_weights( hammer_instances, ff_schemes, input_tree):
     
         hammer_instances[decay].process_event()
         for k in ff_schemes[default].keys():
-                #print(k)
-                #print("filling weight: ", hammer_instances[decay].get_weight(k) ); 
+                print(k)
+                print("filling weight: ", hammer_instances[decay].get_weight(k) ); 
                 #weights[k].append(ham.get_weight(k))
                 weights[k].append(hammer_instances[decay].get_weight(k))
 
@@ -194,13 +194,8 @@ def get_tree_with_weights( hammer_instances, ff_schemes, input_tree):
                 weights[k].append( -1.0 )
 
       if i>maxevents: break
-
-  # the reduced tree has the same length (weights[k] has length maxevents)  
+  
   reduced_tree = tree_df[:len(weights[k])].copy()
-  print(reduced_tree)
-  print(len(reduced_tree.index))
-  print(np.nan_to_num(np.array(weights[k]))) 
-  print(len(np.nan_to_num(np.array(weights[k])))) 
   for k in ff_schemes[default].keys():
           reduced_tree['hammer_'+k] = np.nan_to_num(np.array(weights[k])) 
   to_root(reduced_tree, 'HOOK_FILE_OUT', key='tree')
