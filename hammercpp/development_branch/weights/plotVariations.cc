@@ -10,27 +10,19 @@
 #include <yaml-cpp/yaml.h>
 #include <fstream> 
 
-////////////////////////////////////////////////////////////////////////////////////////////
-// Command line args:                                                                     //
-// args[1] = BGLVar, ... (i.e. the target we want to plot with weights)                   //
-// args[2] = paper (i.e. the paper we used, f.e. cohen, harrison, ... )                   //
-////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////
+// Command line args:           
+// args[1] = variable
+////////////////////////////////
 
 
 using namespace std;
 
 // define input files
-string getInputFile(string signal, string paper){
+string getInputFile(){
 
-  string fin_str;
-  if (paper == "cohen"){
-  fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_BGLVar_13_12_2024_13_28_24/*";
-  }
-  else {
-  fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_BGLVar_31_01_2025_06_34_59/*"; //27_01_2025_16_11_01 // first bcl: 24_01_2025_18_31_49, old: 13_01_2025_20_38_04 #new unbound: 13_01_2025_15_18_41
-  //fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_BGLVar_13_01_2025_16_28_04/*";
-  //fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_BGLVar_13_01_2025_15_18_41/*"; //harrisonw ith correct masses (20_12_2024_16_00_49)!
-  }
+  string fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_BGLVar_31_01_2025_06_34_59/*"; //27_01_2025_16_11_01 // first bcl: 24_01_2025_18_31_49, old: 13_01_2025_20_38_04 #new unbound: 13_01_2025_15_18_41
+
   return fin_str;
 
 }
@@ -97,22 +89,24 @@ int main(int nargs, char* args[]){
   gStyle->SetOptStat(0);
 
   //variable for which we want to compute the average weight
-  //string var(args[2]); //f.e. q2_coll
-  string var = "q2_coll";
+  string var(args[1]); //f.e. q2_coll
+
+  map<string, string> labels = {{"q2_coll","Q^{2}(GeV^{2})"}, {"class", "Class prediction"}};
+  string xAxisLabel;
+
+  if (labels.find(var) != labels.end()) {
+    xAxisLabel = labels[var];
+  } else {
+    cout << "Variable label unknown" << endl;
+    xAxisLabel = "";
+  }
+
 
   //load average weights and settings 
 
-  YAML::Node average_weights;
-
-  if (strcmp(args[2], "cohen") == 0) {
-  average_weights = YAML::LoadFile("average_weights.yaml"); //from getAverageWeights.cc
-  }
-  else{
-  cout << "harrison avergaes!" << endl;
-  average_weights = YAML::LoadFile("average_weightsharrison.yaml"); //from getAverageWeights.cc
-  }
-
+  YAML::Node average_weights = YAML::LoadFile("average_weightsharrison.yaml"); //from getAverageWeights.cc
   YAML::Node settings        = YAML::LoadFile("average_models.yaml"); //from histModels.py
+
   int bins   = settings[var]["bins"].as<int>();
   double min = settings[var]["xmin"].as<double>();
   double max = settings[var]["xmax"].as<double>();
@@ -120,12 +114,11 @@ int main(int nargs, char* args[]){
   ROOT::RDataFrame* df = nullptr;
 
   try{
-    df = new ROOT::RDataFrame("tree",  getInputFile(args[1] , string(args[2])  ));  
+    df = new ROOT::RDataFrame("tree",  getInputFile());  
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
 
   string base_wout_tv = "(mu_pt > 8) && (k1_pt > 1) && (k2_pt > 1) && (pi_pt > 1) && (lxy_ds < 1) && (mu_id_medium == 1) && (mu_rel_iso_03 < 0.3) && (fv_prob > 0.1) && (score5 <= 0.3) && ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)) && (dsMu_m < 5.366) && (1.94134 < phiPi_m) && (phiPi_m < 1.99534) &&";
-
 
 
   auto df_dsMu       = df->Filter("(gen_sig == 0  )");
@@ -151,10 +144,10 @@ int main(int nargs, char* args[]){
 
 
   //First, see the effect of the central weight
-  plotWeightEffect(h_dsMu_wout,      h_dsMu ,      "dsmu_weight_effect" + string(args[2]) + ".pdf");
-  plotWeightEffect(h_dsTau_wout,     h_dsTau ,     "dstau_weight_effect" + string(args[2]) + ".pdf");
-  plotWeightEffect(h_dsStarMu_wout,  h_dsStarMu ,  "dsstarmu_weight_effect" + string(args[2]) + ".pdf");
-  plotWeightEffect(h_dsStarTau_wout, h_dsStarTau , "dsstartau_weight_effect" + string(args[2]) + ".pdf");
+  plotWeightEffect(h_dsMu_wout,      h_dsMu ,      "dsmu_weight_effect.pdf");
+  plotWeightEffect(h_dsTau_wout,     h_dsTau ,     "dstau_weight_effect.pdf");
+  plotWeightEffect(h_dsStarMu_wout,  h_dsStarMu ,  "dsstarmu_weight_effect.pdf");
+  plotWeightEffect(h_dsStarTau_wout, h_dsStarTau , "dsstartau_weight_effect.pdf");
 
 
   h_dsMu->SetLineColor(kBlack); 
@@ -171,10 +164,10 @@ int main(int nargs, char* args[]){
     string key_dsStarMu  = "e"+to_string(i)+"_dsstarmu";
     string key_dsStarTau = "e"+to_string(i)+"_dsstartau";
 
-    string toSave_dsMu      = key_dsMu + string(args[2]) + ".pdf";
-    string toSave_dsTau     = key_dsTau + string(args[2]) + ".pdf";
-    string toSave_dsStarMu  = key_dsStarMu + string(args[2]) + ".pdf";
-    string toSave_dsStarTau = key_dsStarTau + string(args[2]) + ".pdf";
+    string toSave_dsMu      = key_dsMu       + ".pdf";
+    string toSave_dsTau     = key_dsTau      + ".pdf";
+    string toSave_dsStarMu  = key_dsStarMu   + ".pdf";
+    string toSave_dsStarTau = key_dsStarTau  + ".pdf";
 
 
 
@@ -225,7 +218,7 @@ int main(int nargs, char* args[]){
     legMu.AddEntry(h_dsMu.GetPtr(), "central value", "L");
 
     h_up_dsMu->GetYaxis()->SetTitle("events");
-    h_up_dsMu->GetXaxis()->SetTitle("Q^{2}(GeV^{2})");
+    h_up_dsMu->GetXaxis()->SetTitle(xAxisLabel.c_str());
 
     TText* textMu         = new TLatex(0.2, 0.85, "B_{s} #rightarrow D_{s} #mu #nu");
     textMu->SetNDC();   
@@ -242,10 +235,6 @@ int main(int nargs, char* args[]){
     canvMu->Update();
     canvMu->SaveAs(toSave_dsMu.c_str());
 
-    cout << " integral  " <<  h_up_dsMu->Integral();
-    cout << " integral  " <<  h_dsMu->Integral();
-    cout << " integral  " <<  h_down_dsMu->Integral();
-
     ////////// tau /////////////
 
     TCanvas *canvTau = new TCanvas("canvas", "Canvas Title", 800, 600);
@@ -256,7 +245,7 @@ int main(int nargs, char* args[]){
     legTau.AddEntry(h_dsTau.GetPtr(), "central value", "L");
 
     h_up_dsTau->GetYaxis()->SetTitle("events");
-    h_up_dsTau->GetXaxis()->SetTitle("Q^{2}(GeV^{2})");
+    h_up_dsTau->GetXaxis()->SetTitle(xAxisLabel.c_str());
 
     TText* textTau         = new TLatex(0.2, 0.85, "B_{s} #rightarrow D_{s} #tau #nu");
     textTau->SetNDC();   
@@ -283,7 +272,7 @@ int main(int nargs, char* args[]){
     legMuStar.AddEntry(h_dsStarMu.GetPtr(), "central value", "L");
 
     h_up_dsStarMu->GetYaxis()->SetTitle("events");
-    h_up_dsStarMu->GetXaxis()->SetTitle("Q^{2}(GeV^{2})");
+    h_up_dsStarMu->GetXaxis()->SetTitle(xAxisLabel.c_str());
 
     TText* textMuStar         = new TLatex(0.2, 0.85, "B_{s} #rightarrow D*_{s} #mu #nu");
     textMuStar->SetNDC();   
@@ -309,7 +298,7 @@ int main(int nargs, char* args[]){
     legTauStar.AddEntry(h_dsStarTau.GetPtr(), "central value", "L");
 
     h_up_dsStarTau->GetYaxis()->SetTitle("events");
-    h_up_dsStarTau->GetXaxis()->SetTitle("Q^{2}(GeV^{2})");
+    h_up_dsStarTau->GetXaxis()->SetTitle(xAxisLabel.c_str());
 
     TText* textTauStar         = new TLatex(0.2, 0.85, "B_{s} #rightarrow D*_{s} #tau #nu");
     textTauStar->SetNDC();   

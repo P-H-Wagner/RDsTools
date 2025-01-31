@@ -10,8 +10,6 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // Command line args:                                                      //
-// args[1] = BGLVar (i.e. the target model over which we want to average)  //
-// args[2] = paper (i.e. the paper we used, f.e. cohen, harrison, ... )    //
 /////////////////////////////////////////////////////////////////////////////
 
 using namespace std;
@@ -43,21 +41,17 @@ int main(int nargs, char* args[]){
   // load gen production file
   try{
 
-    if (strcmp(args[2], "cohen") == 0){
-    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1]) + "_13_12_2024_14_17_38").c_str());  
-    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1]) + "_13_12_2024_14_24_08").c_str());  
-    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_13_12_2024_14_20_50").c_str());  
-    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1]) + "_13_12_2024_14_24_19").c_str());  
-    }
-    else{
-    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_default_27_01_2025_16_10_39").c_str()); // bcl first:dsmu_default_24_01_2025_18_31_27 
-    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_default_27_01_2025_16_10_47").c_str()); // bcl first:dstau_default_24_01_2025_18_31_37
-    //df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_18_12_2024_10_36_23").c_str());  
+    // cohen paper
+    //df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1]) + "_13_12_2024_14_17_38").c_str());  
+    //df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1]) + "_13_12_2024_14_24_08").c_str());  
+    //df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_13_12_2024_14_20_50").c_str());  
+    //df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1]) + "_13_12_2024_14_24_19").c_str());  
 
-    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_31_01_2025_06_34_38").c_str()); // old: 13_01_2025_20_36_53 #new unbound: 13_01_2025_14_56_07 #16_01_2025_09_59_15 
-    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1]) + "_31_01_2025_06_34_50").c_str()); // old: 3_01_2025_20_36_42 #new unbound: 13_01_2025_14_56_33 #16_01_2025_09_59_25
+    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_default_27_01_2025_16_10_39")    .c_str()); // bcl first:dsmu_default_24_01_2025_18_31_27 
+    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_default_27_01_2025_16_10_47")   .c_str()); // bcl first:dstau_default_24_01_2025_18_31_37
+    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_BGLVar_31_01_2025_06_34_38") .c_str()); // old: 13_01_2025_20_36_53 #new unbound: 13_01_2025_14_56_07 #16_01_2025_09_59_15 
+    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_BGLVar_31_01_2025_06_34_50").c_str()); // old: 3_01_2025_20_36_42 #new unbound: 13_01_2025_14_56_33 #16_01_2025_09_59_25
  
-    }
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
 
@@ -65,8 +59,6 @@ int main(int nargs, char* args[]){
   auto df_dsTau      = df_dsTau_tot    ->Filter("gen_sig == 1").Filter([](float x) { return !std::isnan(x); }, {"central_w"});
   auto df_dsStarMu   = df_dsStarMu_tot ->Filter("gen_sig == 10").Filter([](float  x) { return !std::isnan(x); }, {"central_w"});
   auto df_dsStarTau  = df_dsStarTau_tot->Filter("gen_sig == 11").Filter([](float  x) { return !std::isnan(x); }, {"central_w"});
-  std::cout << "i am here" << std::endl;
-
 
   //where to save the average weights
   YAML::Node average_weights;
@@ -81,7 +73,6 @@ int main(int nargs, char* args[]){
   cout << "Average of dstau weighted central_w is: "     << average_central_dstau;
   cout << "Average of dsstarmu weighted central_w is: "  << average_central_dsstarmu;
   cout << "Average of dsstartau weighted central_w is: " << average_central_dsstartau;
-  std::cout << "i am here" << std::endl;
 
   average_weights["central_w_dsmu"]      = average_central_dsmu; 
   average_weights["central_w_dstau"]     = average_central_dstau; 
@@ -113,7 +104,7 @@ int main(int nargs, char* args[]){
   }
  
   //save it
-  ofstream fout("average_weights" + string(args[2]) + ".yaml");
+  ofstream fout("average_weights.yaml");
   fout << average_weights;
 
 }
