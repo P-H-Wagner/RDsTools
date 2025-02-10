@@ -58,6 +58,7 @@ data_cons_pastNN    = "data_"   +code
 #after hammer samples
 sig_cons_hammer     = "signal_BGLVar_13_01_2025_20_38_04"
 sig_cons_hammer     = "signal_BGLVar_16_01_2025_13_40_56"
+sig_cons_hammer     = "signal_default_10_02_2025_10_07_42" #includes weights for all signals
 sig_unc_hammer = ""
 
 dsStarTau_w = 3.304854088595039

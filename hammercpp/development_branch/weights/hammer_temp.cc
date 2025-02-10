@@ -116,7 +116,7 @@ string getBGLParameters(string decay){
     cout << "Setting vector BGL central values" << endl;
 
     //parameters of 30.01.25 (private mail correspondance with https://arxiv.org/pdf/2304.03137 authors)
-    YAML::Node central = YAML::LoadFile("bgl_vector_central_values.yaml");
+    YAML::Node central = YAML::LoadFile("/work/pahwagne/RDsTools/hammer/bgl_vector_central_values.yaml");
 
     if (central["central_values"]) {
         paras = central["central_values"].as<string>();
@@ -387,8 +387,8 @@ void getVariationWeights(Hammer::Hammer& ham, vector<string> pars, YAML::Node va
           //bcl has notrivial eigmat already in source code. No need to give variational vectors. You only need
           //to pass "1.0" at the index you want to vary. This variations vector will get contracted with 
           //the eigmat
-          variations["delta_e" + to_string(j)] =  (i == j) *  1.0;
-          variations["delta_e" + to_string(j)] =  (i == j) * -1.0;
+          if (dir == "up") variations["delta_e" + to_string(j)] =  (i == j) *  1.0;
+          else             variations["delta_e" + to_string(j)] =  (i == j) * -1.0;
 
         }
         else{
