@@ -94,8 +94,14 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
     n = chain.Add(files)
     print(f"Chaining {n} files for this channel")
 
-    rdf = ROOT.RDataFrame(chain)
-    return (chain,rdf)
+    if debug: 
+      reduced_chain = chain.CloneTree(debug); 
+      rdf = ROOT.RDataFrame(reduced_chain,debug)
+      return (reduced_chain,rdf)
+
+    else:     
+      rdf = ROOT.RDataFrame(chain)
+      return (chain,rdf)
  
   if (pastNN and rdfSys):
     print(f"picking past NN files with hammer weights...")
@@ -105,21 +111,14 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
     n = chain.Add(files)
     print(f"Chaining {n} files for this channel")
 
-    rdf = ROOT.RDataFrame(chain)
-    return (chain,rdf)
- 
+    if debug: 
+      reduced_chain = chain.CloneTree(debug); 
+      rdf = ROOT.RDataFrame(reduced_chain,debug)
+      return (reduced_chain,rdf)
 
-  if debug:
-    print(f"Picking {debug} file(s) for debugging ...")
-    fileList = os.listdir(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/")
-    #files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/" +  fileList[0] # pick just the first one 
-    for i in range(debug):
-      try: chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/" +  fileList[i]) 
-      except: chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTimes[0]}/*")
-
-    rdf = ROOT.RDataFrame(chain)
-    return (chain,rdf)
-
+    else:     
+      rdf = ROOT.RDataFrame(chain)
+      return (chain,rdf)
 
   for dateTime in dateTimes:
 
@@ -135,11 +134,14 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
     #chain them all
     chain.Add(files)
 
-  #create rdf from tree
-  rdf = ROOT.RDataFrame(chain)
+    if debug: 
+      reduced_chain = chain.CloneTree(debug); 
+      rdf = ROOT.RDataFrame(reduced_chain,debug)
+      return (reduced_chain,rdf)
 
-  return (chain,rdf)
-
+    else:     
+      rdf = ROOT.RDataFrame(chain)
+      return (chain,rdf)
 
 ########################################
 # Assign selections depending on the   #
@@ -210,13 +212,13 @@ if pastNN:
 
 
     print("constrained data after NN not processed yet..")
-    chainSigSB, rdfSigSB     = getRdf(sig_sample                               , rdfSys = addSys)#, debug = 10)
-    chainSig,   rdfSig       = getRdf(sig_sample                               , rdfSys = addSys)#, debug = 10)
-    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                            )#, debug = 10)
-    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                            )#, debug = 10)
-    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                            )#, debug = 10)
-    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                         )#, debug = 10)
-    chainData,  rdfData      = getRdf(data_cons_pastNN                          )#, debug = 10)
+    chainSigSB, rdfSigSB     = getRdf(sig_sample                               , rdfSys = addSys, debug = 100)
+    chainSig,   rdfSig       = getRdf(sig_sample                               , rdfSys = addSys, debug = 100)
+    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           , debug = 100)
+    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           , debug = 100)
+    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           , debug = 100)
+    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        , debug = 100)
+    chainData,  rdfData      = getRdf(data_cons_pastNN                         , debug = 10000)
 
 
 
@@ -516,6 +518,7 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
           
 
           #histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("hammer_w_c", f"central_w / {central_av}" ).Histo1D(model[0], "m_corr", "hammer_w_c" )
+          
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr","central_w")
           histos[var].Scale(1.0 / central_av)
 
@@ -558,7 +561,6 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
         if (histSys):
 
           central_av = averages[ "central_w_" + sig]
-          print("central_av is: ", central_av)
           #histos[var] = rdf.Filter(selection).Define("hammer_w_c", f"central_w / {central_av} " ).Histo1D(model[0], tofill,"hammer_w_c")
           histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill,"central_w")
           histos[var].Scale(1.0 / central_av)
@@ -585,15 +587,6 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
             histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Histo1D(model[0], tofill, s + "_down"   )
             histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
  
-            if (var =="class") and (s == "e3"):
-              h = histos[var + "_" + s + "Up"].GetValue()
-              
-              # Print bin contents
-              for bin_idx in range(1, h.GetNbinsX() + 1):  # Bins are 1-indexed in ROOT
-                  bin_content = h.GetBinContent(bin_idx)
-                  bin_center = h.GetBinCenter(bin_idx)
-                  print(f"Bin {bin_idx}: Center = {bin_center}, Content = {bin_content}")
-
 
         else:
           histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
@@ -608,7 +601,6 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
       histos[var].SetLineWidth(linewidth)
 
 
-  print(f"      Selection: {selection} DONE")
 
   return histos
 
@@ -693,7 +685,7 @@ def plotSignFlipShapes(kk,pimu,both,var):
 
 
 
-def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None):
+def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, region = None):
 
   color, labels = getColorAndLabelSignalDistinction("stacked")
 
@@ -1004,18 +996,23 @@ def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh
     name += ""
     folder = "/"
 
-  toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}"
+  if region:
+    name += f"_{region}" 
+    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots_2D/{folder}"
+
+  else:
+    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}"
 
   if not os.path.exists(toSave): 
     os.makedirs(toSave)
     os.makedirs(toSave + "/log")  
 
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/log/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/log/{var}_{name}.png")
+    c1.SaveAs( toSave + f"/log/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/log/{var}_{name}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}/{var}_{name}.png")
+    c1.SaveAs( toSave + f"/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/{var}_{name}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 
@@ -1027,294 +1024,8 @@ def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh
   return returnHisto
 
 
-def stacked2DPlot(histos, var, hb_scale, mlow, mhigh, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None):
-
-  color, labels = getColorAndLabelSignalDistinction("stacked")
-
-  for i,key in enumerate(histos.keys()):
-    try: histos[key] = histos[key].GetValue()
-    except: histos[key] = histos[key]
-
-    histos[key].SetFillColorAlpha(color[key],0.3)
-    histos[key].SetLineColor(color[key])
-
-
-    if key == "data":
-       histos[key].SetMarkerStyle(8) 
-
-  # take as model
-  #bins  = histos["dsMu"].GetNbinsX()
-  #start = histos["dsMu"].GetXaxis().GetBinLowEdge(1)   # first bin
-  #stop  = histos["dsMu"].GetXaxis().GetBinUpEdge(bins) # last bin
-
-
-  # stacked histo
-  hs = ROOT.THStack(var,"")
-  # error histo
-  #hErr = ROOT.TH1D(var,"",bins,start,stop)
-  #hErr.SetName("err")
-  #hErr.GetXaxis().SetTitleOffset(1.3)
-  #hErr.GetYaxis().SetTitleSize(1*hErr.GetYaxis().GetTitleSize())
-  #hErr.GetXaxis().SetTitleSize(1*hErr.GetXaxis().GetTitleSize())  
-  #hErr.SetLineWidth(0)
-  # mass histo for fakemass
-  #hComb = hErr.Clone()
-  #hComb.SetName("mass")
-  #hComb.SetFillColor(ROOT.kGray)
-  #hComb.SetLineColor(ROOT.kGray)
-  # special error fillstyle 
-  #hErr.SetFillColor(ROOT.kGray+1)
-  #hErr.SetFillStyle(3344)
-
-  #scale hb to other mc
-
-  print("Scale of Hb: ", hb_scale )
-  if hb_scale == 0: 
-    histos["hb"].Scale(0.0 )
-  else:
-    histos["hb"].Scale(hb_scale / histos["hb"].Integral())
-
-  if newHb:
-    histos["bs"].Scale(histos["hb"].Integral()    * bs/ histos["bs"].Integral())
-    histos["b0"].Scale(histos["hb"].Integral()    * b0/ histos["b0"].Integral())
-    histos["bplus"].Scale(histos["hb"].Integral() * bplus/ histos["bplus"].Integral())
-    #change from inclusive to exlusive
-    histos["hb"] = histos["bs"].Clone()
-    histos["hb"].Add(histos["b0"])
-    histos["hb"].Add(histos["bplus"])
-
-
-  nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
-
-  ###################################
-  ## Combinatorial treatment       ##
-  ###################################
-
-  if constrained:
-    hComb = histos["data_sf"].Clone()
-
-  else: 
-    #do sideband method
-    if var != "phiPi_m":
-      # use sideband method
-      # left one
-      hComb = histos["combL"].Clone()
-      hComb.SetName("combS") #signal region
-      hComb.Scale(B/(2*A))
-  
-      # right one
-      hCombR = histos["combR"].Clone()
-      hCombR.Scale(B/(2*C))
-      hComb.Add(hCombR)
-  
-    else:
-      for i in range(bins):
-        hComb.SetBinContent(i+1,fakemass[i])
-        hComb.SetBinError(i+1,np.sqrt(fakemass[i]))
-      
-  nComb = hComb.Integral()
-  
-  hComb.SetName("mass")
-  hComb.SetFillColorAlpha(ROOT.kGray, 0.2)
-  hComb.SetLineColor(ROOT.kGray)
-
-  # add comb to stack and err 
-  #hErr.Add(hComb)
-  hs.Add(hComb)
-  
-  histos["comb"] = hComb # append to create datacard later
-  ###################################
-  ## Scale MC to data              ##
-  ###################################
-
-
-  for key in histos.keys():
-    if ('comb' not in key) and ('data' not in key):
-
-      histos[key].Scale((histos["data"].Integral() - nComb) / nSig)
-
-  if newHb:
-    for key in histos.keys():
-      if ('comb' not in key) and ('data' not in key) and ("hb" not in key):
-
-        #hErr.Add(histos[key])
-        hs.Add(histos[key])
-  else:
-    for key in histos.keys():
-      if ('comb' not in key) and ('data' not in key) and ('b0' not in key) and ('bs' not in key) and ('bplus' not in key):
-        #hErr.Add(histos[key])
-        hs.Add(histos[key])
-
-  
-
-  ###################################
-  ## Create Pads                   ## 
-  ###################################
-
-  c1 = ROOT.TCanvas(var, '', 700, 700)
-  c1.Draw()
-  c1.cd()
-  main_pad = ROOT.TPad('main_pad', '', 0., 0.25, 1. , 1.  )
-  main_pad.Draw()
-  c1.cd()
-  ratio_pad = ROOT.TPad('ratio_pad', '', 0., 0., 1., 0.25)
-  ratio_pad.Draw()
-  main_pad.SetTicks(True)
-  main_pad.SetBottomMargin(0.)
-  main_pad.SetLeftMargin(.16)
-  ratio_pad.SetTopMargin(0.)
-  ratio_pad.SetLeftMargin(.16)
-  ratio_pad.SetGridy()
-  ratio_pad.SetBottomMargin(0.45)
-
-  main_pad.cd()
-
-  ###################################
-  ## legends                       ## 
-  ###################################
- 
-  #legend
-  leg = ROOT.TLegend(.2,.72,.88,0.88)
-  leg.SetBorderSize(0)
-  leg.SetFillColor(0)
-  leg.SetFillStyle(0)
-  leg.SetTextFont(42)
-  leg.SetTextSize(0.035)
-  leg.SetNColumns(4)
-  leg.AddEntry(histos["dsStarMu"]   ,'B_{s}#rightarrow D*_{s}#mu#nu' ,'F' )
-  leg.AddEntry(histos["dsMu"]       ,'B_{s}#rightarrow D_{s}#mu#nu'  ,'F' )
-  leg.AddEntry(histos["dsStarTau"]  ,'B_{s}#rightarrow D*_{s}#tau#nu','F' )
-  leg.AddEntry(histos["dsTau"]      ,'B_{s}#rightarrow D_{s}#tau#nu' ,'F' )
-
-  if newHb:
-    leg.AddEntry(histos["bs"]       ,'B_{s}#rightarrow D_{s} + #mu ' ,'F' )
-    leg.AddEntry(histos["b0"]       ,'B_{0}#rightarrow D_{s} + #mu ' ,'F' )
-    leg.AddEntry(histos["bplus"]    ,'B_{+}#rightarrow D_{s} + #mu ' ,'F' )
-  else:
-    leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
-  leg.AddEntry(histos["data"]       ,'Data','LEP')
-  leg.AddEntry(hComb                           ,'Comb. Bkg.'  ,'F' )
-  #leg.AddEntry(hErr                            ,'Stat. Uncer.'  ,'F' )
-  
-  #plot mainpad
-  if log:
-    ROOT.gPad.SetLogy()
-    histos["data"].GetYaxis().SetTitle('Events')
-    histos["data"].GetYaxis().SetRangeUser(1e-3, hs.GetMaximum()*1000)
-    histos["data"].SetMinimum(1.001) # avoid idsplaying tons of comb bkg
-  else:
-    histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetMaximum()*1.5)
-    histos["data"].GetYaxis().SetTitle('Events')
-  
-  #draw data with uncertainty
-  histos["data"].Draw("LEGO1")
-  #draw stacked histo
-  hs.Draw("LEGO1 SAME")
-  #draw data again (used for plotting uses)
-  histos["data"].Draw("LEGO1 EP SAME")
-  #draw stat uncertainty of MC, (can not be directly done with a stacked histo)
-  #hErr.Draw("E2 SAME")
-  leg.Draw("SAME")
-  ROOT.gPad.RedrawAxis()
-  #ROOT.gPad.SetPhi(90)
- 
-  """ 
-  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = 'X fb^{-1}')
-  
-  #plot ratiopad
-  ratio_pad.cd()
-  ratio = histos["data"].Clone()
-  ratio.SetName(ratio.GetName()+'_ratio')
-  ratio.Divide(hErr)
-  ratio_stats = histos["data"].Clone()
-  ratio_stats.SetName(ratio.GetName()+'_ratiostats')
-  ratio_stats.Divide(hErr)
-  ratio_stats.SetMaximum(1.999) # avoid displaying 2, that overlaps with 0 in the main_pad
-  ratio_stats.SetMinimum(0.0001) # and this is for symmetry
-  ratio_stats.GetYaxis().SetTitle('Data / MC')
-  ratio_stats.GetYaxis().SetTitleOffset(0.5)
-  ratio_stats.GetYaxis().SetNdivisions(405)
-  ratio_stats.GetYaxis().SetTitleOffset(0.5)
-  ratio_stats.GetXaxis().SetLabelSize(3.* ratio.GetXaxis().GetLabelSize())
-  ratio_stats.GetYaxis().SetLabelSize(3.* ratio.GetYaxis().GetLabelSize())
-  ratio_stats.GetXaxis().SetTitleSize(3.* ratio.GetXaxis().GetTitleSize())
-  ratio_stats.GetYaxis().SetTitleSize(3.* ratio.GetYaxis().GetTitleSize())
-  
-         
-  #divide signals by total number of measurements
-  norm_stack = ROOT.THStack('norm_stack', '')
-
-  if newHb:
-    for key in histos.keys():
-      if ('comb' not in key) and ('data' not in key) and ("hb" not in key):
-        h = histos[key].Clone()
-        h.Divide(hErr)
-        norm_stack.Add(h)
-
-  else: 
-    for key in histos.keys():
-      if ('comb' not in key) and ('data' not in key) and ('b0' not in key) and ('bs' not in key) and ('bplus' not in key):
-        h = histos[key].Clone()
-        h.Divide(hErr)
-        norm_stack.Add(h)
-
-  hDummy = hComb.Clone() #do it also for the comb
-  hDummy.Divide(hErr)
-  norm_stack.Add(hDummy)
-  
-  norm_stack.Draw('hist same')
-
-  print(f"I count {hComb.Integral()} comb. bkg. events for the variable {var}")
- 
-  #subplot
-  line = ROOT.TLine(ratio.GetXaxis().GetXmin(), 1., ratio.GetXaxis().GetXmax(), 1.)
-  line.SetLineColor(ROOT.kBlack)
-  line.SetLineWidth(1)
-  ratio_stats.GetYaxis().CenterTitle()
-  
-  ratio_stats.Draw('EP')
-  norm_stack.Draw('hist same')
-  ratio_stats.Draw('EP same')
-  line.Draw('same')
-  ratio.Draw('EP same')
-  ROOT.gPad.RedrawAxis()
-  
-  #saving
-  c1.Modified()
-  c1.Update()
-
-  """
-  toSave = "/work/pahwagne/RDsTools/plots/cmsplots/2D/"
-
-  if not os.path.exists(toSave): 
-    os.makedirs(toSave)
-    os.makedirs(toSave + "/log")  
-
-  if constrained: name = "constrained"
-  else: name = "unconstrained"
-
-  if newHb: name += "_newHb"
-  else: name += ""
-
-  if pastNN: name += "_pastNN"
-  else: name += ""
-
-
-  c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/2D/{var}_{name}.pdf")
-  c1.SaveAs(f"/work/pahwagne/RDsTools/plots/cmsplots/2D/{var}_{name}.png")
-  print(f"===> Produced plot: {var}.pdf")
-
-
-  # return a copy, otherwise the histosScaled get overwritten when we change histos in f.e. normplots! (Weird???)
-  returnHisto = {}
-  for key in histos.keys():
-    returnHisto[key] = histos[key].Clone()
-
-  return returnHisto
 
 def normPlot(histos, var, scale_kk, fakemass = None , A = None ,B = None ,C = None ,S = None ,log = False):
-
-  color, labels = getColorAndLabelSignalDistinction("stacked")
 
   for i,key in enumerate(histos.keys()):
 
@@ -1534,7 +1245,7 @@ def methodDistinction(histos,name, selection,norm = True):
   canvas.SaveAs(f"/work/pahwagne/RDsTools/plots/method_dist/{name}.png")  
   print(f"DONE")
 
-def writeDatacard(histos, var, digits = 5, is_2D = None):
+def writeDatacard(histos, var, digits = 5):
 
   if constrained: name = "constrained"
   else: name = "unconstrained"
@@ -1544,8 +1255,6 @@ def writeDatacard(histos, var, digits = 5, is_2D = None):
 
   if pastNN: name += "_pastNN"
   else: name += ""
-
-  if is_2D: name += "_2D"
 
   if addSys:
     temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics.txt", "rt")
@@ -1590,7 +1299,67 @@ def writeDatacard(histos, var, digits = 5, is_2D = None):
   temp.close()
   card.close()
 
-def createPlots():
+def write2DDatacard(histos, var, region, splitter, digits = 5):
+
+  if constrained: name = "constrained"
+  else: name = "unconstrained"
+
+  if newHb: name += "_newHb"
+  else: name += ""
+
+  if pastNN: name += "_pastNN"
+  else: name += ""
+
+  if addSys:
+    temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics_2D.txt", "rt")
+  else:
+    temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate_2D.txt", "rt")
+
+  card_dir = f"/work/pahwagne/RDsTools/fit/datacards_2D/datacard_2D_{var}_{name}_{splitter}_bin_{region}.txt"
+  card = open(card_dir, "wt")
+
+  # width in datacard template is 17 spaces
+  spaces = 22
+
+  dataStr       = str(round(histos["data"].Integral(), digits))
+  dataStr      += " "*(spaces - len(dataStr))
+  
+  dsMuStr       = str(round(histos["dsMu"].Integral(), digits))
+  dsMuStr      += " "*(spaces - len(dsMuStr))
+
+  dsTauStr      = str(round(histos["dsTau"].Integral(), digits))
+  dsTauStr     += " "*(spaces - len(dsTauStr))
+
+  dsStarMuStr   = str(round(histos["dsStarMu"].Integral(), digits))
+  dsStarMuStr  += " "*(spaces - len(dsStarMuStr))
+
+  dsStarTauStr  = str(round(histos["dsStarTau"].Integral(), digits))
+  dsStarTauStr += " "*(spaces - len(dsStarTauStr))
+
+  hbStr         = str(round(histos["hb"].Integral(), digits))
+  hbStr        += " "*(spaces - len(hbStr))
+
+  combStr       = str(round(histos["comb"].Integral(), digits))  
+  #combStr      += " "*(spaces - len(combStr))
+
+  rates = dsMuStr + dsTauStr + dsStarMuStr + dsStarTauStr + hbStr + combStr
+
+  for line in temp:
+    if "HOOK_REGION"            in line: line = line.replace("HOOK_REGION",    str(region))
+    if "HOOK_SPLITTER"          in line: line = line.replace("HOOK_SPLITTER",  splitter   )
+    if "HOOK_RATES"             in line: line = line.replace("HOOK_RATES",     rates      )
+    if "HOOK_DATA_RATE"         in line: line = line.replace("HOOK_DATA_RATE", dataStr    )
+    if "HOOK_VAR"               in line: line = line.replace("HOOK_VAR",       var        )
+    if "HOOK_NAME"              in line: line = line.replace("HOOK_NAME",      name       )
+    card.write(line)
+
+  temp.close()
+  card.close()
+
+  #return the path to the card
+  return card_dir
+
+def create1DPlots():
 
   ################################
   # Define important selections  #
@@ -2077,5 +1846,510 @@ def createPlots():
 
       writeDatacard(histosScaled, var)
 
-createPlots() 
+def create2DPlots(splitter, regions):
+   
+  # splitter is the varible you want to use to define regions. F.e. q^2
+  # regions is a list of intervals in the splitter variable, f.e. [[0,4],[4,8],[8,12]]
+  # we will plot variables defined in models
+
+
+  # this dictionary will hold a list of datacard paths (corresponding to the different regions) for every variable
+  # since we define the regions in the variable {splitter} itself, we dont include the splitter variable to plot
+  cards = {var: [] for var in models.keys() if ((var != splitter)  and (var != "phiPi_m"))}
+
+  shapes_folder = f"/work/pahwagne/RDsTools/fit/shapes_2D/{splitter}/"
+  if not os.path.exists(shapes_folder): os.makedirs(shapes_folder)
+
+  for i,region in enumerate(regions):
+
+    print(f"======> Analyzing {region} region of {splitter}")
+
+    ################################
+    # Define important selections  #
+    ################################
+  
+    high_mass         = f" && (dsMu_m > {bsMass_})"
+    low_mass          = f" && (dsMu_m < {bsMass_})"
+    wrong_sign        = f" && (((k1_charge*k2_charge > 0) || (mu_charge*pi_charge > 0)))"
+    right_sign        = f" && (((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)))"
+    kk_wrong          = f" && (k1_charge*k2_charge > 0) && (mu_charge*pi_charge < 0)"
+    pimu_wrong        = f" && (mu_charge*pi_charge > 0) && (k1_charge*k2_charge < 0)"
+    both_wrong        = f" && (mu_charge*pi_charge > 0) && (k1_charge*k2_charge > 0)"
+   
+    baseline_region = baseline + f" && ({splitter} > {region[0]}) && ({splitter} < {region[1]})" 
+  
+    # Define selections which hold all important selections next to baseline  
+    selection       = baseline_region + right_sign + low_mass #for all other variables
+  
+    # after NN, add score cut to 'selec*'
+    score_cut = ""
+  
+    if pastNN:
+   
+      score_cut = "&& (score5 <= 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
+      selection   += score_cut  # && (tv_prob > 0.1)"
+  
+    #Now define a selection for every MC signal and MC background, slicing with their ID 
+    selec   = selections(selection)
+  
+    ################################################
+    # Extract sigma from fit to MC DsMu signal to  #
+    # define signal region.                        #
+    ################################################
+  
+    sigma,   h            = getSigma(rdfSigSB, "phiPi_m", selec.dsMu)
+  
+    mlow,   mhigh,   mlow2,   mhigh2,   mlow3,   mhigh3,   signalRegion,   anti_signalRegion,   leftSB,   rightSB   = getRegions(sigma)
+    print("Signal region is:", signalRegion)
+    ################################################
+    # Fit Data DsMu signal to define A,B,C,D for   #
+    # sideband method and fakemass for sideband    #
+    ################################################
+  
+    if not constrained:
+  
+      #repeat for low mass region only
+      A, B, C, S          = getABCS( rdfData, selec.bare, "phiPi_m", sigma,   h,   binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
+      fakemass = np.genfromtxt('mass_bincontent.csv', delimiter=',')
+  
+    hb_tot        = rdfHb.Filter(selec.hb).Count().GetValue()
+    bs_in_hb      = rdfHb.Filter(selec.bs).Count().GetValue()    / hb_tot
+    b0_in_hb      = rdfHb.Filter(selec.b0).Count().GetValue()    / hb_tot
+    bplus_in_hb   = rdfHb.Filter(selec.bplus).Count().GetValue() / hb_tot
+  
+    #create histos returns a dictionary !:)
+   
+    ###################################################
+    # Histograms in signal region (for most variables #
+    ###################################################
+   
+    print("===> filling signal region ...")
+    hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
+  
+    #for all variables except mass plot only signal region (indicated with 'S')
+    selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsmu"     )
+    selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dstau"    )
+    selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsstarmu" )
+    selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsstartau")
+    print("=> signals done ...")
+    selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
+    selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
+    print("=> bkg in signal region done ...")
+  
+    if newHb:
+      selec_S_Bs           = createHistos(selec.bs          + signalRegion,    rdfBs         , gen = False)
+      selec_S_B0           = createHistos(selec.b0          + signalRegion,    rdfB0         , gen = False)
+      selec_S_Bplus        = createHistos(selec.bplus       + signalRegion,    rdfBplus      , gen = False)
+  
+    if constrained: 
+      #selec_S_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
+      selec_S_Data_sf_kk   = createHistos(  baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)
+      selec_S_Data_sf_pimu = createHistos(  baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)
+      print("=> bkg in control region done ...")
+
+      #get the signflip scale by fitting the ds mass peak
+    
+      hbDummy = selec_S_Hb["phiPi_m"].Clone()
+      if hb_scale_S == 0:
+        hbDummy.Scale(0.0 )
+      else:
+        hbDummy.Scale(hb_scale_S / hbDummy.Integral())
+  
+      hRest    = selec_S_DsMu["phiPi_m"].Clone()
+      hRest.Add( selec_S_DsStarMu["phiPi_m"].Clone())
+      hRest.Add( selec_S_DsTau["phiPi_m"].Clone())
+      hRest.Add( selec_S_DsStarTau["phiPi_m"].Clone())
+      hRest.Add( hbDummy)
+  
+      global scale_S_kk;
+      global scale_S_bkg;
+      global scale_S_n;
+  
+      print("===> signflip fit...")
+      print("We have ",selec_S_Data_sf_kk["phiPi_m"].GetEntries(), "wrong kk sign events")
+      print("We have ",selec_S_Data_sf_pimu["phiPi_m"].GetEntries(), "wrong pimu sign events")
+  
+      scale_S_kk, scale_S_bkg, scale_S_n = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_S_Data["phiPi_m"].Clone())
+  
+    else:
+        selec_S_DataL        = createHistos(selec.bare        + leftSB,          rdfData       , gen = False)
+        selec_S_DataR        = createHistos(selec.bare        + rightSB,         rdfData       , gen = False)
+    
+    print("===> signal region done...")
+  
+    """
+    print("===> filling total region ...")
+    ###################################################
+    # Histograms in complete region (for Ds mass)     #
+    ###################################################
+  
+    hb_scale_C = getHbScale(selec.hb , selec.dsMu )
+    
+    # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
+    selec_C_DsMu           = createHistos(selec.dsMu       ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsmu"     )
+    selec_C_DsTau          = createHistos(selec.dsTau      ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dstau"    )
+    selec_C_DsStarMu       = createHistos(selec.dsStarMu   ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsstarmu" )
+    selec_C_DsStarTau      = createHistos(selec.dsStarTau  ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsstartau")
+    selec_C_Hb             = createHistos(selec.hb         ,                  rdfHb         , gen = False, massPlot = True, variables = ["phiPi_m"])
+    selec_C_Data           = createHistos(selec.bare       ,                  rdfData       , gen = False, massPlot = True, variables = ["phiPi_m"])
+  
+    if newHb:
+      selec_C_Bs           = createHistos(selec.bs          ,                 rdfBs         , gen = False, massPlot = True, variables = ["phiPi_m"])
+      selec_C_B0           = createHistos(selec.b0          ,                 rdfB0         , gen = False, massPlot = True, variables = ["phiPi_m"])
+      selec_C_Bplus        = createHistos(selec.bplus       ,                 rdfBplus      , gen = False, massPlot = True, variables = ["phiPi_m"])
+  
+    if constrained:
+      #selec_C_Data_sf     = createHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData        , gen = False, massPlot = True, variables = ["phiPi_m"])
+      selec_C_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
+      selec_C_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
+      selec_C_Data_sf_both = createHistos(  baseline + score_cut + both_wrong + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
+  
+      #get the signflip scale by fitting the ds mass peak
+    
+      hbDummy = selec_C_Hb["phiPi_m"].Clone()
+      if hb_scale_C == 0:
+        hbDummy.Scale(0.0 )
+      else:
+        hbDummy.Scale(hb_scale_C / hbDummy.Integral())
+  
+      hRest    = selec_C_DsMu["phiPi_m"].Clone()
+      hRest.Add( selec_C_DsStarMu["phiPi_m"].Clone())
+      hRest.Add( selec_C_DsTau["phiPi_m"].Clone())
+      hRest.Add( selec_C_DsStarTau["phiPi_m"].Clone())
+      hRest.Add( hbDummy)
+  
+      global scale_C_kk;
+      global scale_C_bkg;
+      global scale_C_n;
+  
+      for var in selec_C_Data_sf_both.keys():
+  
+        plotSignFlipShapes(selec_C_Data_sf_kk,selec_C_Data_sf_pimu,selec_C_Data_sf_both,var)
+  
+      scale_C_kk, scale_C_bkg, scale_C_n = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
+   
+    print("===> total region done...")
+  
+  
+    print("===> filling high mass region ...")
+  
+    ########################################################
+    # Histograms in high&low mass region (For Ds+mu mass)  #
+    ########################################################
+  
+    hb_scale_H = getHbScale(selec_H.hb , selec_H.dsMu )
+    
+    # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
+    selec_H_DsMu           = createHistos(selec_H.dsMu       ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsmu"     )
+    selec_H_DsTau          = createHistos(selec_H.dsTau      ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dstau"    )
+    selec_H_DsStarMu       = createHistos(selec_H.dsStarMu   ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsstarmu" )
+    selec_H_DsStarTau      = createHistos(selec_H.dsStarTau  ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsstartau")
+    selec_H_Hb             = createHistos(selec_H.hb         ,                  rdfHb         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
+    selec_H_Data           = createHistos(selec_H.bare       ,                  rdfData       , gen = False,  variables = ["phiPi_m", "dsMu_m"])
+  
+    if newHb:
+      selec_H_Bs           = createHistos(selec_H.bs          ,                 rdfBs         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
+      selec_H_B0           = createHistos(selec_H.b0          ,                 rdfB0         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
+      selec_H_Bplus        = createHistos(selec_H.bplus       ,                 rdfBplus      , gen = False,  variables = ["phiPi_m", "dsMu_m"])
+  
+    if constrained:
+      #selec_C_Data_sf     = createHistos(baseline + score_cut + wrong_sign + low_mass,   rdfData        , gen = False, massPlot = True, variables = ["phiPi_m"])
+      selec_H_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   ,      rdfData       , gen = False, variables = ["phiPi_m", "dsMu_m"])
+      selec_H_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong ,      rdfData       , gen = False, variables = ["phiPi_m", "dsMu_m"])
+   
+      #get the signflip scale by fitting the ds mass peak
+    
+      hbDummy = selec_H_Hb["phiPi_m"].Clone()
+      if hb_scale_H == 0:
+        hbDummy.Scale(0.0 )
+      else:
+        hbDummy.Scale(hb_scale_H / hbDummy.Integral())
+  
+      hRest    = selec_H_DsMu["phiPi_m"].Clone()
+      hRest.Add( selec_H_DsStarMu["phiPi_m"].Clone())
+      hRest.Add( selec_H_DsTau["phiPi_m"].Clone())
+      hRest.Add( selec_H_DsStarTau["phiPi_m"].Clone())
+      hRest.Add( hbDummy)
+  
+      global scale_H_kk;
+      global scale_H_bkg;
+      global scale_H_n;
+  
+      scale_H_kk, scale_H_bkg, scale_H_n = getSignflipRatio(selec_H_Data_sf_kk["phiPi_m"].Clone(),selec_H_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_H_Data["phiPi_m"].Clone())
+   
+    print("===> high mass region done...")
+    """
+    if constrained: name = "constrained"
+    else: name = "unconstrained"
+  
+    if newHb: name += "_newHb"
+    else: name += ""
+  
+    if pastNN: name += "_pastNN"
+    else: name += ""
+  
+    for var in models.keys():
+   
+      if (var == splitter): continue; 
+ 
+      #create root file for every variable which holds shapes
+      shapes_name = f"/{var}_shapes_{name}_{splitter}_bin_{i}.root"
+
+      myFile      = ROOT.TFile.Open(shapes_folder + shapes_name, "RECREATE")
+  
+      print(f"===> Producing stacked plot for variable: {var}") 
+      if "gen" in var:
+        #skip gen variables
+        print("This is a gen variable... skip!")
+        continue
+   
+  
+      ######################################
+      ## Plot variables except phiPi mass ##
+      ######################################
+  
+      if (var != "phiPi_m") and (var!= "dsMu_m"):
+    
+        histos = {"dsTau"    :  selec_S_DsTau[var],
+                 "dsStarTau" :  selec_S_DsStarTau[var], 
+                 "dsMu"      :  selec_S_DsMu[var], 
+                 "dsStarMu"  :  selec_S_DsStarMu[var], 
+                 "hb"        :  selec_S_Hb[var], 
+                 "data"      :  selec_S_Data[var]}
+     
+        if sys:
+          # if there are systematics, include them in the scaling
+          for s in sys[:6]:
+            for direc in ["Up", "Down"]:
+              histos["dsTau_"     + s + direc] = selec_S_DsTau    [var + "_" + s + direc]
+              histos["dsMu_"      + s + direc] = selec_S_DsMu     [var + "_" + s + direc]
+  
+          for s in sys:
+            for direc in ["Up", "Down"]:
+              histos["dsStarTau_" + s + direc] = selec_S_DsStarTau[var + "_" + s + direc]
+              histos["dsStarMu_"  + s + direc] = selec_S_DsStarMu [var + "_" + s + direc]
+  
+          canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
+          histos["dsStarMu_e1Up"].Draw()
+          histos["dsStarMu_e1Down"].Draw("SAME")
+          histos["dsStarMu"].Draw("SAME")
+          canvas.SaveAs("check.png")
+  
+        if newHb:
+          histos["bs"]    = selec_S_Bs[var] 
+          histos["b0"]    = selec_S_B0[var] 
+          histos["bplus"] = selec_S_Bplus[var] 
+  
+        if constrained:
+  
+          #histos["data_sf"] = selec_S_Data_sf[var] 
+          histos["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
+          histos["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
+          toPass = histos.copy() 
+  
+          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb , region = f"{splitter}_bin_{i}")
+  
+        else:
+  
+          histos["combL"] = selec_S_DataL[var] 
+          histos["combR"] = selec_S_DataR[var] 
+          toPass = histos.copy() 
+  
+          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_bin_{i}")
+  
+        myFile.WriteObject(histosScaled["dsMu"],      "dsMu"     + f"_bin_{i}" )
+        myFile.WriteObject(histosScaled["dsTau"],     "dsTau"    + f"_bin_{i}" )
+        myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu" + f"_bin_{i}" )
+        myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau"+ f"_bin_{i}" )
+        myFile.WriteObject(histosScaled["hb"],        "hb"       + f"_bin_{i}" )
+        myFile.WriteObject(histosScaled["data"],      "data_obs" + f"_bin_{i}" ) #combine convention
+        myFile.WriteObject(histosScaled["comb"],      "comb"     + f"_bin_{i}" )
+  
+        if sys:
+          # if there are systematics, include them in the scaling
+          for s in sys[:6]:
+            for direc in ["Up", "Down"]:
+              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc + f"_bin_{i}"  )
+              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc + f"_bin_{i}"  )
+  
+          for s in sys:
+            for direc in ["Up", "Down"]:
+              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc + f"_bin_{i}"  )
+              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc + f"_bin_{i}"  )
+ 
+        # need to know region {i} and splitter variable {splitter} to write datacard 
+        card = write2DDatacard(histosScaled, var, i, splitter)
+        cards[var].append(card)
+
+      """
+      if (var == "phiPi_m"): 
+        histos = {"dsTau":    selec_C_DsTau[var],
+                 "dsStarTau": selec_C_DsStarTau[var], 
+                 "dsMu":      selec_C_DsMu[var], 
+                 "dsStarMu":  selec_C_DsStarMu[var], 
+                 "hb"       : selec_C_Hb[var], 
+                 "data"     : selec_C_Data[var]}
+  
+        if sys:
+          # if there are systematics, include them in the scaling
+          for s in sys[:6]:
+            for direc in ["Up", "Down"]:
+              histos["dsTau_"     + s + direc] = selec_C_DsTau    [var + "_" + s + direc]
+              histos["dsMu_"      + s + direc] = selec_C_DsMu     [var + "_" + s + direc]
+          for s in sys:
+            for direc in ["Up", "Down"]:
+              histos["dsStarTau_" + s + direc] = selec_C_DsStarTau[var + "_" + s + direc]
+              histos["dsStarMu_"  + s + direc] = selec_C_DsStarMu [var + "_" + s + direc]
+  
+        if newHb:
+          histos["bs"]    = selec_C_Bs[var] 
+          histos["b0"]    = selec_C_B0[var] 
+          histos["bplus"] = selec_C_Bplus[var] 
+  
+        if constrained:
+   
+          #histos["data_sf"]      = selec_C_Data_sf[var]
+          histos["data_sf_kk"]   = selec_C_Data_sf_kk[var] 
+          histos["data_sf_pimu"] = selec_C_Data_sf_pimu[var] 
+  
+          toPass = histos.copy() 
+  
+          histosScaled = stackedPlot(toPass, var, hb_scale_C, scale_C_kk, scale_C_bkg, scale_C_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb )
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk)
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk, log = True)
+  
+        else:
+  
+          toPass = histos.copy() 
+  
+          histosScaled = stackedPlot(toPass, var, hb_scale_C, scale_C_kk, scale_C_bkg, scale_C_n,mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb)
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk, fakemass = fakemass, A = A, B = B, C = C, S = S)
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True)
+  
+        #stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, log = True)
+        #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S)
+        #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S, log = True)
+        
+  
+        myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
+        myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
+        myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+        myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+        myFile.WriteObject(histosScaled["hb"],        "hb"        )
+        myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
+        myFile.WriteObject(histosScaled["comb"],      "comb"      )
+  
+        if sys:
+          # if there are systematics, include them in the scaling
+          for s in sys[:6]:
+            for direc in ["Up", "Down"]:
+              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
+              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
+          for s in sys:
+            for direc in ["Up", "Down"]:
+              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
+              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+  
+        writeDatacard(histosScaled, var)
+  
+      if (var == "dsMu_m"): 
+        histos = {"dsTau":    selec_H_DsTau[var],
+                 "dsStarTau": selec_H_DsStarTau[var], 
+                 "dsMu":      selec_H_DsMu[var], 
+                 "dsStarMu":  selec_H_DsStarMu[var], 
+                 "hb"       : selec_H_Hb[var], 
+                 "data"     : selec_H_Data[var]}
+        if sys:
+          # if there are systematics, include them in the scaling
+          for s in sys[:6]:
+            for direc in ["Up", "Down"]:
+  
+              histos["dsTau_"     + s + direc] = selec_H_DsTau    [var + "_" + s + direc]
+              histos["dsMu_"      + s + direc] = selec_H_DsMu     [var + "_" + s + direc]
+  
+          for s in sys:
+            for direc in ["Up", "Down"]:
+  
+              histos["dsStarTau_" + s + direc] = selec_H_DsStarTau[var + "_" + s + direc]
+              histos["dsStarMu_"  + s + direc] = selec_H_DsStarMu [var + "_" + s + direc]
+  
+        if newHb:
+          histos["bs"]    = selec_H_Bs[var] 
+          histos["b0"]    = selec_H_B0[var] 
+          histos["bplus"] = selec_H_Bplus[var] 
+  
+        if constrained:
+   
+          #histos["data_sf"]      = selec_H_Data_sf[var]
+          histos["data_sf_kk"]   = selec_H_Data_sf_kk[var] 
+          histos["data_sf_pimu"] = selec_H_Data_sf_pimu[var] 
+  
+          toPass = histos.copy() 
+  
+          histosScaled = stackedPlot(toPass, var, hb_scale_H, scale_H_kk, scale_H_bkg, scale_H_n, mlow_H, mhigh_H, bs = bs_in_hb_H, b0 = b0_in_hb_H, bplus = bplus_in_hb_H)
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk )
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, log = True)
+  
+        else:
+  
+          toPass = histos.copy() 
+  
+          histosScaled = stackedPlot(toPass, var, hb_scale_H, scale_H_kk, scale_H_bkg, scale_H_n,mlow_H, mhigh_H, fakemass = fakemass, A = A_H, B = B_H, C = C_H, S = S_H, bs = bs_in_hb_H, b0 = b0_in_hb_H, bplus = bplus_in_hb_H)
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, fakemass = fakemass, A = A_H, B = B_H, C = C_H, S = S_H)
+          normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, fakemass = fakemass, A = A_H, B = B_H, C = C_H, S = S_H, log = True)
+  
+        myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
+        myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
+        myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+        myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+        myFile.WriteObject(histosScaled["hb"],        "hb"        )
+        myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
+        myFile.WriteObject(histosScaled["comb"],      "comb"      )
+  
+        if sys:
+          # if there are systematics, include them in the scaling
+          for s in sys[:6]:
+            for direc in ["Up", "Down"]:
+              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
+              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
+  
+          for s in sys:
+            for direc in ["Up", "Down"]:
+              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
+              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+  
+        writeDatacard(histosScaled, var)
+        """
+
+  # now merge all the datacards into one
+
+  #for var in cards.keys():
+  #
+  #  os_command = "combineCards.py"
+  #  
+  #  for i,card in enumerate(cards[var]):
+  #    os_command += f" bin_{i}={cards[var]}"    
+  #
+  #  # strip the filename and get the path where the datacards are in to save
+  #  # the combined datacard
+  #  dir_name= os.path.dirname(cards[var][0]) 
+  #  os_command += ">> " + dir_name + f"/datacard_{var}_combined.txt" 
+ 
+  #  print(os_command)
+  #  os.system(os_command)
+ 
+
+
+######################
+
+#simple 1D plots and datacards
+#create1DPlots() 
+
+
+#more advanced, create 2D datacards
+
+regions = [[0,4],[4,7],[7,12]]
+create2DPlots("q2_coll",regions) 
+
+
 
