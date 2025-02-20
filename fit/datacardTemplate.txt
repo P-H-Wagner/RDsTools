@@ -1,0 +1,20 @@
+imax    1 number of bins
+jmax    5 number of processes minus 1
+kmax    * number of nuisance parameters
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+shapes * signal_region /work/pahwagne/RDsTools/fit/shapes/HOOK_DATETIME/HOOK_VAR_shapes_HOOK_NAME.root $PROCESS
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+bin                       signal_region   
+observation               HOOK_DATA_RATE           
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+bin                       signal_region         signal_region         signal_region         signal_region         signal_region         signal_region   
+process                   dsMu                  dsTau                 dsStarMu              dsStarTau             hb                    comb
+process                   1                     0                     2                     -1                    3                     4
+rate                      HOOK_RATES 
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+#CMS_eff_b          lnN    1.02                  1.02                  1.02                  -                     1.02                  1.02
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+bs rateParam signal_region dsMu 1
+bs rateParam signal_region dsTau 1
+bs rateParam signal_region dsStarMu 1
+bs rateParam signal_region dsStarTau 1

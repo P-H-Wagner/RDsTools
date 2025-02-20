@@ -1,0 +1,36 @@
+imax    1 number of bins
+jmax    5 number of processes minus 1
+kmax    * number of nuisance parameters
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+shapes * chHOOK_REGION /work/pahwagne/RDsTools/fit/shapes_binned/HOOK_DATETIME/HOOK_VAR_shapes_HOOK_NAME_HOOK_SPLITTER_chHOOK_REGION.root $PROCESS_$CHANNEL $PROCESS_$SYSTEMATIC_$CHANNEL
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+bin                       chHOOK_REGION 
+observation               HOOK_DATA_RATE           
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+bin                       chHOOK_REGION         chHOOK_REGION         chHOOK_REGION         chHOOK_REGION         chHOOK_REGION         chHOOK_REGION   
+process                   dsMu                  dsTau                 dsStarMu              dsStarTau             hb                    comb
+process                   1                     0                     2                     -1                    3                     4
+rate                      HOOK_RATES 
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+e1Bcl            shape    1.0                   1.0                   -                     -                     -                     -
+e2Bcl            shape    1.0                   1.0                   -                     -                     -                     -
+e3Bcl            shape    1.0                   1.0                   -                     -                     -                     -
+e4Bcl            shape    1.0                   1.0                   -                     -                     -                     -
+e5Bcl            shape    1.0                   1.0                   -                     -                     -                     -
+e6Bcl            shape    1.0                   1.0                   -                     -                     -                     -
+#
+e1Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e2Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e3Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e4Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e5Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e6Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e7Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e8Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e9Bgl            shape    -                     -                     1.0                   1.0                   -                     -
+e10Bgl           shape    -                     -                     1.0                   1.0                   -                     -
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+bs rateParam chHOOK_REGION dsMu 1
+bs rateParam chHOOK_REGION dsTau 1
+bs rateParam chHOOK_REGION dsStarMu 1
+bs rateParam chHOOK_REGION dsStarTau 1

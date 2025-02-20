@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 import yaml
-
+from datetime import datetime
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
@@ -12,6 +12,7 @@ from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio
 from helper import * 
 from histModels import models, pastNN_models, pastNN_2Dmodels
+from blinding import *
 
 import numpy as np
 from cms_style import CMS_lumi
@@ -29,10 +30,7 @@ parser.add_argument("-n", "--nn",          required = True, help = "Specify 'bef
 parser.add_argument("-s", "--sys",         required = True, help = "Specify 'true' or 'false' to add systeatic shape plots") 
 args = parser.parse_args()
 
-# python plotNew.py -f cons -b old -n past -s true
-
-
-
+# python plotter.py -f cons -b old -n past -s true
 
 
 if args.fit not in ["cons", "uncons"]:
@@ -55,16 +53,15 @@ print(f"====> Running {args.fit} fit with {args.hb} Hb background, {args.nn} neu
 if pastNN: models.update(pastNN_models)
 
 if addSys:
-  print(f"====> Adding the following systematics: {systematics}") #defined in helper.py
-  sys = systematics 
+  print(f"====> Adding the following systematics: {systematics_scalar} and {systematics_vector}") #defined in helper.py
+  sys_scalar = systematics_scalar
+  sys_vector = systematics_vector
 
 with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
-  print(averages)
+  #print(averages)
 baseline_name = "base_wout_tv"
 baseline      = baselines[baseline_name]
-print(f"====> Using the following baseline selection: {baseline_name}")
-
 
 # disable title and stats and displaying
 ROOT.gStyle.SetOptTitle(0)
@@ -72,11 +69,23 @@ ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(True)
 ROOT.TH1.SetDefaultSumw2() #apply weights!
 
+# get date and time
+now = datetime.now()
+dt  = now.strftime("%d_%m_%Y_%H_%M_%S") 
+
+
+# set NN score cut
+score_cut = "&& (score5 <= 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
+
+# set the to be splitter variable and binning
+split   = "q2_coll"
+#binning = [[0,6],[6,7],[7,8],[8,9],[9,12]]
+binning = [[0,4],[4,7],[7,12]]
+#binning = [[0,7],[7,12]]
+
 ##############################
 # Load chain into RDataFrame #
 ##############################
-
-
 
 def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
 
@@ -212,13 +221,13 @@ if pastNN:
 
 
     print("constrained data after NN not processed yet..")
-    chainSigSB, rdfSigSB     = getRdf(sig_sample                               , rdfSys = addSys, debug = 100)
-    chainSig,   rdfSig       = getRdf(sig_sample                               , rdfSys = addSys, debug = 100)
-    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           , debug = 100)
-    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           , debug = 100)
-    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           , debug = 100)
-    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        , debug = 100)
-    chainData,  rdfData      = getRdf(data_cons_pastNN                         , debug = 10000)
+    chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys) #, debug = 10000)
+    chainSig,   rdfSig       = getRdf(sig_sample             , rdfSys = addSys) #, debug = 10000)
+    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                          ) #, debug = 10000)
+    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                          ) #, debug = 10000)
+    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                          ) #, debug = 10000)
+    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                       ) #, debug = 10000)
+    chainData,  rdfData      = getRdf(data_cons_pastNN                        ) #, debug = 10000)
 
 
 
@@ -522,8 +531,8 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr","central_w")
           histos[var].Scale(1.0 / central_av)
 
-          if "star" not in sig: sys_dir = sys[:6] #only take e1 - e6 for scalar signals (BCL)
-          else:                 sys_dir = sys     #take e1-e10
+          if "star" not in sig: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
+          else:                 sys_dir = sys_vector     #take e1-e10
           for s in sys_dir:
 
             s_up   = s + "_up"
@@ -566,8 +575,8 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
           histos[var].Scale(1.0 / central_av)
 
           # fill sysmetatic up and down variations
-          if "star" not in sig: sys_dir = sys[:6] #only take e1 - e6 for scalar signals (BCL)
-          else:                 sys_dir = sys     #take e1-e10
+          if "star" not in sig: sys_dir = sys_scalar     #only take e1 - e6 for scalar signals (BCL)
+          else:                 sys_dir = sys_vector     #take e1-e10
           for s in sys_dir:
  
             s_up   = s + "_up"
@@ -601,6 +610,11 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
       histos[var].SetLineWidth(linewidth)
 
 
+
+      if (sig and "tau" in sig):
+        #blinding strategy
+        if "star" in sig: histos[var].Scale(blind_vector)
+        else:             histos[var].Scale(blind_scalar)
 
   return histos
 
@@ -998,14 +1012,22 @@ def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh
 
   if region:
     name += f"_{region}" 
-    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots_2D/{folder}"
+    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots_binned/{dt}/"
 
   else:
-    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}"
+    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{dt}/"
 
   if not os.path.exists(toSave): 
     os.makedirs(toSave)
     os.makedirs(toSave + "/log")  
+
+  # save nn info
+  with open( toSave + f"/info.txt", "w") as f:
+    f.write( f" These plots use the following NN model: {nnModel} \n")
+    f.write( f" And the following score cut: {score_cut} \n")
+    f.write( f" Baseline selection is: \n {baseline} \n")
+    if region: f.write( f" Splitting variable {split} into regions {binning} \n")
+    
 
   if log:
     c1.SaveAs( toSave + f"/log/{var}_{name}.pdf")
@@ -1190,19 +1212,25 @@ def normPlot(histos, var, scale_kk, fakemass = None , A = None ,B = None ,C = No
     name += ""
     folder = "/"
 
-  toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{folder}"
+  toSave = f"/work/pahwagne/RDsTools/plots/normplots/{dt}/"
 
   if not os.path.exists(toSave): 
     os.makedirs(toSave)
     os.makedirs(toSave + "/log")  
 
+  # save nn info
+  with open( toSave + f"/info.txt", "w") as f:
+    f.write( f" These plots use the following NN model: {nnModel} \n")
+    f.write( f" And the following score cut: {score_cut} \n")
+    f.write( f" Baseline selection is: \n {baseline} \n")
+
 
   if log:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/log/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/log/{var}_{name}.png")
+    c1.SaveAs( toSave + f"/log/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/log/{var}_{name}.png")
   else:
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/{var}_{name}.pdf")
-    c1.SaveAs(f"/work/pahwagne/RDsTools/plots/normplots/{folder}/{var}_{name}.png")
+    c1.SaveAs( toSave + f"/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/{var}_{name}.png")
   print(f"===> Produced plot: {var}.pdf")
 
 def methodDistinction(histos,name, selection,norm = True):
@@ -1236,13 +1264,19 @@ def methodDistinction(histos,name, selection,norm = True):
     legend.AddEntry(hist.GetValue(),label,"l")
     legend.Draw("SAME")
 
-  toSave = "/work/pahwagne/RDsTools/plots/method_dist/"
+  toSave = "/work/pahwagne/RDsTools/plots/method_dist/{dt}/"
 
   if not os.path.exists(toSave): 
     os.makedirs(toSave)
 
-  canvas.SaveAs(f"/work/pahwagne/RDsTools/plots/method_dist/{name}.pdf")  
-  canvas.SaveAs(f"/work/pahwagne/RDsTools/plots/method_dist/{name}.png")  
+  # save nn info
+  with open( toSave + f"/info.txt", "w") as f:
+    f.write( f" These plots use the following NN model: {nnModel} \n")
+    f.write( f" And the following score cut: {score_cut} \n")
+    f.write( f" Baseline selection is: \n {baseline} \n")
+
+  canvas.SaveAs( toSave + f"/{name}.pdf")  
+  canvas.SaveAs( toSave + f"/{name}.png")  
   print(f"DONE")
 
 def writeDatacard(histos, var, digits = 5):
@@ -1256,12 +1290,22 @@ def writeDatacard(histos, var, digits = 5):
   if pastNN: name += "_pastNN"
   else: name += ""
 
+  toSave = f"/work/pahwagne/RDsTools/fit/datacards/{dt}"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+
+  with open( toSave + f"/info.txt", "w") as f:
+    f.write( f" These plots use the following NN model: {nnModel} \n")
+    f.write( f" And the following score cut: {score_cut} \n")
+    f.write( f" Baseline selection is: \n {baseline} \n")
+
   if addSys:
     temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics.txt", "rt")
   else:
     temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate.txt", "rt")
 
-  card = open(f"/work/pahwagne/RDsTools/fit/datacards/datacard_{var}_{name}.txt", "wt")
+  card = open( toSave + f"/datacard_{var}_{name}.txt", "wt")
 
   # width in datacard template is 17 spaces
   spaces = 22
@@ -1290,16 +1334,17 @@ def writeDatacard(histos, var, digits = 5):
   rates = dsMuStr + dsTauStr + dsStarMuStr + dsStarTauStr + hbStr + combStr
 
   for line in temp:
-    if "HOOK_RATES"            in line: line = line.replace("HOOK_RATES", rates )
+    if "HOOK_RATES"          in line: line = line.replace("HOOK_RATES",     rates )
     if "HOOK_DATA_RATE"      in line: line = line.replace("HOOK_DATA_RATE", dataStr )
-    if "HOOK_VAR"            in line: line = line.replace("HOOK_VAR", var )
-    if "HOOK_NAME"            in line: line = line.replace("HOOK_NAME", name )
+    if "HOOK_VAR"            in line: line = line.replace("HOOK_VAR",       var )
+    if "HOOK_NAME"           in line: line = line.replace("HOOK_NAME",      name )
+    if "HOOK_DATETIME"       in line: line = line.replace("HOOK_DATETIME",  dt )
     card.write(line)
 
   temp.close()
   card.close()
 
-def write2DDatacard(histos, var, region, splitter, digits = 5):
+def writeBinnedDatacard(histos, var, region, splitter, digits = 5):
 
   if constrained: name = "constrained"
   else: name = "unconstrained"
@@ -1310,12 +1355,23 @@ def write2DDatacard(histos, var, region, splitter, digits = 5):
   if pastNN: name += "_pastNN"
   else: name += ""
 
-  if addSys:
-    temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics_2D.txt", "rt")
-  else:
-    temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate_2D.txt", "rt")
+  toSave = f"/work/pahwagne/RDsTools/fit/datacards_binned/{dt}"
 
-  card_dir = f"/work/pahwagne/RDsTools/fit/datacards_2D/datacard_2D_{var}_{name}_{splitter}_bin_{region}.txt"
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+
+  with open( toSave + f"/info.txt", "w") as f:
+    f.write( f" These plots use the following NN model: {nnModel} \n")
+    f.write( f" And the following score cut: {score_cut} \n")
+    f.write( f" Baseline selection is: \n {baseline} \n")
+    f.write( f" Splitting variable {split} into regions {binning} \n")
+
+  if addSys:
+    temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics_binned.txt", "rt")
+  else:
+    temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate_binned.txt", "rt")
+
+  card_dir = toSave + f"/datacard_binned_{var}_{name}_{splitter}_ch{region}.txt"
   card = open(card_dir, "wt")
 
   # width in datacard template is 17 spaces
@@ -1351,6 +1407,7 @@ def write2DDatacard(histos, var, region, splitter, digits = 5):
     if "HOOK_DATA_RATE"         in line: line = line.replace("HOOK_DATA_RATE", dataStr    )
     if "HOOK_VAR"               in line: line = line.replace("HOOK_VAR",       var        )
     if "HOOK_NAME"              in line: line = line.replace("HOOK_NAME",      name       )
+    if "HOOK_DATETIME"          in line: line = line.replace("HOOK_DATETIME",  dt )
     card.write(line)
 
   temp.close()
@@ -1383,7 +1440,6 @@ def create1DPlots():
 
   if pastNN:
  
-    score_cut = "&& (score5 <= 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
     selection_H += score_cut  # && (tv_prob > 0.1)"
     selection   += score_cut  # && (tv_prob > 0.1)"
 
@@ -1440,10 +1496,10 @@ def create1DPlots():
   hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
 
   #for all variables except mass plot only signal region (indicated with 'S')
-  selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsmu"     )
-  selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dstau"    )
-  selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsstarmu" )
-  selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsstartau")
+  selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsmu"     )
+  selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dstau"    )
+  selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstarmu" )
+  selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstartau")
   selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
   selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
 
@@ -1496,10 +1552,10 @@ def create1DPlots():
   hb_scale_C = getHbScale(selec.hb , selec.dsMu )
   
   # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
-  selec_C_DsMu           = createHistos(selec.dsMu       ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsmu"     )
-  selec_C_DsTau          = createHistos(selec.dsTau      ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dstau"    )
-  selec_C_DsStarMu       = createHistos(selec.dsStarMu   ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsstarmu" )
-  selec_C_DsStarTau      = createHistos(selec.dsStarTau  ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsstartau")
+  selec_C_DsMu           = createHistos(selec.dsMu       ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dsmu"     )
+  selec_C_DsTau          = createHistos(selec.dsTau      ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dstau"    )
+  selec_C_DsStarMu       = createHistos(selec.dsStarMu   ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dsstarmu" )
+  selec_C_DsStarTau      = createHistos(selec.dsStarTau  ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dsstartau")
   selec_C_Hb             = createHistos(selec.hb         ,                  rdfHb         , gen = False, massPlot = True, variables = ["phiPi_m"])
   selec_C_Data           = createHistos(selec.bare       ,                  rdfData       , gen = False, massPlot = True, variables = ["phiPi_m"])
 
@@ -1550,10 +1606,10 @@ def create1DPlots():
   hb_scale_H = getHbScale(selec_H.hb , selec_H.dsMu )
   
   # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
-  selec_H_DsMu           = createHistos(selec_H.dsMu       ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsmu"     )
-  selec_H_DsTau          = createHistos(selec_H.dsTau      ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dstau"    )
-  selec_H_DsStarMu       = createHistos(selec_H.dsStarMu   ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsstarmu" )
-  selec_H_DsStarTau      = createHistos(selec_H.dsStarTau  ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsstartau")
+  selec_H_DsMu           = createHistos(selec_H.dsMu       ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dsmu"     )
+  selec_H_DsTau          = createHistos(selec_H.dsTau      ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dstau"    )
+  selec_H_DsStarMu       = createHistos(selec_H.dsStarMu   ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dsstarmu" )
+  selec_H_DsStarTau      = createHistos(selec_H.dsStarTau  ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dsstartau")
   selec_H_Hb             = createHistos(selec_H.hb         ,                  rdfHb         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
   selec_H_Data           = createHistos(selec_H.bare       ,                  rdfData       , gen = False,  variables = ["phiPi_m", "dsMu_m"])
 
@@ -1624,14 +1680,14 @@ def create1DPlots():
                "hb"        :  selec_S_Hb[var], 
                "data"      :  selec_S_Data[var]}
    
-      if sys:
+      if addSys:
         # if there are systematics, include them in the scaling
-        for s in sys[:6]:
+        for s in sys_scalar:
           for direc in ["Up", "Down"]:
             histos["dsTau_"     + s + direc] = selec_S_DsTau    [var + "_" + s + direc]
             histos["dsMu_"      + s + direc] = selec_S_DsMu     [var + "_" + s + direc]
 
-        for s in sys:
+        for s in sys_vector:
           for direc in ["Up", "Down"]:
             histos["dsStarTau_" + s + direc] = selec_S_DsStarTau[var + "_" + s + direc]
             histos["dsStarMu_"  + s + direc] = selec_S_DsStarMu [var + "_" + s + direc]
@@ -1676,17 +1732,17 @@ def create1DPlots():
       myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
       myFile.WriteObject(histosScaled["comb"],      "comb"      )
 
-      if sys:
+      if addSys:
         # if there are systematics, include them in the scaling
-        for s in sys[:6]:
+        for s in sys_scalar:
           for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
-            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
+            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
+            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
 
-        for s in sys:
+        for s in sys_vector:
           for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
-            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
+            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
 
       myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
       myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
@@ -1704,13 +1760,13 @@ def create1DPlots():
                "hb"       : selec_C_Hb[var], 
                "data"     : selec_C_Data[var]}
 
-      if sys:
+      if addSys:
         # if there are systematics, include them in the scaling
-        for s in sys[:6]:
+        for s in sys_scalar:
           for direc in ["Up", "Down"]:
             histos["dsTau_"     + s + direc] = selec_C_DsTau    [var + "_" + s + direc]
             histos["dsMu_"      + s + direc] = selec_C_DsMu     [var + "_" + s + direc]
-        for s in sys:
+        for s in sys_vector:
           for direc in ["Up", "Down"]:
             histos["dsStarTau_" + s + direc] = selec_C_DsStarTau[var + "_" + s + direc]
             histos["dsStarMu_"  + s + direc] = selec_C_DsStarMu [var + "_" + s + direc]
@@ -1753,16 +1809,16 @@ def create1DPlots():
       myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
       myFile.WriteObject(histosScaled["comb"],      "comb"      )
 
-      if sys:
+      if addSys:
         # if there are systematics, include them in the scaling
-        for s in sys[:6]:
+        for s in sys_scalar:
           for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
-            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
-        for s in sys:
+            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
+            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
+        for s in sys_vector:
           for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
-            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
+            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
 
       myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
       myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
@@ -1779,15 +1835,15 @@ def create1DPlots():
                "dsStarMu":  selec_H_DsStarMu[var], 
                "hb"       : selec_H_Hb[var], 
                "data"     : selec_H_Data[var]}
-      if sys:
+      if addSys:
         # if there are systematics, include them in the scaling
-        for s in sys[:6]:
+        for s in sys_scalar:
           for direc in ["Up", "Down"]:
 
             histos["dsTau_"     + s + direc] = selec_H_DsTau    [var + "_" + s + direc]
             histos["dsMu_"      + s + direc] = selec_H_DsMu     [var + "_" + s + direc]
 
-        for s in sys:
+        for s in sys_vector:
           for direc in ["Up", "Down"]:
 
             histos["dsStarTau_" + s + direc] = selec_H_DsStarTau[var + "_" + s + direc]
@@ -1826,17 +1882,17 @@ def create1DPlots():
       myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
       myFile.WriteObject(histosScaled["comb"],      "comb"      )
 
-      if sys:
+      if addSys:
         # if there are systematics, include them in the scaling
-        for s in sys[:6]:
+        for s in sys_scalar:
           for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
-            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
+            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
+            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
 
-        for s in sys:
+        for s in sys_vector:
           for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
-            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
+            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
 
       myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
       myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
@@ -1846,8 +1902,10 @@ def create1DPlots():
 
       writeDatacard(histosScaled, var)
 
-def create2DPlots(splitter, regions):
-   
+def createBinnedPlots(splitter, regions):
+  
+
+
   # splitter is the varible you want to use to define regions. F.e. q^2
   # regions is a list of intervals in the splitter variable, f.e. [[0,4],[4,8],[8,12]]
   # we will plot variables defined in models
@@ -1857,7 +1915,7 @@ def create2DPlots(splitter, regions):
   # since we define the regions in the variable {splitter} itself, we dont include the splitter variable to plot
   cards = {var: [] for var in models.keys() if ((var != splitter)  and (var != "phiPi_m"))}
 
-  shapes_folder = f"/work/pahwagne/RDsTools/fit/shapes_2D/{splitter}/"
+  shapes_folder = f"/work/pahwagne/RDsTools/fit/shapes_binned/{dt}/"
   if not os.path.exists(shapes_folder): os.makedirs(shapes_folder)
 
   for i,region in enumerate(regions):
@@ -1927,10 +1985,10 @@ def create2DPlots(splitter, regions):
     hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
   
     #for all variables except mass plot only signal region (indicated with 'S')
-    selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsmu"     )
-    selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dstau"    )
-    selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsstarmu" )
-    selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = True, sig = "dsstartau")
+    selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsmu"     )
+    selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dstau"    )
+    selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstarmu" )
+    selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstartau")
     print("=> signals done ...")
     selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
     selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
@@ -1986,10 +2044,10 @@ def create2DPlots(splitter, regions):
     hb_scale_C = getHbScale(selec.hb , selec.dsMu )
     
     # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
-    selec_C_DsMu           = createHistos(selec.dsMu       ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsmu"     )
-    selec_C_DsTau          = createHistos(selec.dsTau      ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dstau"    )
-    selec_C_DsStarMu       = createHistos(selec.dsStarMu   ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsstarmu" )
-    selec_C_DsStarTau      = createHistos(selec.dsStarTau  ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = True, sig = "dsstartau")
+    selec_C_DsMu           = createHistos(selec.dsMu       ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dsmu"     )
+    selec_C_DsTau          = createHistos(selec.dsTau      ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dstau"    )
+    selec_C_DsStarMu       = createHistos(selec.dsStarMu   ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dsstarmu" )
+    selec_C_DsStarTau      = createHistos(selec.dsStarTau  ,                  rdfSig        , gen = False, massPlot = True, variables = ["phiPi_m"], histSys = addSys, sig = "dsstartau")
     selec_C_Hb             = createHistos(selec.hb         ,                  rdfHb         , gen = False, massPlot = True, variables = ["phiPi_m"])
     selec_C_Data           = createHistos(selec.bare       ,                  rdfData       , gen = False, massPlot = True, variables = ["phiPi_m"])
   
@@ -2040,10 +2098,10 @@ def create2DPlots(splitter, regions):
     hb_scale_H = getHbScale(selec_H.hb , selec_H.dsMu )
     
     # for the ds mass plot we also want to plot the sidebands! (indicated with 'C' for complete)
-    selec_H_DsMu           = createHistos(selec_H.dsMu       ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsmu"     )
-    selec_H_DsTau          = createHistos(selec_H.dsTau      ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dstau"    )
-    selec_H_DsStarMu       = createHistos(selec_H.dsStarMu   ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsstarmu" )
-    selec_H_DsStarTau      = createHistos(selec_H.dsStarTau  ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = True, sig = "dsstartau")
+    selec_H_DsMu           = createHistos(selec_H.dsMu       ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dsmu"     )
+    selec_H_DsTau          = createHistos(selec_H.dsTau      ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dstau"    )
+    selec_H_DsStarMu       = createHistos(selec_H.dsStarMu   ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dsstarmu" )
+    selec_H_DsStarTau      = createHistos(selec_H.dsStarTau  ,                  rdfSig        , gen = False,  variables = ["phiPi_m", "dsMu_m"], histSys = addSys, sig = "dsstartau")
     selec_H_Hb             = createHistos(selec_H.hb         ,                  rdfHb         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
     selec_H_Data           = createHistos(selec_H.bare       ,                  rdfData       , gen = False,  variables = ["phiPi_m", "dsMu_m"])
   
@@ -2093,7 +2151,7 @@ def create2DPlots(splitter, regions):
       if (var == splitter): continue; 
  
       #create root file for every variable which holds shapes
-      shapes_name = f"/{var}_shapes_{name}_{splitter}_bin_{i}.root"
+      shapes_name = f"/{var}_shapes_{name}_{splitter}_ch{i}.root"
 
       myFile      = ROOT.TFile.Open(shapes_folder + shapes_name, "RECREATE")
   
@@ -2117,14 +2175,14 @@ def create2DPlots(splitter, regions):
                  "hb"        :  selec_S_Hb[var], 
                  "data"      :  selec_S_Data[var]}
      
-        if sys:
+        if addSys:
           # if there are systematics, include them in the scaling
-          for s in sys[:6]:
+          for s in sys_scalar:
             for direc in ["Up", "Down"]:
               histos["dsTau_"     + s + direc] = selec_S_DsTau    [var + "_" + s + direc]
               histos["dsMu_"      + s + direc] = selec_S_DsMu     [var + "_" + s + direc]
   
-          for s in sys:
+          for s in sys_vector:
             for direc in ["Up", "Down"]:
               histos["dsStarTau_" + s + direc] = selec_S_DsStarTau[var + "_" + s + direc]
               histos["dsStarMu_"  + s + direc] = selec_S_DsStarMu [var + "_" + s + direc]
@@ -2147,7 +2205,7 @@ def create2DPlots(splitter, regions):
           histos["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
           toPass = histos.copy() 
   
-          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb , region = f"{splitter}_bin_{i}")
+          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb , region = f"{splitter}_ch{i}")
   
         else:
   
@@ -2155,30 +2213,32 @@ def create2DPlots(splitter, regions):
           histos["combR"] = selec_S_DataR[var] 
           toPass = histos.copy() 
   
-          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_bin_{i}")
+          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}")
   
-        myFile.WriteObject(histosScaled["dsMu"],      "dsMu"     + f"_bin_{i}" )
-        myFile.WriteObject(histosScaled["dsTau"],     "dsTau"    + f"_bin_{i}" )
-        myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu" + f"_bin_{i}" )
-        myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau"+ f"_bin_{i}" )
-        myFile.WriteObject(histosScaled["hb"],        "hb"       + f"_bin_{i}" )
-        myFile.WriteObject(histosScaled["data"],      "data_obs" + f"_bin_{i}" ) #combine convention
-        myFile.WriteObject(histosScaled["comb"],      "comb"     + f"_bin_{i}" )
+        myFile.WriteObject(histosScaled["dsMu"],      "dsMu"     + f"_ch{i}" )
+        myFile.WriteObject(histosScaled["dsTau"],     "dsTau"    + f"_ch{i}" )
+        myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu" + f"_ch{i}" )
+        myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau"+ f"_ch{i}" )
+        myFile.WriteObject(histosScaled["hb"],        "hb"       + f"_ch{i}" )
+        myFile.WriteObject(histosScaled["data"],      "data_obs" + f"_ch{i}" ) #combine convention
+        myFile.WriteObject(histosScaled["comb"],      "comb"     + f"_ch{i}" )
   
-        if sys:
+        if addSys:
           # if there are systematics, include them in the scaling
-          for s in sys[:6]:
+          # for the datacard, scalar and and vectorial ff sys have to be named differently!
+          # since they are indeed different!
+          for s in sys_scalar:
             for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc + f"_bin_{i}"  )
-              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc + f"_bin_{i}"  )
+              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc + f"_ch{i}"  )
+              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc + f"_ch{i}"  )
   
-          for s in sys:
+          for s in sys_vector:
             for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc + f"_bin_{i}"  )
-              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc + f"_bin_{i}"  )
+              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc + f"_ch{i}"  )
+              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc + f"_ch{i}"  )
  
         # need to know region {i} and splitter variable {splitter} to write datacard 
-        card = write2DDatacard(histosScaled, var, i, splitter)
+        card = writeBinnedDatacard(histosScaled, var, i, splitter)
         cards[var].append(card)
 
       """
@@ -2190,13 +2250,13 @@ def create2DPlots(splitter, regions):
                  "hb"       : selec_C_Hb[var], 
                  "data"     : selec_C_Data[var]}
   
-        if sys:
+        if addSys:
           # if there are systematics, include them in the scaling
-          for s in sys[:6]:
+          for s in sysscalar:
             for direc in ["Up", "Down"]:
               histos["dsTau_"     + s + direc] = selec_C_DsTau    [var + "_" + s + direc]
               histos["dsMu_"      + s + direc] = selec_C_DsMu     [var + "_" + s + direc]
-          for s in sys:
+          for s in sys_vector:
             for direc in ["Up", "Down"]:
               histos["dsStarTau_" + s + direc] = selec_C_DsStarTau[var + "_" + s + direc]
               histos["dsStarMu_"  + s + direc] = selec_C_DsStarMu [var + "_" + s + direc]
@@ -2239,16 +2299,16 @@ def create2DPlots(splitter, regions):
         myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
         myFile.WriteObject(histosScaled["comb"],      "comb"      )
   
-        if sys:
+        if addSys:
           # if there are systematics, include them in the scaling
-          for s in sys[:6]:
+          for s in sys_scalar:
             for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
-              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
-          for s in sys:
+              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
+              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
+          for s in sys_vector:
             for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
-              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
+              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
   
         writeDatacard(histosScaled, var)
   
@@ -2259,15 +2319,15 @@ def create2DPlots(splitter, regions):
                  "dsStarMu":  selec_H_DsStarMu[var], 
                  "hb"       : selec_H_Hb[var], 
                  "data"     : selec_H_Data[var]}
-        if sys:
+        if addSys:
           # if there are systematics, include them in the scaling
-          for s in sys[:6]:
+          for s in sys_scalar:
             for direc in ["Up", "Down"]:
   
               histos["dsTau_"     + s + direc] = selec_H_DsTau    [var + "_" + s + direc]
               histos["dsMu_"      + s + direc] = selec_H_DsMu     [var + "_" + s + direc]
   
-          for s in sys:
+          for s in sys_vector:
             for direc in ["Up", "Down"]:
   
               histos["dsStarTau_" + s + direc] = selec_H_DsStarTau[var + "_" + s + direc]
@@ -2306,17 +2366,17 @@ def create2DPlots(splitter, regions):
         myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
         myFile.WriteObject(histosScaled["comb"],      "comb"      )
   
-        if sys:
+        if addSys:
           # if there are systematics, include them in the scaling
-          for s in sys[:6]:
+          for s in sys_scalar:
             for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + direc)
-              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + direc)
+              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
+              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
   
-          for s in sys:
+          for s in sys_vector:
             for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + direc)
-              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + direc)
+              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
+              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
   
         writeDatacard(histosScaled, var)
         """
@@ -2346,10 +2406,8 @@ def create2DPlots(splitter, regions):
 #create1DPlots() 
 
 
-#more advanced, create 2D datacards
-
-regions = [[0,4],[4,7],[7,12]]
-create2DPlots("q2_coll",regions) 
+#more advanced, create binned datacards
+createBinnedPlots(split,binning) 
 
 
 
