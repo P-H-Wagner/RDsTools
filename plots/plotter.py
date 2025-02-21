@@ -25,21 +25,21 @@ def boolean_string(s):
 # parsing
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--fit",         required = True, help = "Specify fitter 'cons' (constrained) or 'uncons' (unconstrained)") 
-parser.add_argument("-b", "--hb",          required = True, help = "Specify hb bkg modeling 'old' (inclusive) or 'new' (exclusive)") 
+parser.add_argument("-c", "--doublecharm", required = True, help = "Specify hb bkg modeling 'old' (inclusive) or 'new' (exclusive)") 
 parser.add_argument("-n", "--nn",          required = True, help = "Specify 'before' or 'past' neural network plots ") 
 parser.add_argument("-s", "--sys",         required = True, help = "Specify 'true' or 'false' to add systeatic shape plots") 
 args = parser.parse_args()
 
-# python plotter.py -f cons -b old -n past -s true
+# python plotter.py -f cons -c old -n past -s true 
 
 
 if args.fit not in ["cons", "uncons"]:
   raise ValueError ("Error: Not a valid key for --fit, please use 'cons' or 'uncons' (all lowercase!)")
 else: constrained = (args.fit == "cons")
 
-if args.hb not in  ["old", "new"]:
+if args.doublecharm not in  ["old", "new"]:
   raise ValueError ("Error: Not a valid key for --hb, please use 'old' or 'new' (all lowercase!)")
-else: newHb       = (args.hb == "new")
+else: newHb       = (args.doublecharm == "new")
 
 if args.nn not in  ["before", "past"]:
   raise ValueError ("Error: Not a valid key for --nn, please use 'before' or 'past' (all lowercase!)")
@@ -49,7 +49,7 @@ if args.sys not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
 else: addSys      = (args.sys == "true")
 
-print(f"====> Running {args.fit} fit with {args.hb} Hb background, {args.nn} neural network")
+print(f"====> Running {args.fit} fit with {args.doublecharm} Hb background, {args.nn} neural network")
 if pastNN: models.update(pastNN_models)
 
 if addSys:
@@ -221,13 +221,13 @@ if pastNN:
 
 
     print("constrained data after NN not processed yet..")
-    chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys) #, debug = 10000)
-    chainSig,   rdfSig       = getRdf(sig_sample             , rdfSys = addSys) #, debug = 10000)
-    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                          ) #, debug = 10000)
-    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                          ) #, debug = 10000)
-    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                          ) #, debug = 10000)
-    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                       ) #, debug = 10000)
-    chainData,  rdfData      = getRdf(data_cons_pastNN                        ) #, debug = 10000)
+    chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys, debug = 10000)
+    chainSig,   rdfSig       = getRdf(sig_sample             , rdfSys = addSys, debug = 10000)
+    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                          , debug = 10000)
+    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                          , debug = 10000)
+    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                          , debug = 10000)
+    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                       , debug = 10000)
+    chainData,  rdfData      = getRdf(data_cons_pastNN                        , debug = 10000)
 
 
 
@@ -478,6 +478,41 @@ ROOT.gROOT.ProcessLine(r'''float get_hammer_weight(float central, int sig){
   }''')
 
 
+###########################################
+# Prepare signflip fit                    #
+###########################################
+
+def prepareSignFlip (hb, hb_scale, signals):
+
+  #scale hb to other MC
+  if hb_scale == 0:
+    hb.Scale(0.0 )
+  else:
+    hb.Scale(hb_scale / hb.Integral())
+
+  #add all signals and hb together
+  hRest    = hb 
+  for sig in signals:
+    hRest.Add( sig ) 
+
+  return hRest
+ 
+def addSystematics(hist_dict, var):
+
+   # if there are systematics, include them in the scaling
+   for s in sys_scalar:
+     for direc in ["Up", "Down"]:
+       hist_dict["dsTau_"     + s + direc] = selec_S_DsTau    [var + "_" + s + direc]
+       hist_dict["dsMu_"      + s + direc] = selec_S_DsMu     [var + "_" + s + direc]
+
+   for s in sys_vector:
+     for direc in ["Up", "Down"]:
+       hist_dict["dsStarTau_" + s + direc] = selec_S_DsStarTau[var + "_" + s + direc]
+       hist_dict["dsStarMu_"  + s + direc] = selec_S_DsStarMu [var + "_" + s + direc]
+
+   return hist_dict
+
+
 #########################################
 ## CREATE DEFAULT HISTOS               ##
 #########################################
@@ -609,13 +644,6 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
       histos[var].SetLineColor(color)
       histos[var].SetLineWidth(linewidth)
 
-
-
-      if (sig and "tau" in sig):
-        #blinding strategy
-        if "star" in sig: histos[var].Scale(blind_vector)
-        else:             histos[var].Scale(blind_scalar)
-
   return histos
 
 def create2DHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False):
@@ -699,7 +727,7 @@ def plotSignFlipShapes(kk,pimu,both,var):
 
 
 
-def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, region = None):
+def stackedPlot(histos, var, hb_scale, scale_kk, scale_bkg, scale_n, mlow, mhigh, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, region = None, blinded = False):
 
   color, labels = getColorAndLabelSignalDistinction("stacked")
 
@@ -1279,7 +1307,38 @@ def methodDistinction(histos,name, selection,norm = True):
   canvas.SaveAs( toSave + f"/{name}.png")  
   print(f"DONE")
 
-def writeDatacard(histos, var, digits = 5):
+
+def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)"):
+
+      print(hist_dict["dsMu"])
+      print(outputFile)
+      outputFile.WriteObject(hist_dict["dsMu"],      "dsMu"      + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["dsTau"],     "dsTau"     + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["dsStarMu"],  "dsStarMu"  + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["dsStarTau"], "dsStarTau" + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["hb"],        "hb"        + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["data"],      "data_obs"  + binned * f"_ch{channel}" ) #combine convention
+      outputFile.WriteObject(hist_dict["comb"],      "comb"      + binned * f"_ch{channel}" )
+
+      if addSys:
+        # if there are systematics, include them in the scaling
+        for s in sys_scalar:
+          for direc in ["Up", "Down"]:
+            outputFile.WriteObject(hist_dict["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc + binned * f"_ch{channel}"  )
+            outputFile.WriteObject(hist_dict["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc + binned * f"_ch{channel}"  )
+
+        for s in sys_vector:
+          for direc in ["Up", "Down"]:
+            outputFile.WriteObject(hist_dict["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc + binned * f"_ch{channel}"  )
+            outputFile.WriteObject(hist_dict["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc + binned * f"_ch{channel}"  )
+
+      #myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
+      #myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
+      #myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
+      #myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
+      #myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
+
+def writeDatacard(histos, var, digits = 5, blind = False):
 
   if constrained: name = "constrained"
   else: name = "unconstrained"
@@ -1291,6 +1350,8 @@ def writeDatacard(histos, var, digits = 5):
   else: name += ""
 
   toSave = f"/work/pahwagne/RDsTools/fit/datacards/{dt}"
+
+  if blind: toSave += "/blind/"
 
   if not os.path.exists(toSave): 
     os.makedirs(toSave)
@@ -1339,6 +1400,7 @@ def writeDatacard(histos, var, digits = 5):
     if "HOOK_VAR"            in line: line = line.replace("HOOK_VAR",       var )
     if "HOOK_NAME"           in line: line = line.replace("HOOK_NAME",      name )
     if "HOOK_DATETIME"       in line: line = line.replace("HOOK_DATETIME",  dt )
+    if "HOOK_BLIND"          in line: line = line.replace("HOOK_BLIND",     blind * "blind" )
     card.write(line)
 
   temp.close()
@@ -1496,13 +1558,16 @@ def create1DPlots():
   hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
 
   #for all variables except mass plot only signal region (indicated with 'S')
-  selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsmu"     )
-  selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dstau"    )
-  selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstarmu" )
-  selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstartau")
-  selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
-  selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
+  selec_S_DsMu            = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsmu"     )
+  selec_S_DsTau           = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dstau"    )
+  selec_S_DsStarMu        = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstarmu" )
+  selec_S_DsStarTau       = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstartau")
+  selec_S_Hb              = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
+  selec_S_Data            = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
 
+  # scale the tau histos to get a blind option for data fits
+  selec_S_DsTau_blind     = { key: selec_S_DsTau[key]    .Clone().Scale(blind_scalar) for key in selec_S_DsTau.keys()     }
+  selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone().Scale(blind_vector) for key in selec_S_DsStarTau.keys() }
 
   if newHb:
     selec_S_Bs           = createHistos(selec.bs          + signalRegion,    rdfBs         , gen = False)
@@ -1514,29 +1579,26 @@ def create1DPlots():
     selec_S_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)
     selec_S_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)
 
-    #get the signflip scale by fitting the ds mass peak
-  
-    hbDummy = selec_S_Hb["phiPi_m"].Clone()
-    if hb_scale_S == 0:
-      hbDummy.Scale(0.0 )
-    else:
-      hbDummy.Scale(hb_scale_S / hbDummy.Integral())
+    #get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
+    hRest       = prepareSignFlip(  selec_S_Hb              ["phiPi_m"].Clone()  , 
+                                    hb_scale_S                                   ,
+                                   [selec_S_DsMu            ["phiPi_m"].Clone()  , 
+                                    selec_S_DsStarMu        ["phiPi_m"].Clone()  , 
+                                    selec_S_DsTau           ["phiPi_m"].Clone()  , 
+                                    selec_S_DsStarTau       ["phiPi_m"].Clone()]  ) 
 
-    hRest    = selec_S_DsMu["phiPi_m"].Clone()
-    hRest.Add( selec_S_DsStarMu["phiPi_m"].Clone())
-    hRest.Add( selec_S_DsTau["phiPi_m"].Clone())
-    hRest.Add( selec_S_DsStarTau["phiPi_m"].Clone())
-    hRest.Add( hbDummy)
+    hRest_blind = prepareSignFlip(  selec_S_Hb              ["phiPi_m"].Clone()  , 
+                                    hb_scale_S                                   ,
+                                   [selec_S_DsMu            ["phiPi_m"].Clone()  , 
+                                    selec_S_DsStarMu        ["phiPi_m"].Clone()  , 
+                                    selec_S_DsTau_blind     ["phiPi_m"].Clone()  , 
+                                    selec_S_DsStarTau_blind ["phiPi_m"].Clone()]  ) 
 
-    global scale_S_kk;
-    global scale_S_bkg;
-    global scale_S_n;
+    global scale_S_kk,       scale_S_bkg,       scale_S_n
+    global scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind
 
-    print("===> signflip fit...")
-    print("We have ",selec_S_Data_sf_kk["phiPi_m"].GetEntries(), "wrong kk sign events")
-    print("We have ",selec_S_Data_sf_pimu["phiPi_m"].GetEntries(), "wrong pimu sign events")
-
-    scale_S_kk, scale_S_bkg, scale_S_n = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_S_Data["phiPi_m"].Clone())
+    scale_S_kk,       scale_S_bkg,       scale_S_n       = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest      ,selec_S_Data["phiPi_m"].Clone())
+    scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest_blind,selec_S_Data["phiPi_m"].Clone())
 
   else:
       selec_S_DataL        = createHistos(selec.bare        + leftSB,          rdfData       , gen = False)
@@ -1559,6 +1621,10 @@ def create1DPlots():
   selec_C_Hb             = createHistos(selec.hb         ,                  rdfHb         , gen = False, massPlot = True, variables = ["phiPi_m"])
   selec_C_Data           = createHistos(selec.bare       ,                  rdfData       , gen = False, massPlot = True, variables = ["phiPi_m"])
 
+  # scale the tau histos to get a blind option for data fits
+  selec_C_DsTau_blind     = { key: selec_C_DsTau[key]    .Clone().Scale(blind_scalar) for key in selec_C_DsTau.keys()     }
+  selec_C_DsStarTau_blind = { key: selec_C_DsStarTau[key].Clone().Scale(blind_vector) for key in selec_C_DsStarTau.keys() }
+
   if newHb:
     selec_C_Bs           = createHistos(selec.bs          ,                 rdfBs         , gen = False, massPlot = True, variables = ["phiPi_m"])
     selec_C_B0           = createHistos(selec.b0          ,                 rdfB0         , gen = False, massPlot = True, variables = ["phiPi_m"])
@@ -1570,29 +1636,32 @@ def create1DPlots():
     selec_C_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
     selec_C_Data_sf_both = createHistos(  baseline + score_cut + both_wrong + low_mass,      rdfData       , gen = False, massPlot = True)#, variables = ["phiPi_m","q2_coll"])
 
-    #get the signflip scale by fitting the ds mass peak
-  
-    hbDummy = selec_C_Hb["phiPi_m"].Clone()
-    if hb_scale_C == 0:
-      hbDummy.Scale(0.0 )
-    else:
-      hbDummy.Scale(hb_scale_C / hbDummy.Integral())
+ 
+    #get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
+    hRest       = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , 
+                                    hb_scale_C                                   ,
+                                   [selec_C_DsMu            ["phiPi_m"].Clone()  , 
+                                    selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
+                                    selec_C_DsTau           ["phiPi_m"].Clone()  , 
+                                    selec_C_DsStarTau       ["phiPi_m"].Clone()]  ) 
 
-    hRest    = selec_C_DsMu["phiPi_m"].Clone()
-    hRest.Add( selec_C_DsStarMu["phiPi_m"].Clone())
-    hRest.Add( selec_C_DsTau["phiPi_m"].Clone())
-    hRest.Add( selec_C_DsStarTau["phiPi_m"].Clone())
-    hRest.Add( hbDummy)
+    hRest_blind = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , 
+                                    hb_scale_C                                   ,
+                                   [selec_C_DsMu            ["phiPi_m"].Clone()  , 
+                                    selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
+                                    selec_C_DsTau_blind     ["phiPi_m"].Clone()  , 
+                                    selec_C_DsStarTau_blind ["phiPi_m"].Clone()]  ) 
 
-    global scale_C_kk;
-    global scale_C_bkg;
-    global scale_C_n;
+    global scale_C_kk,       scale_C_bkg,       scale_C_n
+    global scale_C_kk_blind, scale_C_bkg_blind, scale_C_n_blind
+ 
 
     for var in selec_C_Data_sf_both.keys():
 
       plotSignFlipShapes(selec_C_Data_sf_kk,selec_C_Data_sf_pimu,selec_C_Data_sf_both,var)
 
     scale_C_kk, scale_C_bkg, scale_C_n = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_C_Data["phiPi_m"].Clone())
+    scale_C_kk_blind, scale_C_bkg_blind, scale_C_n_blind = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(),hRest_blind,selec_C_Data["phiPi_m"].Clone())
  
   print("===> total region done...")
 
@@ -1613,6 +1682,10 @@ def create1DPlots():
   selec_H_Hb             = createHistos(selec_H.hb         ,                  rdfHb         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
   selec_H_Data           = createHistos(selec_H.bare       ,                  rdfData       , gen = False,  variables = ["phiPi_m", "dsMu_m"])
 
+  # scale the tau histos to get a blind option for data fits
+  selec_H_DsTau_blind     = { key: selec_H_DsTau[key]    .Clone().Scale(blind_scalar) for key in selec_H_DsTau.keys()     }
+  selec_H_DsStarTau_blind = { key: selec_H_DsStarTau[key].Clone().Scale(blind_vector) for key in selec_H_DsStarTau.keys() }
+
   if newHb:
     selec_H_Bs           = createHistos(selec_H.bs          ,                 rdfBs         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
     selec_H_B0           = createHistos(selec_H.b0          ,                 rdfB0         , gen = False,  variables = ["phiPi_m", "dsMu_m"])
@@ -1623,25 +1696,26 @@ def create1DPlots():
     selec_H_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   ,      rdfData       , gen = False, variables = ["phiPi_m", "dsMu_m"])
     selec_H_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong ,      rdfData       , gen = False, variables = ["phiPi_m", "dsMu_m"])
  
-    #get the signflip scale by fitting the ds mass peak
+     #get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
+    hRest       = prepareSignFlip(  selec_H_Hb              ["phiPi_m"].Clone()  , 
+                                    hb_scale_H                                   ,
+                                   [selec_H_DsMu            ["phiPi_m"].Clone()  , 
+                                    selec_H_DsStarMu        ["phiPi_m"].Clone()  , 
+                                    selec_H_DsTau           ["phiPi_m"].Clone()  , 
+                                    selec_H_DsStarTau       ["phiPi_m"].Clone()]  ) 
+
+    hRest_blind = prepareSignFlip(  selec_H_Hb              ["phiPi_m"].Clone()  , 
+                                    hb_scale_H                                   ,
+                                   [selec_H_DsMu            ["phiPi_m"].Clone()  , 
+                                    selec_H_DsStarMu        ["phiPi_m"].Clone()  , 
+                                    selec_H_DsTau_blind     ["phiPi_m"].Clone()  , 
+                                    selec_H_DsStarTau_blind ["phiPi_m"].Clone()]  ) 
+
+    global scale_H_kk,       scale_H_bkg,       scale_H_n
+    global scale_H_kk_blind, scale_H_bkg_blind, scale_H_n_blind
   
-    hbDummy = selec_H_Hb["phiPi_m"].Clone()
-    if hb_scale_H == 0:
-      hbDummy.Scale(0.0 )
-    else:
-      hbDummy.Scale(hb_scale_H / hbDummy.Integral())
-
-    hRest    = selec_H_DsMu["phiPi_m"].Clone()
-    hRest.Add( selec_H_DsStarMu["phiPi_m"].Clone())
-    hRest.Add( selec_H_DsTau["phiPi_m"].Clone())
-    hRest.Add( selec_H_DsStarTau["phiPi_m"].Clone())
-    hRest.Add( hbDummy)
-
-    global scale_H_kk;
-    global scale_H_bkg;
-    global scale_H_n;
-
     scale_H_kk, scale_H_bkg, scale_H_n = getSignflipRatio(selec_H_Data_sf_kk["phiPi_m"].Clone(),selec_H_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_H_Data["phiPi_m"].Clone())
+    scale_H_kk_blind, scale_H_bkg_blind, scale_H_n_blind = getSignflipRatio(selec_H_Data_sf_kk["phiPi_m"].Clone(),selec_H_Data_sf_pimu["phiPi_m"].Clone(),hRest_blind,selec_H_Data["phiPi_m"].Clone())
  
   print("===> high mass region done...")
 
@@ -1656,9 +1730,16 @@ def create1DPlots():
 
   for var in models.keys():
 
+    shapes_folder       = f"/work/pahwagne/RDsTools/fit/shapes/{dt}/{var}_shapes_{name}.root"
+    shapes_folder_blind = f"/work/pahwagne/RDsTools/fit/shapes/{dt}/blind/{var}_shapes_{name}.root"
+
+    if not os.path.exists(shapes_folder)      : os.makedirs(shapes_folder)
+    if not os.path.exists(shapes_folder_blind): os.makedirs(shapes_folder_blind)
+
     #create root file for every variable which holds shapes
-    myFile    = ROOT.TFile.Open(f"/work/pahwagne/RDsTools/fit/shapes/{var}_shapes_{name}.root", "RECREATE")
-    myFile_1D = ROOT.TFile.Open(f"/work/pahwagne/RDsTools/fit/shapes/{var}_shapes_1D_{name}.root", "RECREATE")
+    myFile          = ROOT.TFile.Open(shapes_folder      , "RECREATE")
+    myFile_blind    = ROOT.TFile.Open(shapes_folder_blind, "RECREATE")
+    #myFile_1D = ROOT.TFile.Open(f"/work/pahwagne/RDsTools/fit/shapes/{var}_shapes_1D_{name}.root", "RECREATE")
 
     print(f"===> Producing stacked plot for variable: {var}") 
     if "gen" in var:
@@ -1666,7 +1747,6 @@ def create1DPlots():
       print("This is a gen variable... skip!")
       continue
  
-
     ######################################
     ## Plot variables except phiPi mass ##
     ######################################
@@ -1679,228 +1759,186 @@ def create1DPlots():
                "dsStarMu"  :  selec_S_DsStarMu[var], 
                "hb"        :  selec_S_Hb[var], 
                "data"      :  selec_S_Data[var]}
-   
-      if addSys:
-        # if there are systematics, include them in the scaling
-        for s in sys_scalar:
-          for direc in ["Up", "Down"]:
-            histos["dsTau_"     + s + direc] = selec_S_DsTau    [var + "_" + s + direc]
-            histos["dsMu_"      + s + direc] = selec_S_DsMu     [var + "_" + s + direc]
-
-        for s in sys_vector:
-          for direc in ["Up", "Down"]:
-            histos["dsStarTau_" + s + direc] = selec_S_DsStarTau[var + "_" + s + direc]
-            histos["dsStarMu_"  + s + direc] = selec_S_DsStarMu [var + "_" + s + direc]
-
-        canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
-        histos["dsStarMu_e1Up"].Draw()
-        histos["dsStarMu_e1Down"].Draw("SAME")
-        histos["dsStarMu"].Draw("SAME")
-        canvas.SaveAs("check.png")
 
       if newHb:
         histos["bs"]    = selec_S_Bs[var] 
         histos["b0"]    = selec_S_B0[var] 
         histos["bplus"] = selec_S_Bplus[var] 
 
+      histos_blind = histos.copy()
+      histos_blind["dsTau"]     = selec_S_DsTau_blind    [var]   
+      histos_blind["dsStarTau"] = selec_S_DsStarTau_blind[var]   
+
+      if addSys: 
+        histos       = addSystematics(histos      , var)
+        histos_blind = addSystematics(histos_blind, var)
+
       if constrained:
 
-        #histos["data_sf"] = selec_S_Data_sf[var] 
-        histos["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
-        histos["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
-        toPass = histos.copy() 
+        histos      ["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
+        histos      ["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
+        histos_blind["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
+        histos_blind["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb )
+        toPass       = histos      .copy() 
+        toPass_blind = histos_blind.copy() 
+
+        histosScaled       = stackedPlot(toPass,       var, hb_scale_S, scale_S_kk,       scale_S_bkg,       scale_S_n,       mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = False )
+        histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_S, scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = True  )
+
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_S_kk)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_S_kk, log = True)
 
       else:
 
-        histos["combL"] = selec_S_DataL[var] 
-        histos["combR"] = selec_S_DataR[var] 
-        toPass = histos.copy() 
+        histos      ["combL"] = selec_S_DataL[var] 
+        histos      ["combR"] = selec_S_DataR[var] 
+        histos_blind["combL"] = selec_S_DataL[var] 
+        histos_blind["combR"] = selec_S_DataR[var] 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb)
+        toPass       = histos      .copy() 
+        toPass_blind = histos_blind.copy() 
+
+        histosScaled       = stackedPlot(toPass,       var, hb_scale_S, scale_S_kk,       scale_S_bkg,       scale_S_n,       mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = False)
+        histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_S, scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = True )
+
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_S_kk, fakemass = fakemass, A = A, B = B, C = C, S = S)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_S_kk, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True)
 
-      myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
-      myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
-      myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      myFile.WriteObject(histosScaled["hb"],        "hb"        )
-      myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
-      myFile.WriteObject(histosScaled["comb"],      "comb"      )
+      # write shapes and datacards
 
-      if addSys:
-        # if there are systematics, include them in the scaling
-        for s in sys_scalar:
-          for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
-            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
+      writeShapes(histoScaled,       myFile)
+      writeShapes(histoScaled_blind, myFile_blind)
 
-        for s in sys_vector:
-          for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
-            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
-
-      myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
-      myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
-      myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
-
-      writeDatacard(histosScaled, var)
+      writeDatacard(histosScaled      , var)
+      writeDatacard(histosScaled_blind, var, blind = True)
  
     if (var == "phiPi_m"): 
-      histos = {"dsTau":    selec_C_DsTau[var],
-               "dsStarTau": selec_C_DsStarTau[var], 
-               "dsMu":      selec_C_DsMu[var], 
-               "dsStarMu":  selec_C_DsStarMu[var], 
-               "hb"       : selec_C_Hb[var], 
-               "data"     : selec_C_Data[var]}
 
-      if addSys:
-        # if there are systematics, include them in the scaling
-        for s in sys_scalar:
-          for direc in ["Up", "Down"]:
-            histos["dsTau_"     + s + direc] = selec_C_DsTau    [var + "_" + s + direc]
-            histos["dsMu_"      + s + direc] = selec_C_DsMu     [var + "_" + s + direc]
-        for s in sys_vector:
-          for direc in ["Up", "Down"]:
-            histos["dsStarTau_" + s + direc] = selec_C_DsStarTau[var + "_" + s + direc]
-            histos["dsStarMu_"  + s + direc] = selec_C_DsStarMu [var + "_" + s + direc]
+      histos = {"dsTau"    :  selec_C_DsTau[var],
+               "dsStarTau" :  selec_C_DsStarTau[var], 
+               "dsMu"      :  selec_C_DsMu[var], 
+               "dsStarMu"  :  selec_C_DsStarMu[var], 
+               "hb"        :  selec_C_Hb[var], 
+               "data"      :  selec_C_Data[var]}
 
       if newHb:
         histos["bs"]    = selec_C_Bs[var] 
         histos["b0"]    = selec_C_B0[var] 
         histos["bplus"] = selec_C_Bplus[var] 
 
+      histos_blind = histos.copy()
+      histos_blind["dsTau"]     = selec_C_DsTau_blind    [var]   
+      histos_blind["dsStarTau"] = selec_C_DsStarTau_blind[var]   
+
+      if addSys: 
+        histos       = addSystematics(histos      , var)
+        histos_blind = addSystematics(histos_blind, var)
+
       if constrained:
- 
-        #histos["data_sf"]      = selec_C_Data_sf[var]
-        histos["data_sf_kk"]   = selec_C_Data_sf_kk[var] 
-        histos["data_sf_pimu"] = selec_C_Data_sf_pimu[var] 
 
-        toPass = histos.copy() 
+        histos      ["data_sf_kk"]   = selec_C_Data_sf_kk[var] 
+        histos      ["data_sf_pimu"] = selec_C_Data_sf_pimu[var] 
+        histos_blind["data_sf_kk"]   = selec_C_Data_sf_kk[var] 
+        histos_blind["data_sf_pimu"] = selec_C_Data_sf_pimu[var] 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale_C, scale_C_kk, scale_C_bkg, scale_C_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb )
+        toPass       = histos      .copy() 
+        toPass_blind = histos_blind.copy() 
+
+        histosScaled       = stackedPlot(toPass,       var, hb_scale_C, scale_C_kk,       scale_C_bkg,       scale_C_n,       mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = False )
+        histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_C, scale_C_kk_blind, scale_C_bkg_blind, scale_C_n_blind, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = True  )
+
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk, log = True)
 
       else:
 
-        toPass = histos.copy() 
+        histos      ["combL"] = selec_C_DataL[var] 
+        histos      ["combR"] = selec_C_DataR[var] 
+        histos_blind["combL"] = selec_C_DataL[var] 
+        histos_blind["combR"] = selec_C_DataR[var] 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale_C, scale_C_kk, scale_C_bkg, scale_C_n,mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb)
+        toPass       = histos      .copy() 
+        toPass_blind = histos_blind.copy() 
+
+        histosScaled       = stackedPlot(toPass,       var, hb_scale_C, scale_C_kk,       scale_C_bkg,       scale_C_n,       mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = False)
+        histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_C, scale_C_kk_blind, scale_C_bkg_blind, scale_C_n_blind, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = True )
+
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk, fakemass = fakemass, A = A, B = B, C = C, S = S)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_C_kk, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True)
 
-      #stackedPlot(histos, var, hb_scale, fakemass,A,B,C,S, log = True)
-      #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S)
-      #normPlot(dict(list(histos.items())[:-1]), var, fakemass, A,B,C,S, log = True)
-      
+      # write shapes and datacards
 
-      myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
-      myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
-      myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      myFile.WriteObject(histosScaled["hb"],        "hb"        )
-      myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
-      myFile.WriteObject(histosScaled["comb"],      "comb"      )
+      writeShapes(histoScaled,       myFile)
+      writeShapes(histoScaled_blind, myFile_blind)
 
-      if addSys:
-        # if there are systematics, include them in the scaling
-        for s in sys_scalar:
-          for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
-            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
-        for s in sys_vector:
-          for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
-            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
-
-      myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
-      myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
-      myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
-
-      writeDatacard(histosScaled, var)
+      writeDatacard(histosScaled      , var)
+      writeDatacard(histosScaled_blind, var, blind = True)
+ 
 
     if (var == "dsMu_m"): 
-      histos = {"dsTau":    selec_H_DsTau[var],
-               "dsStarTau": selec_H_DsStarTau[var], 
-               "dsMu":      selec_H_DsMu[var], 
-               "dsStarMu":  selec_H_DsStarMu[var], 
-               "hb"       : selec_H_Hb[var], 
-               "data"     : selec_H_Data[var]}
-      if addSys:
-        # if there are systematics, include them in the scaling
-        for s in sys_scalar:
-          for direc in ["Up", "Down"]:
 
-            histos["dsTau_"     + s + direc] = selec_H_DsTau    [var + "_" + s + direc]
-            histos["dsMu_"      + s + direc] = selec_H_DsMu     [var + "_" + s + direc]
-
-        for s in sys_vector:
-          for direc in ["Up", "Down"]:
-
-            histos["dsStarTau_" + s + direc] = selec_H_DsStarTau[var + "_" + s + direc]
-            histos["dsStarMu_"  + s + direc] = selec_H_DsStarMu [var + "_" + s + direc]
+      histos = {"dsTau"    :  selec_H_DsTau[var],
+               "dsStarTau" :  selec_H_DsStarTau[var], 
+               "dsMu"      :  selec_H_DsMu[var], 
+               "dsStarMu"  :  selec_H_DsStarMu[var], 
+               "hb"        :  selec_H_Hb[var], 
+               "data"      :  selec_H_Data[var]}
 
       if newHb:
         histos["bs"]    = selec_H_Bs[var] 
         histos["b0"]    = selec_H_B0[var] 
         histos["bplus"] = selec_H_Bplus[var] 
 
+      histos_blind = histos.copy()
+      histos_blind["dsTau"]     = selec_H_DsTau_blind    [var]   
+      histos_blind["dsStarTau"] = selec_H_DsStarTau_blind[var]   
+
+      if addSys: 
+        histos       = addSystematics(histos      , var)
+        histos_blind = addSystematics(histos_blind, var)
+
       if constrained:
- 
-        #histos["data_sf"]      = selec_H_Data_sf[var]
-        histos["data_sf_kk"]   = selec_H_Data_sf_kk[var] 
-        histos["data_sf_pimu"] = selec_H_Data_sf_pimu[var] 
 
-        toPass = histos.copy() 
+        histos      ["data_sf_kk"]   = selec_H_Data_sf_kk[var] 
+        histos      ["data_sf_pimu"] = selec_H_Data_sf_pimu[var] 
+        histos_blind["data_sf_kk"]   = selec_H_Data_sf_kk[var] 
+        histos_blind["data_sf_pimu"] = selec_H_Data_sf_pimu[var] 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale_H, scale_H_kk, scale_H_bkg, scale_H_n, mlow_H, mhigh_H, bs = bs_in_hb_H, b0 = b0_in_hb_H, bplus = bplus_in_hb_H)
-        normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk )
+        toPass       = histos      .copy() 
+        toPass_blind = histos_blind.copy() 
+
+        histosScaled       = stackedPlot(toPass,       var, hb_scale_H, scale_H_kk,       scale_H_bkg,       scale_H_n,       mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = False )
+        histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_H, scale_H_kk_blind, scale_H_bkg_blind, scale_H_n_blind, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = True  )
+
+        normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk)
         normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, log = True)
 
       else:
 
-        toPass = histos.copy() 
+        histos      ["combL"] = selec_H_DataL[var] 
+        histos      ["combR"] = selec_H_DataR[var] 
+        histos_blind["combL"] = selec_H_DataL[var] 
+        histos_blind["combR"] = selec_H_DataR[var] 
 
-        histosScaled = stackedPlot(toPass, var, hb_scale_H, scale_H_kk, scale_H_bkg, scale_H_n,mlow_H, mhigh_H, fakemass = fakemass, A = A_H, B = B_H, C = C_H, S = S_H, bs = bs_in_hb_H, b0 = b0_in_hb_H, bplus = bplus_in_hb_H)
-        normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, fakemass = fakemass, A = A_H, B = B_H, C = C_H, S = S_H)
-        normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, fakemass = fakemass, A = A_H, B = B_H, C = C_H, S = S_H, log = True)
+        toPass       = histos      .copy() 
+        toPass_blind = histos_blind.copy() 
 
-      myFile.WriteObject(histosScaled["dsMu"],      "dsMu"      )
-      myFile.WriteObject(histosScaled["dsTau"],     "dsTau"     )
-      myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      myFile.WriteObject(histosScaled["hb"],        "hb"        )
-      myFile.WriteObject(histosScaled["data"],      "data_obs"  ) #combine covention
-      myFile.WriteObject(histosScaled["comb"],      "comb"      )
+        histosScaled       = stackedPlot(toPass,       var, hb_scale_H, scale_H_kk,       scale_H_bkg,       scale_H_n,       mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = False)
+        histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_H, scale_H_kk_blind, scale_H_bkg_blind, scale_H_n_blind, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, blinded = True )
 
-      if addSys:
-        # if there are systematics, include them in the scaling
-        for s in sys_scalar:
-          for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc)
-            myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc)
+        normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, fakemass = fakemass, A = A, B = B, C = C, S = S)
+        normPlot({key: toPass[key] for key in histos.keys() if ((key != "data") and (key != "comb"))}, var, scale_H_kk, fakemass = fakemass, A = A, B = B, C = C, S = S, log = True)
 
-        for s in sys_vector:
-          for direc in ["Up", "Down"]:
-            myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc)
-            myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc)
+      # write shapes and datacards
 
-      myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
-      myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
-      myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
+      writeShapes(histoScaled,       myFile)
+      writeShapes(histoScaled_blind, myFile_blind)
 
-      writeDatacard(histosScaled, var)
+      writeDatacard(histosScaled      , var)
+      writeDatacard(histosScaled_blind, var, blind = True)
+ 
+
 
 def createBinnedPlots(splitter, regions):
   
@@ -1913,10 +1951,13 @@ def createBinnedPlots(splitter, regions):
 
   # this dictionary will hold a list of datacard paths (corresponding to the different regions) for every variable
   # since we define the regions in the variable {splitter} itself, we dont include the splitter variable to plot
-  cards = {var: [] for var in models.keys() if ((var != splitter)  and (var != "phiPi_m"))}
+  cards       = {var: [] for var in models.keys() if ((var != splitter)  and (var != "phiPi_m"))}
+  cards_blind = {var: [] for var in models.keys() if ((var != splitter)  and (var != "phiPi_m"))}
 
-  shapes_folder = f"/work/pahwagne/RDsTools/fit/shapes_binned/{dt}/"
+  shapes_folder       = f"/work/pahwagne/RDsTools/fit/shapes_binned/{dt}/"
+  shapes_folder_blind = f"/work/pahwagne/RDsTools/fit/shapes_binned/{dt}/blind/"
   if not os.path.exists(shapes_folder): os.makedirs(shapes_folder)
+  if not os.path.exists(shapes_folder): os.makedirs(shapes_folder_blind)
 
   for i,region in enumerate(regions):
 
@@ -1993,42 +2034,46 @@ def createBinnedPlots(splitter, regions):
     selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
     selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
     print("=> bkg in signal region done ...")
-  
+
+    # scale the tau histos to get a blind option for data fits
+    selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
+    selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone()               for key in selec_S_DsStarTau.keys() }
+
+    for key in selec_S_DsTau_blind.keys()    : selec_S_DsTau_blind[key]    .Scale(blind_scalar)    
+    for key in selec_S_DsStarTau_blind.keys(): selec_S_DsStarTau_blind[key].Scale(blind_vector)    
+ 
     if newHb:
       selec_S_Bs           = createHistos(selec.bs          + signalRegion,    rdfBs         , gen = False)
       selec_S_B0           = createHistos(selec.b0          + signalRegion,    rdfB0         , gen = False)
       selec_S_Bplus        = createHistos(selec.bplus       + signalRegion,    rdfBplus      , gen = False)
   
     if constrained: 
-      #selec_S_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
-      selec_S_Data_sf_kk   = createHistos(  baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)
-      selec_S_Data_sf_pimu = createHistos(  baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)
-      print("=> bkg in control region done ...")
 
-      #get the signflip scale by fitting the ds mass peak
-    
-      hbDummy = selec_S_Hb["phiPi_m"].Clone()
-      if hb_scale_S == 0:
-        hbDummy.Scale(0.0 )
-      else:
-        hbDummy.Scale(hb_scale_S / hbDummy.Integral())
+      #selec_S_Data_sf      = createHistos(baseline + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False)
+      selec_S_Data_sf_kk   = createHistos(  baseline + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)
+      selec_S_Data_sf_pimu = createHistos(  baseline + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)
   
-      hRest    = selec_S_DsMu["phiPi_m"].Clone()
-      hRest.Add( selec_S_DsStarMu["phiPi_m"].Clone())
-      hRest.Add( selec_S_DsTau["phiPi_m"].Clone())
-      hRest.Add( selec_S_DsStarTau["phiPi_m"].Clone())
-      hRest.Add( hbDummy)
+      #get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
+      hRest       = prepareSignFlip(  selec_S_Hb              ["phiPi_m"].Clone()  , 
+                                      hb_scale_S                                   ,
+                                     [selec_S_DsMu            ["phiPi_m"].Clone()  , 
+                                      selec_S_DsStarMu        ["phiPi_m"].Clone()  , 
+                                      selec_S_DsTau           ["phiPi_m"].Clone()  , 
+                                      selec_S_DsStarTau       ["phiPi_m"].Clone()]  ) 
   
-      global scale_S_kk;
-      global scale_S_bkg;
-      global scale_S_n;
+      hRest_blind = prepareSignFlip(  selec_S_Hb              ["phiPi_m"].Clone()  , 
+                                      hb_scale_S                                   ,
+                                     [selec_S_DsMu            ["phiPi_m"].Clone()  , 
+                                      selec_S_DsStarMu        ["phiPi_m"].Clone()  , 
+                                      selec_S_DsTau_blind     ["phiPi_m"].Clone()  , 
+                                      selec_S_DsStarTau_blind ["phiPi_m"].Clone()]  ) 
   
-      print("===> signflip fit...")
-      print("We have ",selec_S_Data_sf_kk["phiPi_m"].GetEntries(), "wrong kk sign events")
-      print("We have ",selec_S_Data_sf_pimu["phiPi_m"].GetEntries(), "wrong pimu sign events")
+      global scale_S_kk,       scale_S_bkg,       scale_S_n
+      global scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind
   
-      scale_S_kk, scale_S_bkg, scale_S_n = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest,selec_S_Data["phiPi_m"].Clone())
-  
+      scale_S_kk,       scale_S_bkg,       scale_S_n       = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest      ,selec_S_Data["phiPi_m"].Clone())
+      scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind = getSignflipRatio(selec_S_Data_sf_kk["phiPi_m"].Clone(),selec_S_Data_sf_pimu["phiPi_m"].Clone(),hRest_blind,selec_S_Data["phiPi_m"].Clone())
+
     else:
         selec_S_DataL        = createHistos(selec.bare        + leftSB,          rdfData       , gen = False)
         selec_S_DataR        = createHistos(selec.bare        + rightSB,         rdfData       , gen = False)
@@ -2153,7 +2198,8 @@ def createBinnedPlots(splitter, regions):
       #create root file for every variable which holds shapes
       shapes_name = f"/{var}_shapes_{name}_{splitter}_ch{i}.root"
 
-      myFile      = ROOT.TFile.Open(shapes_folder + shapes_name, "RECREATE")
+      myFile       = ROOT.TFile.Open(shapes_folder       + shapes_name, "RECREATE")
+      myFile_blind = ROOT.TFile.Open(shapes_folder_blind + shapes_name, "RECREATE")
   
       print(f"===> Producing stacked plot for variable: {var}") 
       if "gen" in var:
@@ -2168,78 +2214,62 @@ def createBinnedPlots(splitter, regions):
   
       if (var != "phiPi_m") and (var!= "dsMu_m"):
     
+ 
         histos = {"dsTau"    :  selec_S_DsTau[var],
                  "dsStarTau" :  selec_S_DsStarTau[var], 
                  "dsMu"      :  selec_S_DsMu[var], 
                  "dsStarMu"  :  selec_S_DsStarMu[var], 
                  "hb"        :  selec_S_Hb[var], 
                  "data"      :  selec_S_Data[var]}
-     
-        if addSys:
-          # if there are systematics, include them in the scaling
-          for s in sys_scalar:
-            for direc in ["Up", "Down"]:
-              histos["dsTau_"     + s + direc] = selec_S_DsTau    [var + "_" + s + direc]
-              histos["dsMu_"      + s + direc] = selec_S_DsMu     [var + "_" + s + direc]
-  
-          for s in sys_vector:
-            for direc in ["Up", "Down"]:
-              histos["dsStarTau_" + s + direc] = selec_S_DsStarTau[var + "_" + s + direc]
-              histos["dsStarMu_"  + s + direc] = selec_S_DsStarMu [var + "_" + s + direc]
-  
-          canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
-          histos["dsStarMu_e1Up"].Draw()
-          histos["dsStarMu_e1Down"].Draw("SAME")
-          histos["dsStarMu"].Draw("SAME")
-          canvas.SaveAs("check.png")
   
         if newHb:
           histos["bs"]    = selec_S_Bs[var] 
           histos["b0"]    = selec_S_B0[var] 
           histos["bplus"] = selec_S_Bplus[var] 
   
+        histos_blind = histos.copy()
+        histos_blind["dsTau"]     = selec_S_DsTau_blind    [var]   
+        histos_blind["dsStarTau"] = selec_S_DsStarTau_blind[var]   
+  
+        if addSys: 
+          histos       = addSystematics(histos      , var)
+          histos_blind = addSystematics(histos_blind, var)
+
         if constrained:
-  
-          #histos["data_sf"] = selec_S_Data_sf[var] 
-          histos["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
-          histos["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
-          toPass = histos.copy() 
-  
-          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb , region = f"{splitter}_ch{i}")
+ 
+          histos      ["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
+          histos      ["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
+          histos_blind["data_sf_kk"]   = selec_S_Data_sf_kk[var] 
+          histos_blind["data_sf_pimu"] = selec_S_Data_sf_pimu[var] 
+
+          toPass       = histos      .copy() 
+          toPass_blind = histos_blind.copy() 
+
+          histosScaled       = stackedPlot(toPass,       var, hb_scale_S, scale_S_kk,       scale_S_bkg,       scale_S_n,       mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blinded = False )
+          histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_S, scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind, mlow, mhigh, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blinded = True  )
   
         else:
-  
-          histos["combL"] = selec_S_DataL[var] 
-          histos["combR"] = selec_S_DataR[var] 
-          toPass = histos.copy() 
-  
-          histosScaled = stackedPlot(toPass, var, hb_scale_S, scale_S_kk, scale_S_bkg, scale_S_n, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}")
-  
-        myFile.WriteObject(histosScaled["dsMu"],      "dsMu"     + f"_ch{i}" )
-        myFile.WriteObject(histosScaled["dsTau"],     "dsTau"    + f"_ch{i}" )
-        myFile.WriteObject(histosScaled["dsStarMu"],  "dsStarMu" + f"_ch{i}" )
-        myFile.WriteObject(histosScaled["dsStarTau"], "dsStarTau"+ f"_ch{i}" )
-        myFile.WriteObject(histosScaled["hb"],        "hb"       + f"_ch{i}" )
-        myFile.WriteObject(histosScaled["data"],      "data_obs" + f"_ch{i}" ) #combine convention
-        myFile.WriteObject(histosScaled["comb"],      "comb"     + f"_ch{i}" )
-  
-        if addSys:
-          # if there are systematics, include them in the scaling
-          # for the datacard, scalar and and vectorial ff sys have to be named differently!
-          # since they are indeed different!
-          for s in sys_scalar:
-            for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsTau_"        + s + direc],"dsTau_"        + s + scalar_model + direc + f"_ch{i}"  )
-              myFile.WriteObject(histosScaled["dsMu_"         + s + direc],"dsMu_"         + s + scalar_model + direc + f"_ch{i}"  )
-  
-          for s in sys_vector:
-            for direc in ["Up", "Down"]:
-              myFile.WriteObject(histosScaled["dsStarTau_"    + s + direc],"dsStarTau_"    + s + vector_model + direc + f"_ch{i}"  )
-              myFile.WriteObject(histosScaled["dsStarMu_"     + s + direc],"dsStarMu_"     + s + vector_model + direc + f"_ch{i}"  )
  
-        # need to know region {i} and splitter variable {splitter} to write datacard 
-        card = writeBinnedDatacard(histosScaled, var, i, splitter)
+          histos      ["combL"] = selec_S_DataL[var] 
+          histos      ["combR"] = selec_S_DataR[var] 
+          histos_blind["combL"] = selec_S_DataL[var] 
+          histos_blind["combR"] = selec_S_DataR[var] 
+  
+          toPass       = histos      .copy() 
+          toPass_blind = histos_blind.copy() 
+  
+          histosScaled       = stackedPlot(toPass,       var, hb_scale_S, scale_S_kk,       scale_S_bkg,       scale_S_n,       mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blinded = False)
+          histosScaled_blind = stackedPlot(toPass_blind, var, hb_scale_S, scale_S_kk_blind, scale_S_bkg_blind, scale_S_n_blind, mlow, mhigh, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blinded = True )
+  
+  
+        writeShapes(histosScaled,       myFile,       binned = True, channel = i)
+        writeShapes(histosScaled_blind, myFile_blind, binned = True, channel = i)
+
+        card       = writeBinnedDatacard(histosScaled      , var, i, splitter              )
+        card_blind = writeBinnedDatacard(histosScaled_blind, var, i, splitter, blind = True)
+
         cards[var].append(card)
+        cards_blind[var].append(card_blind)
 
       """
       if (var == "phiPi_m"): 
