@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from helper import *
 
 
+
 #############################################
 # In this file we skim the files coming     #
 # from the nanoAOD production. Additionally #
@@ -19,6 +20,10 @@ def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
     return s == 'True'
+
+def filesFromFolder(direc):
+   filenames = os.listdir(direc)
+   return [ direc + filename for filename in filenames ]
 
 parser = argparse.ArgumentParser()
 
@@ -32,16 +37,10 @@ queue = 'short'
 time = 10
 nevents = -1
 
+
 #naming and files
 
 if args.constrained: 
-
-  #file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-  #file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
-  #file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
-  #file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
-  #file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
-  #file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
 
 
   if    args.channel == 'sig'    : naming = 'all_signals' ; files = sig_cons;
@@ -63,15 +62,17 @@ if not args.constrained:
   else:                            naming = 'data'        ; files = data_unc;
 
 
-
 if args.channel == 'fakes':
   naming = 'fakes'; files = fakes;
 
-
-# get cahin to access variable names (need all files bc sometimes they are empty for data)
+# get chain to access variable names (need all files bc sometimes they are empty for data)
 directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/*"
 chain = ROOT.TChain("tree")
 chain.Add(directory)
+
+# get the inputfiles
+inputfiles = filesFromFolder(directory[:-1]) # remove * used for the chain
+#print(inputfiles)
 
 #define weights for math solution (take the most actual signal sample)
 signals = ROOT.TChain("tree")
@@ -99,8 +100,10 @@ branches = chain.GetListOfBranches()
 names    = [branch.GetName() for branch in branches]
 
 # errors and logs
-os.makedirs(f"{args.date_time}_{args.selection}/logs")
-os.makedirs(f"{args.date_time}_{args.selection}/errs")
+
+if not os.path.exists(f"./{args.date_time}_{args.selection}/"):
+  os.makedirs(f"{args.date_time}_{args.selection}/logs")
+  os.makedirs(f"{args.date_time}_{args.selection}/errs")
 
 #write for loop as string to print into the skimmer file
 
@@ -117,54 +120,63 @@ for name in names:
     #w1, w2 = getWeights(core)
     forLoop += f"\n.Define(\"{core}_reco_weighted\",\"{w1}*{core}_reco_1 + {w2}*{core}_reco_2\")\\"  
 
-forLoop += f"\n.Filter({args.selection}).Snapshot(\"tree\", destination)"
+forLoop += f"\n.Filter(selec).Snapshot(\"tree\", destination)"
 print(forLoop)
 
-#template
-temp = open("temp_skimmer.py", "rt")
-#file to write to
-cfg = open(f"{args.date_time}_{args.selection}/skimmer.py","wt")
+# loop over all to be skimmed files
 
-for line in temp:
-  if "HOOK_DATE_TIME"   in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
-  if "HOOK_SELECTION"   in line: line = line.replace("HOOK_SELECTION", args.selection)
-  if "HOOK_NEW_BRANCH"  in line: line = line.replace('"HOOK_NEW_BRANCH"', forLoop)
+for i,fin in enumerate(inputfiles):
 
-  cfg.write(line)
+  #template
+  temp = open("temp_skimmer.py", "rt")
+  #file to write to
+  cfg = open(f"{args.date_time}_{args.selection}/skimmer_{i}.py","wt")
 
-temp.close()
-cfg.close()
+  fout = f"/scratch/pahwagne/skimmed_{args.date_time}_{args.selection}/skimmed_{args.date_time}_{args.selection}_chunk_{i}.root"
+  
 
-to_write = '\n'.join([
-       '#!/bin/bash',
-       'eval "$(conda shell.bash hook)"',
-       'conda activate /work/pahwagne/environments/hammer3p8',
-       f'mkdir -p /scratch/pahwagne/skimmed_{args.date_time}_{args.selection}',
-       f'python /work/pahwagne/RDsTools/skim/{args.date_time}_{args.selection}/skimmer.py',
-       f'xrdcp /scratch/pahwagne/skimmed_{args.selection}_{args.date_time}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{args.date_time}/skimmed_{args.selection}_{args.date_time}.root',
-       f'rm -r /scratch/pahwagne/skimmed_{args.date_time}_{args.selection}',
-       '',
-   ])
+  for line in temp:
+    if "HOOK_DATE_TIME"   in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
+    if "HOOK_SELECTION"   in line: line = line.replace("HOOK_SELECTION", baselines[args.selection])
+    if "HOOK_NEW_BRANCH"  in line: line = line.replace('"HOOK_NEW_BRANCH"', forLoop)
+    if "HOOK_FILE_IN"     in line: line = line.replace("HOOK_FILE_IN",  fin)
+    if "HOOK_FILE_OUT"    in line: line = line.replace("HOOK_FILE_OUT", fout)
+  
+    cfg.write(line)
 
-with open(f"{args.date_time}_{args.selection}/skimmer.sh", "wt") as flauncher:
-  flauncher.write(to_write)
+  temp.close()
+  cfg.close()
 
-
-command_sh_batch = ' '.join([
-
-      'sbatch',
-      f'-p {queue}',
-      '--account=t3',
-      f'-o {args.date_time}_{args.selection}/logs/log.txt',
-      f'-e {args.date_time}_{args.selection}/errs/err.txt',
-      #'--mem=1500M',
-      f'--job-name=SKIM_{args.channel}',
-      #f'--time={time}',
-      f'{args.date_time}_{args.selection}/skimmer.sh',
-   ])
-
-print(command_sh_batch)
-os.system(command_sh_batch)
+  to_write = '\n'.join([
+         '#!/bin/bash',
+         'eval "$(conda shell.bash hook)"',
+         'conda activate /work/pahwagne/environments/hammer3p8',
+         f'mkdir -p /scratch/pahwagne/skimmed_{args.date_time}_{args.selection}',
+         f'python /work/pahwagne/RDsTools/skim/{args.date_time}_{args.selection}/skimmer_{i}.py',
+         f'xrdcp {fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{args.date_time}/skimmed_{args.selection}_{args.date_time}_chunk_{i}.root',
+         f'rm -r {fout}',
+         '',
+     ])
+  
+  with open(f"{args.date_time}_{args.selection}/skimmer_{i}.sh", "wt") as flauncher:
+    flauncher.write(to_write)
+  
+  
+  command_sh_batch = ' '.join([
+  
+        'sbatch',
+        f'-p {queue}',
+        '--account=t3',
+        f'-o {args.date_time}_{args.selection}/logs/log_{i}.txt',
+        f'-e {args.date_time}_{args.selection}/errs/err_{i}.txt',
+        #'--mem=1500M',
+        f'--job-name=SKIM_{args.channel}',
+        #f'--time={time}',
+        f'{args.date_time}_{args.selection}/skimmer_{i}.sh',
+     ])
+  
+  print(command_sh_batch)
+  os.system(command_sh_batch)
 
 
 
