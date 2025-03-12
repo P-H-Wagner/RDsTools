@@ -5,27 +5,68 @@ import sys
 import argparse
 import re #for pattern matchin
 import ROOT
+sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
+from helper import *
 
+
+#############################################
+# In this file we skim the files coming     #
+# from the nanoAOD production. Additionally #
+# we add the weighted reco branch.          #
+#############################################
+
+def boolean_string(s):
+    if s not in {'False', 'True'}:
+        raise ValueError('Not a valid boolean string')
+    return s == 'True'
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('date_time')
-parser.add_argument('channel')   # sig or hb
-parser.add_argument('selection') # pick selection
+parser.add_argument('channel')     # sig or hb
+parser.add_argument('selection')   # pick selection
+parser.add_argument('constrained', type = boolean_string)
 args = parser.parse_args()
 
 queue = 'short' 
 time = 10
 nevents = -1
 
-#naming
-if args.channel == 'sig': naming = 'all_signals'
-elif args.channel == 'hb': naming = 'hb_inclusive'
-elif args.channel == 'b0': naming = 'b0'
-elif args.channel == 'bs': naming = 'bs'
-elif args.channel == 'lambdab': naming = 'lambdab'
-elif args.channel == 'bplus': naming = 'bplus'
-else: naming = 'data'
+#naming and files
+
+if args.constrained: 
+
+  #file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
+  #file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+  #file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
+  #file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
+  #file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
+  #file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
+
+
+  if    args.channel == 'sig'    : naming = 'all_signals' ; files = sig_cons;
+  elif  args.channel == 'hb'     : naming = 'hb_inclusive'; files = hb_cons;
+  elif  args.channel == 'b0'     : naming = 'b0'          ; files = b0_cons;
+  elif  args.channel == 'bs'     : naming = 'bs'          ; files = bs_cons;
+  #elif  args.channel == 'lambdab': naming = 'lambdab'     ; files = lamdbab_cons;
+  elif  args.channel == 'bplus'  : naming = 'bplus'       ; files = bplus_cons;
+  else:                            naming = 'data'        ; files = data_cons;
+
+if not args.constrained:
+
+  if    args.channel == 'sig'    : naming = 'all_signals' ; files = sig_unc;
+  elif  args.channel == 'hb'     : naming = 'hb_inclusive'; files = hb_unc;
+  elif  args.channel == 'b0'     : naming = 'b0'          ; files = b0_unc;
+  elif  args.channel == 'bs'     : naming = 'bs'          ; files = bs_unc;
+  #elif  args.channel == 'lambdab': naming = 'lambdab'     ; files = lamdbab_unc;
+  elif  args.channel == 'bplus'  : naming = 'bplus'       ; files = bplus_unc;
+  else:                            naming = 'data'        ; files = data_unc;
+
+
+
+if args.channel == 'fakes':
+  naming = 'fakes'; files = fakes;
+
 
 # get cahin to access variable names (need all files bc sometimes they are empty for data)
 directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/*"
@@ -33,15 +74,21 @@ chain = ROOT.TChain("tree")
 chain.Add(directory)
 
 #define weights for math solution (take the most actual signal sample)
-signal_directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/15_07_2024_07_50_49/*"
 signals = ROOT.TChain("tree")
-signals.Add(signal_directory)
+
+if args.constrained:       input_sig = sig_cons
+if not args.constrained:   input_sig = sig_unc
+if args.channel == 'fakes': input_sig = sig_cons #fakes so far only produced for constrained
+
+for sig in input_sig:
+  signal_directory = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{sig}/*"
+  signals.Add(signal_directory)
 
 # get all non-nan solutions
 def getWeights(name):
   print("checking", name)
-  ntot   = signals.GetEntries("(gen_sig == 0)")
-  nReco1 = signals.GetEntries(f"(abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && (gen_sig == 0)")
+  ntot   = signals.GetEntries("(gen_sig == 0)")                                                                          #check that reco is not nan!
+  nReco1 = signals.GetEntries(f"(abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && (gen_sig == 0) && !({name}_reco_1 != {name}_reco_1)")
   w1 = nReco1/ntot
   print("w1 is: ", w1)
   return w1 , 1 - w1

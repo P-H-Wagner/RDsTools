@@ -4,9 +4,7 @@ import sys
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from helper import *
 
-bsMass_ = 5.36688
-
-selections = {"baseline": baseline, "bkg": bkg, "ma_cut": ma_cut, "ma_cut_wout_fv":ma_cut_wout_fv}
+selections = {"baseline": baseline, "high_mass": high_mass, "flip_iso":flip_iso, "ma_cut": ma_cut, "ma_cut_wout_fv":ma_cut_wout_fv, "base":base, "base_wout_tv": base_wout_tv}
 
 # pick the skim selection
 name = "HOOK_SELECTION"
