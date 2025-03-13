@@ -15,6 +15,7 @@ from datetime import datetime
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras import regularizers
 import shap
+from contextlib import redirect_stdout
 
 #import seaborn as sns
 
@@ -70,7 +71,13 @@ shap.initjs()
 if args.constrained:
   #this is only constrained data! (cut on fv only)
   file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-  file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+  # we need to train the NN on the pre-hammered signal!
+  # not-hammered
+  #file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+  # hammered
+  direc      = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signals_default/"
+  file_sig      = [os.path.join(direc, f) for f in os.listdir(direc)]
+
   file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
   file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
   file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
@@ -149,7 +156,7 @@ else:
   chainData,rdfData   = getRdf(data_unc, skimmed = "base_wout_tv")
 
 
-sigma, h          = getSigma(rdfSig, "phiPi_m", base_wout_tv+ "& (gen_sig == 0)")
+sigma, h          = getSigma(rdfSig, "phiPi_m", base + "& (gen_sig == 0)")
 
 massfit = {}
 massfit["sigma"]  = sigma
@@ -158,7 +165,7 @@ massfit["sigma"]  = sigma
 
 if not args.constrained:
   
-  A, B, C, S        = getABCS( rdfData, base_wout_tv , "phiPi_m", sigma, h, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
+  A, B, C, S        = getABCS( rdfData, base , "phiPi_m", sigma, h, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
 
   massfit["A"] = A 
   massfit["B"] = B
@@ -226,8 +233,8 @@ kin_var = [
 #'cosMuW_reco_weighted', #better separates all signals
 #'cosMuW_reco_1', #better separates all signals
 #'cosMuW_reco_2', #better separates all signals
-'cosMuW_lhcb_alt', #better separates all signals
-'cosMuW_coll', #better separates all signals
+#'cosMuW_lhcb_alt', #better separates all signals
+#'cosMuW_coll', #better separates all signals
 
 'cosPhiDs_lhcb',
 'abs(cosPiK1)',
@@ -281,11 +288,12 @@ kin_var = [
 #'dsMu_eta',
 #'dsMu_phi',
 'disc_negativity',
-
+'lxy_ds_sig',
 'ds_vtx_cosine'
 ]
 
-if args.constrained: kin_var.append("phiPi_m") #only allowed for constrained fitter! :D
+if args.constrained: kin_var.append("phiPi_m") 
+#if not args.constrained: kin_var.append("phiPi_m") 
 
 
 class Sample(object):
@@ -329,7 +337,7 @@ class Trainer(object):
 
   'train the data'
 
-  def __init__(self, features, epochs, batch_size, scaler_type, do_early_stopping, do_reduce_lr, dirname, baseline_selection, nfolds):
+  def __init__(self, features, epochs, batch_size, scaler_type, do_early_stopping, do_reduce_lr, dirname, baseline_selection, nfolds, frac_sb, frac_sf):
     self.features = features #variables to train on
     self.epochs = epochs #samples / batch_size =  number of iterations to 1 epoch
     self.batch_size = batch_size #number of samples which we feed to our model
@@ -339,6 +347,8 @@ class Trainer(object):
     self.dirname = dirname + '_' + datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')
     self.baseline_selection = baseline_selection
     self.nfolds      = nfolds
+    self.frac_sb = frac_sb
+    self.frac_sf = frac_sf
     self.colors = [
     "red",
     "green",
@@ -365,13 +375,20 @@ class Trainer(object):
 
     
     f = open(self.outdir + "/settings.txt", "x")
-    f.write("Features: "           + str(self.features)            + "\n")
-    f.write("Epochs: "             + str(self.epochs)              + "\n")
-    f.write("Batch size: "         + str(self.batch_size)          + "\n")
-    f.write("Scaler type: "        + str(self.scaler_type)         + "\n")
-    f.write("Early stopping: "     + str(self.do_early_stopping)   + "\n")
-    f.write("Reduce lr: "          + str(self.do_reduce_lr)        + "\n")
-    f.write("Baseline selection: " + str(self.baseline_selection)  + "\n")
+    f.write("Features: "                  + str(self.features)            + "\n")
+    f.write("Epochs: "                    + str(self.epochs)              + "\n")
+    f.write("Nfolds: "                    + str(self.nfolds)              + "\n")
+    f.write("Batch size: "                + str(self.batch_size)          + "\n")
+    f.write("Scaler type: "               + str(self.scaler_type)         + "\n")
+    f.write("Early stopping: "            + str(self.do_early_stopping)   + "\n")
+    f.write("Reduce lr: "                 + str(self.do_reduce_lr)        + "\n")
+    f.write("Baseline selection: "        + str(self.baseline_selection)  + "\n")
+    f.write("Constrained fit?"            + str(args.constrained)         + "\n")
+    f.write("Signal region up to:"        + str(nSignalRegion) + " sigma" + "\n")
+    f.write("Sideband region starts at:"  + str(nSidebands)    + " sigma" + "\n")
+    f.write("Sideband region width:"      + str(sbWidth)       + " sigma" + "\n")
+    f.write("frac of sideband events:"    + str(self.frac_sb)             + "\n")
+    f.write("frac of signflip events:"    + str(self.frac_sf)             + "\n")
     f.close()
 
     return 
@@ -447,15 +464,36 @@ class Trainer(object):
     #siebands used for the comb. bkg
 
     if args.constrained:
-      sign_flip  = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
-      data_selec = self.baseline_selection + sign_flip + signalRegion + lowMass
+      sign_flip   = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
+      data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
+
+      data_sample = Sample(filename=file_data,   selection=data_selec, tree = 'tree',signal = data_id).df
 
     else:
-      SB = f'& (( {mlow3} < phiPi_m & phiPi_m < {mlow2}) || ({mhigh2} < phiPi_m & phiPi_m < {mhigh3}))'
-      data_selec = self.baseline_selection + SB + lowMass
+      sign_flip    = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
+      SB           = f'& (( {mlow3} < phiPi_m & phiPi_m < {mlow2}) || ({mhigh2} < phiPi_m & phiPi_m < {mhigh3}))'
 
-    data_sample               = Sample(filename=file_data,   selection=data_selec, tree = 'tree',signal = data_id)
-    data_train, data_test = train_test_split(data_sample.df, test_size=0.2, random_state = 1000)
+      data_selec_sb = self.baseline_selection + SB + lowMass
+      data_selec_sf = self.baseline_selection + sign_flip + signalRegion + lowMass
+
+      data_sample_sb = Sample(filename=file_data,   selection=data_selec_sb, tree = 'tree',signal = data_id).df
+      data_sample_sf = Sample(filename=file_data,   selection=data_selec_sf, tree = 'tree',signal = data_id).df
+
+      #randomly select frac% of the signflip events
+      data_sample_sb = data_sample_sb.sample(frac = self.frac_sb, random_state = 1968)
+      data_sample_sf = data_sample_sf.sample(frac = self.frac_sf, random_state = 1968)
+
+      f = open(self.outdir + "/settings.txt", "a")
+      f.write("Number of sideband events is: "  + str(len(data_sample_sb)) + "\n")
+      f.write("Number of signflip events is: "  + str(len(data_sample_sf)) + "\n")
+      f.close()
+    
+      print("Number of sideband events is: "  + str(len(data_sample_sb)))
+      print("Number of signflip events is: "  + str(len(data_sample_sf)))
+
+      data_sample  = pd.concat([data_sample_sb, data_sample_sf], sort = False)
+
+    data_train, data_test = train_test_split(data_sample, test_size=0.2, random_state = 1000)
 
     train[data_id] = data_train
     test [data_id] = data_test
@@ -587,10 +625,12 @@ class Trainer(object):
     #NOTE for the moment, everything is hardcoded
 
     rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.0001,
+    initial_learning_rate=0.00001,
     decay_steps=10000,
     decay_rate=0.9
 )
+
+    l2_rate = 0.01
 
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input((len(features),)))
@@ -605,24 +645,48 @@ class Trainer(object):
     #model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
     #model.add(tf.keras.layers.Dense(256,  activation ='swish' )) #, kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(128,  activation ='relu' , kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(32,  activation ='relu'  , kernel_regularizer=regularizers.l2(0.01)))
+    model.add(tf.keras.layers.Dense(64,   activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(128,  activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(256,  activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(128,   activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(64,   activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
     #model.add(tf.keras.layers.Dropout(.2))
     #model.add(tf.keras.layers.Dense(20, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
     #model.add(tf.keras.layers.Dropout(.2))
     model.add(tf.keras.layers.Dense(6, activation= 'softmax'))
 
-    opt = keras.optimizers.Adam(learning_rate=0.00005) 
+
+    learning_rate = 0.00005
+    opt = keras.optimizers.Adam(learning_rate=learning_rate) 
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
     
-    print(model.summary())
+    print(model.summary()) #not enough
 
+    def print_model_summary(model):
 
+      print("============= DETAILED MODEL SUMMARY ===============")
+      print("learning rate = ", learning_rate)
+      for i, layer in enumerate(model.layers):
+        config = layer.get_config()
+        print(f"Layer {i+1} ({layer.name})")
+        #print(f"  Type: {config['class_name']}")
+        print(f"  Output Shape: {layer.output_shape}")
+        print(f"  Activation: {config.get('activation', 'N/A')}")
+
+        if 'kernel_regularizer' in config:
+            reg = config['kernel_regularizer']
+            if reg:
+                print(f"  Regularizer: {reg['class_name']}, (rate: {l2_rate})")
+        print(f"  Parameters: {layer.count_params()}")
+        print("-" * 60)
+
+    print_model_summary(model)
+
+    #write model into file
     f = open(self.outdir + "/settings.txt", "a")
-    f.write(str(model.summary()))
+    with redirect_stdout(f): 
+      model.summary()
+      print_model_summary(model)
     f.close()
   
     return model
@@ -1386,15 +1450,15 @@ class Trainer(object):
 
     # plotting
     print('\n========> plotting...' )
-    #self.plotLoss(history)
-    #self.plotAccuracy(history)
-    #self.plotScoreTauOnly(model, xx_train, y_train, xx_val, y_val,class_label )
-    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 0,class_label)
-    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
-    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 2,class_label)
-    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 3,class_label)
-    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 4,class_label)
-    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 5,class_label)
+    self.plotLoss(history)
+    self.plotAccuracy(history)
+    self.plotScoreTauOnly(model, xx_train, y_train, xx_val, y_val,class_label )
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 0,class_label)
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 2,class_label)
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 3,class_label)
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 4,class_label)
+    self.plotScore(model, xx_train, y_train, xx_val, y_val, 5,class_label)
     #self.plotScoreOneVsAll(model, xx_train, y_train, xx_val, y_val, 1,class_label)
     self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 0)
     self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 1)
@@ -1402,14 +1466,14 @@ class Trainer(object):
     self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 3)
     self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 4)
     ####self.plotCM(model, main_test_df, class_label)
-    #self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
-    #self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
-    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 0)
-    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 1)
-    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 2)
-    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3)
-    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
-    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
+    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
+    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
+    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 0)
+    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 1)
+    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 2)
+    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3)
+    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
+    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
 
 
 
@@ -1435,12 +1499,13 @@ if __name__ == '__main__':
   epochs = 30 #30 here
   batch_size = 128 #128 here
   scaler_type = 'robust'
-  do_early_stopping = True
+  do_early_stopping = False
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = base_wout_tv
   nfolds = 5
-
+  frac_sb = 0.0
+  frac_sf = 1.0
 
   trainer = Trainer(
       features = features, 
@@ -1451,7 +1516,9 @@ if __name__ == '__main__':
       do_reduce_lr = do_reduce_lr,
       dirname = dirname,
       baseline_selection = baseline_selection,
-      nfolds = nfolds
+      nfolds = nfolds,
+      frac_sb = frac_sb,
+      frac_sf = frac_sf
       )
 
   trainer.process()
