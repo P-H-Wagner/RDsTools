@@ -120,31 +120,41 @@ class createDf(object):
       branches += [
        "gen_sig",
        "gen_match_success",
+       "gen_mu_pt",
        "gen_tau_pt",
        "gen_ds_pt",
        "gen_dsStar_pt",
        "gen_bs_pt",
     
+       "gen_mu_eta",
        "gen_tau_eta",
        "gen_ds_eta",
        "gen_dsStar_eta",
        "gen_bs_eta",
     
+       "gen_mu_phi",
        "gen_tau_phi",
        "gen_ds_phi",
        "gen_dsStar_phi",
        "gen_bs_phi",
     
+       "gen_mu_pdgid",
        "gen_tau_pdgid",
        "gen_ds_pdgid",
        "gen_dsStar_pdgid",
        "gen_bs_pdgid",
     
        "gen_ds_charge",
-       "gen_bs_charge"
+       "gen_bs_charge",
+
+       "gen_mu_m",
+       "gen_tau_m",
+       "gen_ds_m",
+       "gen_dsStar_m",
+       "gen_bs_m",
+
        ]
       
-    print(branches)   
     #evaluation on MC data
     #we can evaluate on the whole MC sample, since we checked that overtraining is not a problem :)
 
@@ -152,11 +162,11 @@ class createDf(object):
     #use uproot!!
     with uproot.open(sample) as f:
       tree = f[treename]
-      print(selection)
+      #print(selection)
       selection = selection.replace("&&", "&")
-      print(selection)
+      #print(selection)
       selection = selection.replace("||", "|")
-      print(selection)
+      #print(selection)
       df   = tree.arrays(branches, library = "pd", entry_start=None, entry_stop=None, cut=selection)
 
     #f = ROOT.TFile(sample)
@@ -164,7 +174,8 @@ class createDf(object):
     #arr = tree2array(tree_obj,selection = selection, branches = branches)
     #df = pd.DataFrame(arr)
     #df = read_root(sample, treename, where=baseline_selection, warn_missing_tree=True, columns=training_info.features+extra_columns)
-    
+
+ 
     pd.options.mode.chained_assignment = None   
 
     """
@@ -196,12 +207,14 @@ class createDf(object):
     '''
       Function that returns a dataframe out of a list of samples
     '''
+
     df = pd.concat([self.convertRootToDF(ifile, training_info, treename, selection, weights, var, channel) for ifile in files], sort=False)
     print("before removing nans i have:", len(df))
     # remove inf and nan
 
 
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
     #collect all columns except the gen ones
     non_nan = [col for col in df.keys() if ("gen_" not in col)]
     #df.dropna(inplace=True) #like this we loose almost all events since gen contains nan if not Ds* tau 
@@ -285,6 +298,7 @@ class createDf(object):
 
     # create dataframe
     print( '\n ========> creating the dataframe')
+    
     df = self.createDataframe(training_info=training_info, files=files, selection=selection, weights=weights, treename=treename,var = var, channel = channel)
 
     # get the score for each fold!
@@ -361,8 +375,10 @@ class createDf(object):
     #split df into n chunks for better post-processing 
     chunks = np.array_split(df_tot, nchunks)
 
+    print("saving into directory", channel)
+
     for i, chunk in enumerate(chunks):
-      root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}_chunk_{i}.root"
+      root_filename = f"/scratch/pahwagne/score_trees/{channel}/{self.channel}_{self.date_time}_flatChunk_{i}.root"
 
       with uproot.recreate(root_filename) as f:
         f["tree"] = chunk 
@@ -452,8 +468,9 @@ if __name__ == '__main__':
    channel      = os.getenv("channel") 
    modelpath    = os.getenv("modelpath") 
    nchunks      = os.getenv("nchunks")
-   print("parsing command line... evaluate on: ", channel)   
+   print("parsing command line... evaluate on: ", channel, nchunks)   
 
+   
    nchunks = int(nchunks)
    if constrained == 'True': constrained = True
    else: constrained = False
@@ -464,7 +481,12 @@ if __name__ == '__main__':
    if constrained:
      #this is only constrained data! (cut on fv only)
      files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-     files["sig"]   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+     #not hammered
+     #files["sig"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+     #hammered
+     direc          = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_default_13_03_2025_08_42_43/"
+     files["sig"]   = [os.path.join(direc, f) for f in os.listdir(direc)]
+
      files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
      files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
      files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
@@ -484,6 +506,7 @@ if __name__ == '__main__':
    #date_time   = modelpath[5:] 
    #print("date_time:", date_time)
 
+   print("training path: ", training_path)
 
    print(f"=====> Using model {modelpath}.") 
 
@@ -509,52 +532,54 @@ if __name__ == '__main__':
 
 
    features = [
-   #'bs_boost_reco_weighted',
-   'bs_boost_reco_1',
-   'bs_boost_reco_2',
-   'bs_boost_lhcb_alt',
-   'bs_boost_coll',
+   'bs_boost_reco_weighted',
+   #'bs_boost_reco_1',
+   #'bs_boost_reco_2',
+   #'bs_boost_lhcb_alt',
+   #'bs_boost_coll',
    
-   #'bs_pt_reco_weighted',
-   'bs_pt_reco_1',
-   'bs_pt_reco_2',
-   'bs_pt_lhcb_alt',
-   'bs_pt_coll',
+   'bs_pt_reco_weighted',
+   #'bs_pt_reco_1',
+   #'bs_pt_reco_2',
+   #'bs_pt_lhcb_alt',
+   #'bs_pt_coll',
    
    #'cosMuW_reco_weighted', #better separates all signals
-   'cosMuW_reco_1', #better separates all signals
-   'cosMuW_reco_2', #better separates all signals
-   'cosMuW_lhcb_alt', #better separates all signals
-   'cosMuW_coll', #better separates all signals
+   #'cosMuW_reco_1', #better separates all signals
+   #'cosMuW_reco_2', #better separates all signals
+   #'cosMuW_lhcb_alt', #better separates all signals
+   #'cosMuW_coll', #better separates all signals
    
    'cosPhiDs_lhcb',
    'cosPiK1',
-   'dsMu_deltaR',
+   #'dsMu_deltaR',
    'kk_deltaR',
    
    'e_gamma',
    
    #'e_star_reco_weighted',
-   'e_star_reco_1',
-   'e_star_reco_2',
+   #'e_star_reco_1',
+   #'e_star_reco_2',
    'e_star_lhcb_alt',
-   'e_star_coll',
+   #'e_star_coll',
    
    'm2_miss_coll',
    'm2_miss_lhcb_alt',
    
    'mu_rel_iso_03',
    'phiPi_deltaR',
-   #'phiPi_m',              #only for constrained fitter!
+   'phiPi_m',              #only for constrained fitter!
    'dsMu_m',
    #'pt_miss_....',        #too similar to m2 miss?
    
-   #'q2_reco_weighted',
-   'q2_reco_1',
-   'q2_reco_2',
-   'q2_coll',
+   'q2_reco_weighted',
+   #'q2_reco_1',
+   #'q2_reco_2',
+   #'q2_coll',
    'q2_lhcb_alt',
    'mu_pt',
+   'mu_eta',
+   'mu_phi',
    'pi_pt',
    
    'fv_prob',
@@ -570,8 +595,9 @@ if __name__ == '__main__':
    #'dsMu_pt',
    #'dsMu_eta',
    #'dsMu_phi',
-   #'disc_negativity',
-   #'ds_vtx_cosine'
+   'disc_negativity',
+   'lxy_ds_sig',
+   'ds_vtx_cosine'
    ]
 
 
@@ -584,6 +610,7 @@ if __name__ == '__main__':
    #'bs_boost_reco_2',
    'bs_boost_lhcb_alt',
    'bs_boost_coll',
+   'bsMassCorr',
 
    ##'bs_pt_reco_weighted',
    #'bs_pt_lhcb',
@@ -646,15 +673,33 @@ if __name__ == '__main__':
    #"dsMu_m",
    #"phiPi_m",
    "dsMu_pt",
+   "dsMu_eta",
+   "dsMu_phi",
    "lxy_ds",
+   
+   #"phiPi_pt",
+   "phiPi_eta",
+   "phiPi_phi",
+   #"phiPi_m",
+
+   "pv_x",
+   "sv_x",
+
+   "pv_y",
+   "sv_y",
+
+   "pv_z",
+   "sv_z",
+
    "mu_id_medium",
    "run",
    "event"
    ]
 
+   #extra_vars = []
    #if not constrained: 
    #  print("appending mass...")
-   extra_vars.append("phiPi_m")
+   #extra_vars.append("phiPi_m")
 
 
    var = {}
