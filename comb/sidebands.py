@@ -5,6 +5,8 @@ from ROOT import TLorentzVector
 from ROOT import TVector3
 import sys
 import os
+import yaml
+
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from helper import *
 
@@ -32,6 +34,8 @@ from copy import deepcopy as dc
 #           |          |                    #
 #############################################  Ds mass
 
+with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
+  averages = yaml.safe_load(f)
 
 
 ############## FIT TO MC ################
@@ -43,12 +47,12 @@ stop  = 2.028#2.028
 
 # Range for mean scale
 meanScaleStart = 1.001 # dont start at 1
-meanScaleMin   = 0.9
-meanScaleMax   = 1.1
+meanScaleMin   = 0.5 #0.1
+meanScaleMax   = 1.5 #1.1
 
 # Range for CB sigma
 cbStart = 0.008
-cbMin   = 0.005
+cbMin   = 0.001 #0.005
 cbMax   = 0.012
 
 # Range for 1st gauss sigma scale
@@ -72,13 +76,13 @@ nMin        = 0.5
 nMax        = 7
 
 # Range for 1st gauss weight
-fracs1Start = 0.2
-fracs1Min   = 0.1
+fracs1Start = 0.5 #0.1
+fracs1Min   = 0.0 #0.1
 fracs1Max   = 1
 
 # Range for CB weight
-fracs2Start = 0.9
-fracs2Min   = 0.1
+fracs2Start = 0.5 #0.9
+fracs2Min   = 0.0 #0.1
 fracs2Max   = 1
 
 # Nr of parameters in double gauss + cb (for red chi2)
@@ -154,7 +158,6 @@ ROOT.gStyle.SetOptTitle(0)
 ROOT.gStyle.SetPadLeftMargin(0.15)
 
 
-outdir = "/work/pahwagne/RDsTools/comb/sb_fits/"
 
 
 #importing trees
@@ -177,7 +180,7 @@ def defineRanges(var,nBins, start, stop):
     var.setRange("i+1", binEdges[i], binEdges[i+1])
   return var, binEdges
 
-def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
+def getSigma(rdf, var, sel, dt, bins = bins, start = start, stop = stop, hammer = None):
 
   print(" ======> Prepare variables and fit")
   #path to save
@@ -185,8 +188,16 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
   model = ROOT.RDF.TH1DModel( var, "", bins, start, stop)
 
+
   #create histo
-  h = rdf.Filter(sel).Histo1D(model,var)
+  
+  if hammer:
+
+    h = rdf.Filter(sel).Histo1D(model,var, "central_w")
+    h.Scale(1.0 / averages["central_w_dsmu"])
+
+  else:  
+    h = rdf.Filter(sel).Histo1D(model,var)
 
   # adjust histo style
   h.GetXaxis().SetTitle(r"D_{s} mass [GeV]")
@@ -376,6 +387,12 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
   
   c2.Modified()
   c2.Update()
+
+  outdir = f"/work/pahwagne/RDsTools/comb/sb_fits/{dt}/"
+ 
+  if not os.path.exists(outdir): 
+    os.makedirs(outdir)
+
   c2.SaveAs(outdir + "RooFit_only.pdf")
 
 
@@ -384,7 +401,7 @@ def getSigma(rdf, var, sel, bins = bins, start = start, stop = stop):
 
 ######################################################################################
 
-def getABCS( rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth):
+def getABCS( rdf, sel, var, sigma, hMc, dt, bins = bins, start = start, stop = stop, binsFake = 21, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth):
 
   """
   - sigma obtained from fit to MC"  
@@ -709,6 +726,11 @@ def getABCS( rdf, sel, var, sigma, hMc, bins = bins, start = start, stop = stop,
   
   c_comb.Modified()
   c_comb.Update()
+
+  outdir = f"/work/pahwagne/RDsTools/comb/sb_fits/{dt}/"
+  if not os.path.exists(outdir): 
+    os.makedirs(outdir)
+
   c_comb.SaveAs(outdir + "expfit.pdf")
   ########################################################################################
   print("========> build fake mass histogram")

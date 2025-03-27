@@ -67,7 +67,6 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   n0_sig    = hSig.Integral()
   n0_Data   = hData.Integral() 
 
- 
   #scale signal to comb
   #hSig.Scale(n0_bkg / n0_sig)
 
@@ -94,10 +93,10 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   pdf_bkg_pimu   = ROOT.RooHistPdf("pdf_pimu_bkg", "pdf_pimu_bkg", ROOT.RooArgSet(dsMass), hBkg_pimu_Roo);
   pdf_sig     = ROOT.RooHistPdf("pdf_sig", "pdf_sig", ROOT.RooArgSet(dsMass), hSig_Roo);
 
-  kk_scale   = ROOT.RooRealVar( "kk_scale",     "kk_scale"      ,  0.5   ,    0.01, 01.0)
+  kk_scale   = ROOT.RooRealVar( "kk_scale",     "kk_scale"      ,  0.3   ,    0.00, 1.0)
   pimu_scale  = ROOT.RooFormulaVar("pimu_scale", "1.0 - kk_scale", ROOT.RooArgList(kk_scale))
 
-  bkg_scale   = ROOT.RooRealVar( "bkg_scale",     "bkg_scale",  0.8   ,    0.01, 1.0)
+  bkg_scale   = ROOT.RooRealVar( "bkg_scale",     "bkg_scale",  0.5  ,    0.0, 1.0)
   sig_scale  = ROOT.RooFormulaVar("sig_scale", "1.0 - bkg_scale", ROOT.RooArgList(bkg_scale))
 
   nData       = ROOT.RooRealVar( "nData",          "nData"   , n0_Data,    n0_Data*0.5, n0_Data*1.5)
@@ -107,7 +106,12 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   # Define functions
 
   pdf_bkg       = ROOT.RooAddPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgList(pdf_bkg_kk,pdf_bkg_pimu), ROOT.RooArgList(kk_scale, pimu_scale))
-  pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg, pdf_sig), ROOT.RooArgList(bkg_scale, sig_scale ))
+
+  if n0_sig > 0:
+    pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg, pdf_sig), ROOT.RooArgList(bkg_scale, sig_scale ))
+  else:
+    pdf_total     = pdf_bkg #ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg), ROOT.RooArgList(bkg_scale))
+
   #pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg,pdf_sig), ROOT.RooArgList(bkg_scale))
   pdf_total_ext = ROOT.RooExtendPdf("pdf_total_scaled", "pdf_total_scaled", pdf_total, nData, "complete") 
  
@@ -120,14 +124,22 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   p_scale    = round(pimu_scale.getVal()  ,5)
   b_scale    = round(bkg_scale.getVal()  ,5)
   s_scale    = round(sig_scale.getVal()  ,5)
-  n_scale    = round(nData.getVal()  ,5)
+  n_data     = round(nData.getVal()  ,5)
+  n_sig      = round(nData.getVal() * (1 - bkg_scale.getVal())  ,5)
+  n_bkg      = round(nData.getVal() * (bkg_scale.getVal())      ,5)
+  n_kk       = round(nData.getVal() * (bkg_scale.getVal()) * kk_scale.getVal()       ,5)
+  n_pimu     = round(nData.getVal() * (bkg_scale.getVal()) * pimu_scale.getVal()     ,5)
   #s_scale = round(sig_scale.getVal()  ,5)
 
   print(f" =======> kk scale is: {k_scale} ")
   print(f" =======> pimu scale is: {p_scale} ")
   print(f" =======> bkg scale is: {b_scale} ")
   print(f" =======> sig scale is: {s_scale} ")
-  print(f" =======> norm scale is: {n_scale} ")
+  print(f" =======> number of events are: {n_data} ")
+  print(f" =======> number of bkg events: {n_data * b_scale}")
+  print(f" =======> number of kk bkg events: {n_pimu}")
+  print(f" =======> number of pimu bkg events: {n_kk}")
+  print(f" =======> number of signal events: {n_data * (1-b_scale)}")
 
   #plotting
   print(f" =======> Start plotting")
@@ -136,7 +148,9 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   frame = dsMass.frame(ROOT.RooFit.Title(var))
   frame.GetXaxis().SetTitle("D_{s} mass")
   frame.GetXaxis().SetTitleOffset(1.5)
-  frame.GetYaxis().SetRangeUser(0, 200000)
+  #frame.GetYaxis().SetRangeUser(0, 200000)
+  max_y = hData.GetMaximum() * 1.2  # Scale the max value slightly for better visualization
+  frame.GetYaxis().SetRangeUser(0, max_y)
 
 
   #first plot data and model, they define the normalization range 
@@ -167,8 +181,10 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg"),             ROOT.RooFit.Components("pdf_bkg"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
   pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg"),             ROOT.RooFit.Components("pdf_bkg"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), )
 
-  #hist_bkg = pdf_bkg.createHistogram("hist_bkg", dsMass)
-  #hist_sig = pdf_sig.createHistogram("hist_sig", dsMass)
+  hist_bkg = pdf_bkg.createHistogram("hist_bkg", dsMass)
+  hist_sig = pdf_sig.createHistogram("hist_sig", dsMass)
+
+  print(f"After the fit we have: {hist_sig.Integral()} events")
 
   #plot data again, s.t. it is visible on top
   hData_Roo.plotOn(frame,ROOT.RooFit.Name("hData_Roo"))
@@ -204,6 +220,8 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   text.SetTextAlign(11)
   leg2.SetTextSize(0.035)
   text.AddText(" Relative Scale = " + f"{b_scale} ")
+  text.AddText(" kk Scale = "       + f"{k_scale} ")
+  text.AddText(" pi mu Scale = "    + f"{p_scale} ")
   text.SetBorderSize(0)
   text.Draw("SAME")
   
@@ -258,6 +276,6 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData):
   c2.Modified()
   c2.Update()
   c2.SaveAs(outdir + "signflip_mass.pdf")
-
-  return k_scale, b_scale, n_scale
+  print("==============> Saved!")
+  return n_kk, n_pimu, n_data
 
