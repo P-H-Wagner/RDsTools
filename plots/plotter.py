@@ -266,13 +266,13 @@ else:
 
   print("Producing pre-NN plots")
   if constrained:
-    chainSigSB, rdfSigSB     = getRdf(sig_cons     )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
-    chainSig,   rdfSig       = getRdf(sig_cons     )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
-    chainHb,    rdfHb        = getRdf(hb_cons      )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
-    chainBs,    rdfBs        = getRdf(bs_cons      )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
-    chainB0,    rdfB0        = getRdf(b0_cons      )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
-    chainBplus, rdfBplus     = getRdf(bplus_cons   )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
-    chainData,  rdfData      = getRdf(data_cons    )#, debug = 1000   )# , skimmed = baseline_name)#, debug = 1)
+    chainSigSB, rdfSigSB     = getRdf(sig_cons     )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
+    chainSig,   rdfSig       = getRdf(sig_cons     )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
+    chainHb,    rdfHb        = getRdf(hb_cons      )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
+    chainBs,    rdfBs        = getRdf(bs_cons      )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
+    chainB0,    rdfB0        = getRdf(b0_cons      )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
+    chainBplus, rdfBplus     = getRdf(bplus_cons   )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
+    chainData,  rdfData      = getRdf(data_cons    )#, debug = 0000   )# , skimmed = baseline_name)#, debug = 1)
   else:
   
     chainSigSB, rdfSigSB     = getRdf(sig_unc          , skimmed = baseline_name)#, debug = 10)
@@ -1162,7 +1162,7 @@ def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale
       weight   = bin_data / bin_comb
     else:
       weight = 1
-    sub_str  = f" (({var} >= {bin_low_edge}) && ({var} > {bin_high_edge} )) * {weight}" 
+    sub_str  = f" (({var} >= {bin_low_edge}) && ({var} < {bin_high_edge} )) * {weight}" 
     weights.append(sub_str)
 
   weight_str = " + ".join(weights)
