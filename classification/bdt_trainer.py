@@ -9,7 +9,7 @@ import os
 import glob
 import time
 import ROOT
-
+import json 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
@@ -47,7 +47,7 @@ maxevents = 500
 #######################################
 
 
-def plotRoc(data, X, X_tt, y_tt, bdt_bins, flag = "train"):
+def plotRoc(model, data, X, X_tt, y_tt, bdt_bins, flag = "train"):
 
   # X_tt = X_train or X_test
   # y_tt = y_train or y_test
@@ -91,8 +91,18 @@ def plotRoc(data, X, X_tt, y_tt, bdt_bins, flag = "train"):
   
   
   # Prediction distribution
-  aa = axes[1].hist(data.bdt_prob[data.target==0], bins=bdt_bins, alpha=0.5, label='Generated', color='red'  , density=True)
-  bb = axes[1].hist(data.bdt_prob[data.target==1], bins=bdt_bins, alpha=0.5, label='Original' , color='green', density=True)
+  aa = axes[1].hist(data.bdt_prob[data.target==0], bins=bdt_bins, alpha=0.5, label='Wrong sign', color='red'  , density=True)
+  bb = axes[1].hist(data.bdt_prob[data.target==1], bins=bdt_bins, alpha=0.5, label='Correct sign' , color='green', density=True)
+
+  # get weights from histogram ratio
+  binned_weights = np.zeros_like(aa[0])
+  
+  for i in range(len(aa[0])):
+    if aa[0][i] != 0:
+      binned_weights[i] = (bb[0][i]/np.sum(bb[0])) / (aa[0][i]/np.sum(aa[0]))
+    else: 
+      print("ALERT! There are empty bins for the wrong signed histo, weight are zero!!")
+
   # axes[1].set_yscale("log")  # Set y-axis to logarithmic scale
   axes[1].set_xlabel('Predicted Probability')
   axes[1].set_ylabel('Frequency')
@@ -103,39 +113,21 @@ def plotRoc(data, X, X_tt, y_tt, bdt_bins, flag = "train"):
   plt.tight_layout()
   plt.savefig(f'roc_{flag}.pdf')
   plt.clf()
-  return data
+  return data, binned_weights
 
 
 #######################################
 # Create weight signflip weight histo #
 #######################################
   
-def predictAndGetWeight(data, df, X_df, bdt_bins):
+def predictAndGetWeight(model, data, df, X_df, bdt_bins, binned_weights):
 
   #first, lets predict the prob for this df
   X_df = xgb.DMatrix(X_df)
   df['bdt_prob'] = model.predict(X_df)
   
-  # then plot the prob histo and get the weight ratios
-  fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-
-  aa = axes[1].hist(data.bdt_prob[data.target==0], bins=bdt_bins, alpha=0.5, label='Wrong sign', color='red'  )
-  bb = axes[1].hist(data.bdt_prob[data.target==1], bins=bdt_bins, alpha=0.5, label='Correct sign' , color='green')
-  
-  binned_weights = np.zeros_like(aa[0])
-  
-  for i in range(len(aa[00])):
-  
-    if aa[0][i] != 0:
-      binned_weights[i] = (bb[0][i]/np.sum(bb[0])) / (aa[0][i]/np.sum(aa[0]))
-  
-    else: 
-      print("ALERT! There are empty bins for the wrong signed histo, weight are zero!!")
-  
-  #print(binned_weights)
- 
-  # now apply the weights to our df 
-  #bdt_bins are the edges, so we have to subtract 1
+  # apply the weights to our df 
+  # bdt_bins are the edges, so we have to subtract 1
   masks = [(df['bdt_prob'] > bdt_bins[i]) & (df['bdt_prob'] <= bdt_bins[i+1]) for i in range(len(bdt_bins)-1)]
   
   sf_weights = []
@@ -175,6 +167,36 @@ def plotLoss(history):
   plt.savefig(f'loss.pdf')
   plt.clf()
 
+
+def plotHist(df_wrong,df_correct, var, bins, start,stop, flag = ""):
+
+  # Define binning
+  bins = np.linspace(start, stop, bins + 1)
+  
+  # Normalize histograms
+  norm_factor_wrong    = len(df_wrong)   if len(df_wrong)   > 0 else 1
+  norm_factor_correct  = len(df_correct) if len(df_correct) > 0 else 1
+  norm_factor_weighted = sum(df_wrong['sf_weights']) if sum(df_wrong['sf_weights']) > 0 else 1
+  
+  # Create the figure and axis
+  plt.figure(figsize=(8, 6))
+  
+  # Plot the first normalized histogram (df_wrong)
+  plt.hist(df_wrong[var], bins=bins, label=f'{flag} Wrong', histtype='step', linewidth=2, density=True, color = "red")
+  
+  # Plot the second normalized histogram (df_correct)
+  plt.hist(df_correct[var], bins=bins, label=f'{flag}  Correct', histtype='step', linewidth=2, density=True, color = "green")
+  
+  # Plot the third normalized histogram (df_wrong with per event weights)
+  plt.hist(df_wrong[var], bins=bins, weights=df_wrong['sf_weights']/norm_factor_weighted, label=f'{flag} Wrong (Weighted)', histtype='step', linewidth=2, density=True, color = "blue")
+  
+  # Labels and legend
+  plt.xlabel(var)
+  plt.ylabel('a.u.')
+  plt.legend(loc='upper right', bbox_to_anchor=(1.05, 1), borderaxespad=0.)
+  plt.savefig(f"{var}_{flag}.pdf")
+
+
 #######################################
 # Define signal regions and sidebands #
 #######################################
@@ -206,23 +228,29 @@ mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, signalRegion, anti_signalRegion, left
 wrong_sign   = "&& ((mu_charge*pi_charge > 0) || (k1_charge*k2_charge > 0))"
 correct_sign = "&& ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0))"
 
+#high mass
+high_mass    = f"(dsMu_m > {bsMass_})"
+low_mass     = f"&& (dsMu_m < {bsMass_})"
+
 start_time = time.time()
 
 ######################################
 # wrong sign data for both sidebands #
 ######################################
 
-rdf_left_wrong  = rdf_wrong.Filter(left_sb_cut  + wrong_sign)
-rdf_right_wrong = rdf_wrong.Filter(right_sb_cut + wrong_sign)
+rdf_left_wrong  = rdf_wrong.Filter(left_sb_cut  + wrong_sign + low_mass)
+rdf_right_wrong = rdf_wrong.Filter(right_sb_cut + wrong_sign + low_mass)
+rdf_high_wrong  = rdf_wrong.Filter(high_mass    + wrong_sign)
 
-df_left_wrong   = rdf_left_wrong.AsNumpy()
+df_left_wrong   = rdf_left_wrong .AsNumpy()
 df_right_wrong  = rdf_right_wrong.AsNumpy()
+df_high_wrong   = rdf_high_wrong .AsNumpy()
 
-df_left_wrong   = pd.DataFrame(df_left_wrong)
+df_left_wrong   = pd.DataFrame(df_left_wrong )
 df_right_wrong  = pd.DataFrame(df_right_wrong)
+df_high_wrong   = pd.DataFrame(df_high_wrong )
 
 # get training events
-
 neg_events_train =  len(df_left_wrong)
 print(f"=====> We have {neg_events_train} wrong sign events for training in left SB")
 
@@ -230,23 +258,33 @@ print(f"=====> We have {neg_events_train} wrong sign events for training in left
 # correct sign data for both sidebands #
 ########################################
 
-rdf_left_correct  = rdf_correct.Filter(left_sb_cut + correct_sign)
-rdf_right_correct = rdf_correct.Filter(right_sb_cut + correct_sign)
+rdf_left_correct  = rdf_correct.Filter(left_sb_cut  + correct_sign + low_mass)
+rdf_right_correct = rdf_correct.Filter(right_sb_cut + correct_sign + low_mass)
+rdf_high_correct  = rdf_correct.Filter(high_mass    + correct_sign)
 
 df_left_correct   = rdf_left_correct.AsNumpy()
 df_right_correct  = rdf_right_correct.AsNumpy()
+df_high_correct   = rdf_high_correct.AsNumpy()
 
 df_left_correct   = pd.DataFrame(df_left_correct)
 df_right_correct  = pd.DataFrame(df_right_correct)
+df_high_correct   = pd.DataFrame(df_high_correct)
 
+# get training events
 pos_events_train = len(df_left_correct)
 print(f"=====> We have {pos_events_train} right sign events for training in left SB")
 
 #balance classes: (negative is 0 and pos is 1)
-weight = neg_events_train/pos_events_train
+weight        = len(df_left_correct) / len(df_left_wrong)
+weight_double = (len(df_left_correct) + len(df_right_correct)) / (len(df_left_wrong) + len(df_right_wrong)) 
 
-df_left_wrong  ["weights"] = pos_events_train/neg_events_train
+df_left_wrong  ["weights"] = weight 
 df_left_correct["weights"] = 1.0
+
+df_left_wrong   ["weights_double"] = weight_double
+df_left_correct ["weights_double"] = 1.0
+df_right_wrong  ["weights_double"] = weight_double 
+df_right_correct["weights_double"] = 1.0
 
 end_time = time.time()
 elapsed_time = end_time - start_time
@@ -257,122 +295,210 @@ print(f"Loading Time per file: {elapsed_time/len(file_list)} seconds")
 # Define features and target
 features = [
     "phiPi_deltaR", 
-    #"kk_deltaR", 
-    #"dsMu_deltaR", 
-    #"bs_pt_lhcb_alt", 
+    "kk_deltaR", 
+    "dsMu_deltaR", 
+    "bs_pt_lhcb_alt", 
     "q2_coll", 
+    #"dsMu_m", 
+    "phiPi_m", 
+    #"q2_lhcb_alt", 
     #"pi_pt",
-    #"pt_miss_coll", 
-    #"cosPiK1",
+    #"mu_pt",
+    #"k1_pt",
+    #"k2_pt",
+    #"pv_prob",
+    #"sv_prob",
+    #"tv_prob",
+    "pt_miss_coll", #affects q2 coll 
+    #"cosPiK1", 
     #"cosMuW_lhcb_alt",
+    #"e_gamma"
     #"mu_pt",
     #"tv_prob",
 ]
 
 print("=====> files loaded")
 
-df_left_wrong  ['target'] = 0
-df_left_correct['target'] = 1
+
+# train it on the left sideband only
+df_left_wrong   ['target'] = 0
+df_left_correct ['target'] = 1
+df_right_wrong  ['target'] = 0
+df_right_correct['target'] = 1
 
 data = pd.concat([df_left_wrong, df_left_correct], ignore_index=True)
+data_double = pd.concat([df_left_wrong, df_left_correct, df_right_correct, df_right_wrong], ignore_index=True)
 
 X = data[features + ["weights"]]
+X_double = data_double[features + ["weights_double"]]
+
 X_right_wrong   = df_right_wrong  [features]
 X_right_correct = df_right_correct[features]
 X_left_wrong    = df_left_wrong   [features]
 X_left_correct  = df_left_correct [features]
+X_high_wrong    = df_high_wrong   [features]
+X_high_correct  = df_high_correct [features]
 
-y = data['target']  # Assuming a 'target' column (0 or 1)
+y        = data['target']         #  column (0 or 1)
+y_double = data_double['target']  #  column (0 or 1)
 
 # Split data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_double_train, X_double_test, y_double_train, y_double_test = train_test_split(X_double, y_double, test_size=0.2, random_state=42)
 
 weights = X_train["weights"]
+weights_double = X_double_train["weights_double"]
 
-import pdb
-pdb.set_trace()
+bdt_bins = [0.00, 0.25] + list(np.linspace(0.30, 0.75, 20).tolist()) + [0.8, 1.0]
 
-bdt_bins = [
-    0.00, 0.20, 0.30, 
-    0.40, 0.45, 0.48, 0.50, 0.52, 0.55, 0.60, 0.70, 
-    0.75, 1.00
-]
 
 #now only keep going with features
 X_train = X_train[features]
 X_test  = X_test[features]
-#y_train = y_train[features]
-#y_test  = y_test[features]
 X       = X[features]
-#y       = y[features]
 
-# Define and train the XGBoost classifier
-#model = xgb.XGBClassifier(
-#
-#    max_depth        = 5,
-#    learning_rate    = 0.1, # 0.01
-#    n_estimators     = 500, # 400
-#    silent           = False,
-#    subsample        = 0.6,
-#    colsample_bytree = 0.7,
-#    eval_metric           = 'logloss', # error, auc
-#
-#)
+X_double_train = X_double_train[features]
+X_double_test  = X_double_test[features]
+X_double       = X_double[features]
 
 # use .train() rather than .fit() -> allows more complex handling
-
 # prepare input as Dmatrix
 dtrain = xgb.DMatrix(X_train[features], label=y_train, weight=weights)
 dtest  = xgb.DMatrix(X_test[features], label=y_test)
+
+dtrain_double = xgb.DMatrix(X_double_train[features], label=y_double_train, weight=weights_double)
+dtest_double  = xgb.DMatrix(X_double_test[features], label=y_double_test)
 
 # define the model here!
 params = {
   "objective"  : "binary:logistic",
   "eval_metric": "logloss",
-  "max_depth"  : 3, 
+  "max_depth"  : 4, 
+  "eta"        : 0.005
 }
 
-evals = [(dtrain, "train"), (dtest, "eval")]
+evals        = [(dtrain, "train"), (dtest, "eval")]
+evals_double = [(dtrain_double, "train"), (dtest_double, "eval")]
 
 #to save history
 history= {}
+history_double= {}
 
 model = xgb.train(
     params,
     dtrain,
-    num_boost_round=50,
+    num_boost_round=2000,
     evals=evals,
     evals_result=history,
     early_stopping_rounds=30,
     verbose_eval=True
 )
-
-
-#model.fit(
-#    X_train[features], 
-#    y_train,
-#    eval_set              = [(X_train[features], y_train), (X_test[features], y_test)],
-#    #early_stopping_rounds = 30,
-#    verbose               = True,
-#    sample_weight         = weights,
-#    evals_result          = history
-#)
-#
+model_double = xgb.train(
+    params,
+    dtrain_double,
+    num_boost_round=2000,
+    evals=evals_double,
+    evals_result=history_double,
+    early_stopping_rounds=30,
+    verbose_eval=True
+)
+print(model)
+model.save_model('bdt_model.json') 
+#model_double.save_model('bdt_model.json') 
 
 print("=====> training finished")
 
-# first plot roc, in this func we also predict for data
-data = plotRoc(data,X, X_train, y_train, bdt_bins, flag = "train")
-data = plotRoc(data,X, X_test,  y_test,  bdt_bins, flag = "test")
+# plot roc and get the binned weights from hist ratio 
+data,binned_weights = plotRoc(model, data,X, X_train, y_train, bdt_bins, flag = "train")
+data,_              = plotRoc(model, data,X, X_test,  y_test,  bdt_bins, flag = "test")
+
+data_double,binned_weights_double = plotRoc(model_double, data_double,X_double, X_double_train, y_double_train, bdt_bins, flag = "train_double")
+data_double,_                     = plotRoc(model_double, data_double,X_double, X_double_test,  y_double_test,  bdt_bins, flag = "test_double")
+
+with open("bdt_tools.json", "w") as f: 
+  json.dump({"binned_weights": binned_weights.tolist(), "bdt_bins": bdt_bins, "features": features}, f)
+#with open("bdt_tools.json", "w") as f: 
+#  json.dump({"binned_weights": binned_weights_double.tolist(), "bdt_bins": bdt_bins, "features": features}, f)
+
 
 #plot loss
 plotLoss(history)
+plotLoss(history_double)
 
 # predict for all the partial df and apply weight column
-predictAndGetWeight(data, df_right_wrong  , X_right_wrong  , bdt_bins)
-predictAndGetWeight(data, df_right_correct, X_right_correct, bdt_bins)
-predictAndGetWeight(data, df_left_wrong   , X_left_wrong   , bdt_bins)
-predictAndGetWeight(data, df_left_correct , X_left_correct , bdt_bins)
+predictAndGetWeight(model, data, df_right_wrong  , X_right_wrong  , bdt_bins, binned_weights)
+predictAndGetWeight(model, data, df_right_correct, X_right_correct, bdt_bins, binned_weights)
+predictAndGetWeight(model, data, df_left_wrong   , X_left_wrong   , bdt_bins, binned_weights)
+predictAndGetWeight(model, data, df_left_correct , X_left_correct , bdt_bins, binned_weights)
+predictAndGetWeight(model, data, df_high_wrong   , X_high_wrong   , bdt_bins, binned_weights)
+predictAndGetWeight(model, data, df_high_correct , X_high_correct , bdt_bins, binned_weights)
+
+plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , flag = "rightSB")
+
+plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12        , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15          , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1        , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30   , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968 , flag = "leftSB")
+
+plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12      , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15          , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1        , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30   , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028 , flag = "high mass")
+
+predictAndGetWeight(model_double, data_double, df_right_wrong  , X_right_wrong  , bdt_bins, binned_weights_double)
+predictAndGetWeight(model_double, data_double, df_right_correct, X_right_correct, bdt_bins, binned_weights_double)
+predictAndGetWeight(model_double, data_double, df_left_wrong   , X_left_wrong   , bdt_bins, binned_weights_double)
+predictAndGetWeight(model_double, data_double, df_left_correct , X_left_correct , bdt_bins, binned_weights_double)
+predictAndGetWeight(model_double, data_double, df_high_wrong   , X_high_wrong   , bdt_bins, binned_weights_double)
+predictAndGetWeight(model_double, data_double, df_high_correct , X_high_correct , bdt_bins, binned_weights_double)
+
+plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , flag = "rightSB")
+
+plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12        , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15          , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1        , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30   , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968 , flag = "leftSB")
+
+plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12      , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15          , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1        , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30   , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028 , flag = "high mass")
 
 #X_train['bdt_prob']          = model.predict      (X_train)
 #X_train['bdt_prob'  ] = model.predict_proba(X_train[features])[:, 1]
