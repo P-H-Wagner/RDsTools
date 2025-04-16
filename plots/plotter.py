@@ -29,6 +29,7 @@ parser.add_argument("-f", "--fit",         required = True, help = "Specify fitt
 parser.add_argument("-c", "--doublecharm", required = True, help = "Specify hb bkg modeling 'old' (inclusive) or 'new' (exclusive)") 
 parser.add_argument("-n", "--nn",          required = True, help = "Specify 'before' or 'past' neural network plots ") 
 parser.add_argument("-s", "--sys",         required = True, help = "Specify 'true' or 'false' to add systeatic shape plots") 
+parser.add_argument("-p", "--prod",        required = True, help = "Specify '24' or '25' to specify the data production") 
 args = parser.parse_args()
 
 # python plotter.py -f cons -c old -n past -s true 
@@ -50,6 +51,10 @@ if args.sys not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
 else: addSys      = (args.sys == "true")
 
+if args.prod not in ["24", "25"]:
+  raise ValueError ("Error: Not a valid key for --prod, please use '24' or '25'")
+else: prod = args.prod
+
 print(f"====> Running {args.fit} fit with {args.doublecharm} Hb background, {args.nn} neural network")
 if pastNN: models.update(pastNN_models)
 
@@ -66,6 +71,26 @@ baseline_name = "base_wout_tv" #old samples
 baseline      = baselines[baseline_name]
 baseline      = "(mu_pt>8)" # && !isnan(cosMuW_lhcb_alt) && !isnan(cosMuW_coll)"
 
+if prod == "25":
+  baseline += " && (mu7_ip4) && (mu_is_global) && (ds_vtx_cosine_xy_pv > 0.8)"
+  bdt_file = "15_04_2025_18_34_01"
+  sig_cons   = sig_cons_25
+  hb_cons    = hb_cons_25
+  bs_cons    = bs_cons_25
+  b0_cons    = b0_cons_25
+  bplus_cons = bplus_cons_25
+  data_cons  = data_cons_25
+
+else:
+  bdt_file = "14_04_2025_18_35_03" 
+
+  sig_cons   = sig_cons_24
+  hb_cons    = hb_cons_24
+  bs_cons    = bs_cons_24
+  b0_cons    = b0_cons_24
+  bplus_cons = bplus_cons_24
+  data_cons  = data_cons_24
+
 # disable title and stats and displaying
 ROOT.gStyle.SetOptTitle(0)
 ROOT.gStyle.SetOptStat(0)
@@ -81,13 +106,14 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 if pastNN:
   score_cut = "&& (score5 <= 1.0)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
-
+ 
 else: 
   score_cut = ""
 
 # set the to be splitter variable and binning
 #split   = "cosMuW_reco_weighted"
 split   = "q2_coll"
+#split   = "phiPi_m"
 #split   = "e_star_reco_weighted"
 #split = "score1"
 #split = "score2"
@@ -95,7 +121,7 @@ split   = "q2_coll"
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
 #binning = [[0,6],[6,7],[7,8],[8,9],[9,12]]
 #binning = [[-1,-0.8],[-0.8, -0.4], [-0.4, 0], [0,0.4],[0.4,0.8],[0.8,1]] #cosmuw
-#binning = [[1.91,1.94],[1.94, 1.96], [1.96, 1.98], [1.98,2.0],[2.0, 2.028]] #mass]
+#binning = [[1.94, 1.95],[1.95, 1.96], [1.96, 1.98], [1.98,2.0]] #mass]
 #binning = [[0,0.5], [0.5,1.0],[1.0, 1.5], [1.5, 2.0],[2.0, 3.0]] # estar
 #binning = [[0,7],[7,12]]
 binning = [[-100,12]]
@@ -104,7 +130,7 @@ binning = [[-100,12]]
 # Load chain into RDataFrame #
 ##############################
 
-def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
+def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights = None, bph_part = None):
 
   print(dateTimes)
   chain = ROOT.TChain("tree")
@@ -146,12 +172,33 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
       rdf = ROOT.RDataFrame(chain)
       return (chain,rdf)
 
+
+  if sf_weights:
+    print("picking sf weighted files")
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_file}/*" #test
+    chain.Add(files)
+    if debug:
+      reduced_chain = chain.CloneTree(debug); 
+      rdf = ROOT.RDataFrame(reduced_chain, debug)
+      return(reduced_chain, rdf)
+    else:
+      rdf = ROOT.RDataFrame(chain)
+      return (chain,rdf)
+
   for dateTime in dateTimes:
+
+    if bph_part:
+      print("Restrict plotting to bph part: ", bph_part)
+      # if bph_part given, restrict to it.
+      if dateTime != dateTimes[bph_part-1]: 
+        print("skip this bph part ...")
+        continue
 
     if skimmed:
       files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_{skimmed}_{dateTime}.root" #data skimmed with selection 'skimmed'
       #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for closure
       print(f"Appending {files}")
+
 
     else:
       #access the flat ntuples
@@ -161,14 +208,15 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False):
     #chain them all
     chain.Add(files)
 
-    if debug: 
-      reduced_chain = chain.CloneTree(debug); 
-      rdf = ROOT.RDataFrame(reduced_chain,debug)
-      return (reduced_chain,rdf)
+  if debug: 
+    reduced_chain = chain.CloneTree(debug); 
+    rdf = ROOT.RDataFrame(reduced_chain,debug)
+    return (reduced_chain,rdf)
 
-    else:     
-      rdf = ROOT.RDataFrame(chain)
-      return (chain,rdf)
+  else:     
+    rdf = ROOT.RDataFrame(chain)
+    print("rdf created")
+    return (chain,rdf)
 
 ########################################
 # Assign selections depending on the   #
@@ -267,13 +315,16 @@ else:
 
   print("Producing pre-NN plots")
   if constrained:
-    chainSigSB, rdfSigSB     = getRdf(sig_cons     )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
-    chainSig,   rdfSig       = getRdf(sig_cons     )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
-    chainHb,    rdfHb        = getRdf(hb_cons      )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
-    chainBs,    rdfBs        = getRdf(bs_cons      )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
-    chainB0,    rdfB0        = getRdf(b0_cons      )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
-    chainBplus, rdfBplus     = getRdf(bplus_cons   )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
-    chainData,  rdfData      = getRdf(data_cons    )#, debug = 500 )# , skimmed = baseline_name)#, debug = 1)
+    chainSigSB, rdfSigSB     = getRdf(sig_cons                         )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainSig,   rdfSig       = getRdf(sig_cons                         )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainHb,    rdfHb        = getRdf(hb_cons                          )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainBs,    rdfBs        = getRdf(bs_cons                          )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainB0,    rdfB0        = getRdf(b0_cons                          )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainBplus, rdfBplus     = getRdf(bplus_cons                       )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainData,  rdfData      = getRdf(data_cons                        )#, bph_part = 2)# , debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    #chainData,  rdfData      = getRdf(data_cons    ,sf_weights = True  )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    #print("---------------> rdf has events: ", rdfData.Count().GetValue() )
+
   else:
   
     chainSigSB, rdfSigSB     = getRdf(sig_unc      ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
@@ -605,10 +656,11 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
             histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_down"   )
             histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
 
-        elif (sf_weight):
+        elif (sf_weights):
           # this only happens for data
           # sf_weight is a smart string
-          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("sf_weight", sb_weights).Histo1D(model[0], "m_corr" ,"sf_weight")
+          #histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("sf_weight", sb_weights).Histo1D(model[0], "m_corr" ,"sf_weight")
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" ,"sf_weights")
 
         else:
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" )
@@ -658,7 +710,8 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
         elif (sf_weights):
           # this only happens for data
           # sf_weight is a smart string
-          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("sf_weight",sf_weights).Histo1D(model[0], tofill, "sf_weight")
+          #histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("sf_weight",sf_weights).Histo1D(model[0], tofill, "sf_weight")
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], tofill, "sf_weights")
 
 
         else:
@@ -901,8 +954,6 @@ def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale
   ###################################
   ## Scale MC to data              ##
   ###################################
-  import pdb
-  pdb.set_trace()
 
   if constrained:
 
@@ -2144,33 +2195,75 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     selec_C_DsTau_blind     = { key: selec_C_DsTau[key].Clone()      for key in selec_C_DsTau.keys()     }
     selec_C_DsStarTau_blind = { key: selec_C_DsStarTau[key].Clone()  for key in selec_C_DsStarTau.keys() }
-  
+ 
+    print("----------------------------> i have ",  selec_C_Data["phiPi_m"].Integral(), " data events")
+ 
     for key in selec_C_DsTau_blind.keys()    : selec_C_DsTau_blind[key]    .Scale(blind_scalar)    
     for key in selec_C_DsStarTau_blind.keys(): selec_C_DsStarTau_blind[key].Scale(blind_vector)    
-  
+
+    selec_C_Hb_new = {}  
+
     if newHb:
       selec_C_Bs           = createHistos(selec_massfit.bs           ,    rdfBs         , variables = ["phiPi_m"] , gen = False)
       selec_C_B0           = createHistos(selec_massfit.b0           ,    rdfB0         , variables = ["phiPi_m"] , gen = False)
       selec_C_Bplus        = createHistos(selec_massfit.bplus        ,    rdfBplus      , variables = ["phiPi_m"] , gen = False)
 
+      hb_tot_C      = rdfHb.Filter(selec_massfit.hb).Count().GetValue()
+      bs_in_hb_C    = 0.0  
+      b0_in_hb_C    = 0.0  
+      bplus_in_hb_C = 0.0  
+  
+      if hb_tot_C > 0:
+        bs_in_hb_C      = rdfHb.Filter(selec_massfit   .bs)                  .Count().GetValue() / hb_tot_C
+        b0_in_hb_C      = rdfHb.Filter(selec_massfit   .b0)                  .Count().GetValue() / hb_tot_C
+        bplus_in_hb_C   = rdfHb.Filter(selec_massfit   .bplus)               .Count().GetValue() / hb_tot_C
+
+      selec_C_Hb_new_bs    = selec_C_Bs      ["phiPi_m"].Clone()
+      selec_C_Hb_new_b0    = selec_C_B0      ["phiPi_m"].Clone()
+      selec_C_Hb_new_bplus = selec_C_Bplus   ["phiPi_m"].Clone()
+
+      selec_C_Hb_new_bs.Scale   ((bs_in_hb_C    / hb_tot_C)* 1.0 / selec_C_Hb_new_bs.Integral()) 
+      selec_C_Hb_new_b0.Scale   ((b0_in_hb_C    / hb_tot_C)* 1.0 / selec_C_Hb_new_b0.Integral()) 
+      selec_C_Hb_new_bplus.Scale((bplus_in_hb_C / hb_tot_C)* 1.0 / selec_C_Hb_new_bplus.Integral()) 
+      
+      selec_C_Hb_new_bs.Add(selec_C_Hb_new_b0)
+      selec_C_Hb_new_bs.Add(selec_C_Hb_new_bplus)
+      selec_C_Hb_new["phiPi_m"] = selec_C_Hb_new_bs
+
     # Data 
  
-    selec_C_Data_sf_kk   = createHistos(  baseline + kk_wrong        ,    rdfData       , variables = ["phiPi_m"] , gen = False)
-    selec_C_Data_sf_pimu = createHistos(  baseline + pimu_wrong      ,    rdfData       , variables = ["phiPi_m"] , gen = False)
+    selec_C_Data_sf_kk   = createHistos(  baseline + kk_wrong        ,    rdfData       , variables = ["phiPi_m"] , gen = False)#, sf_weights = True)
+    selec_C_Data_sf_pimu = createHistos(  baseline + pimu_wrong      ,    rdfData       , variables = ["phiPi_m"] , gen = False)#, sf_weights = True)
  
     # get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
-    hRest       = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
-                                   [selec_C_DsMu            ["phiPi_m"].Clone()  , 
-                                    selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
-                                    selec_C_DsTau           ["phiPi_m"].Clone()  , 
-                                    selec_C_DsStarTau       ["phiPi_m"].Clone()] ) 
- 
-    hRest_blind = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
-                                   [selec_C_DsMu            ["phiPi_m"].Clone()  , 
-                                    selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
-                                    selec_C_DsTau_blind     ["phiPi_m"].Clone()  , 
-                                    selec_C_DsStarTau_blind ["phiPi_m"].Clone()] ) 
 
+    if newHb:
+
+      hRest       = prepareSignFlip(  selec_C_Hb_new          ["phiPi_m"].Clone()  , hb_scale_massfit,
+                                     [selec_C_DsMu            ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
+                                      selec_C_DsTau           ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarTau       ["phiPi_m"].Clone()] ) 
+   
+      hRest_blind = prepareSignFlip(  selec_C_Hb_new          ["phiPi_m"].Clone()  , hb_scale_massfit,
+                                     [selec_C_DsMu            ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
+                                      selec_C_DsTau_blind     ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarTau_blind ["phiPi_m"].Clone()] ) 
+    else:
+
+      hRest       = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
+                                     [selec_C_DsMu            ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
+                                      selec_C_DsTau           ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarTau       ["phiPi_m"].Clone()] ) 
+   
+      hRest_blind = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
+                                     [selec_C_DsMu            ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
+                                      selec_C_DsTau_blind     ["phiPi_m"].Clone()  , 
+                                      selec_C_DsStarTau_blind ["phiPi_m"].Clone()] ) 
+  
     # now get the yiel ratios (postfit/prefit) 
     global scale_kk,       scale_pimu,       scale_n
     global scale_kk_blind, scale_pimu_blind, scale_n_blind
@@ -2353,8 +2446,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   
     if constrained: 
 
-      selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)#, sf_weights = weights)
-      selec_S_Data_sf_pimu = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)#, sf_weights = weights)
+      selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)#, sf_weights = True)
+      selec_S_Data_sf_pimu = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)#, sf_weights = True)
       #selec_S_DataL = createHistos(  baseline_region + score_cut + low_mass + leftSB ,  rdfData       , gen = False)#, sf_weights = weights)
       #selec_S_DataR = createHistos(  baseline_region + score_cut + low_mass + rightSB,  rdfData       , gen = False)#, sf_weights = weights)
 
@@ -2776,9 +2869,9 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
 
 #more advanced, create binned datacards
-#createBinnedPlots(split,binning) 
+createBinnedPlots(split,binning) 
 #createBinnedPlots(split,binning, controlPlotsHighMass = True) 
-createBinnedPlots(split,binning, controlPlotsSidebands = True) 
+#createBinnedPlots(split,binning, controlPlotsSidebands = True) 
 
 
 
