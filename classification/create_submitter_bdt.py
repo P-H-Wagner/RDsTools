@@ -9,11 +9,21 @@ from helper import *
 
 parser = argparse.ArgumentParser()
 #parser.add_argument('channel') # sig or hb or data
-#parser.add_argument('nFiles')  # nr of miniAOD files to process
-#parser.add_argument('-f', '--failedCrab') #date_time of crab, if given, the ntuplizer will run on minis which failed during crab
-#args = parser.parse_args()
+parser.add_argument("-d", "--dt",     required = True, help = "Specify datetime")
+parser.add_argument("-s", "--sb",     required = True, help = "Specify if bdt trained on 'left' sideband or both 'double'")
+parser.add_argument("-n", "--nFiles", help = "Specify #files to process")
+args = parser.parse_args()
 
+if args.sb not in ["left", "double"]:
+  raise ValueError ("Error: Not a valid key for --sb, please use 'left' or 'double'")
+else: 
+  sb = ""
+  if args.sb == "double": sb += args.sb
 
+print(sb)
+
+model = "bdt_model_" + sb
+dt_string = args.dt
 ######################################
 
 #800 jobs per user on short queue
@@ -21,18 +31,19 @@ nMaxJobs = 1000
 
 #default
 queue = 'short' 
-time = 10
+time = 30
 
-filesPerJob = 20
+filesPerJob = 30
 
 ######################################
 
 #queue = 'standard'
 #time = 60
 nevents = -1
-nFiles = -1
-now = datetime.now()
-dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
+if args.nFiles: 
+  nFiles = int(args.nFiles)
+else: 
+  nFiles = -1
 
 ######################################
 
@@ -51,7 +62,7 @@ def filesFromTxt(txtFile):
 
 #loop over all bph parts
 inputfiles = []
-for dt in data_cons:
+for dt in data_cons_24:
   directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dt}/' #data bParking 2018 part D
   inputfiles +=  filesFromFolder(directory)
 
@@ -63,7 +74,7 @@ if nFiles != -1:
   #process not the whole dataset but only nFiles
   inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
 
-os.makedirs("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/bdt_weighted_data/"+dt_string)
+os.makedirs("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/"+dt_string)
 os.makedirs(dt_string+"/logs")
 os.makedirs(dt_string+"/errs")
 
@@ -84,8 +95,12 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
     if   "HOOK_FILE_IN"  in line: 
       for f in fin:
         cfg.write(line.replace("HOOK_FILE_IN", f))
-         
-    elif "HOOK_FILE_OUT" in line: cfg.write(line.replace("HOOK_FILE_OUT", fout))
+        
+    elif "HOOK_FILE_OUT"  in line: cfg.write(line.replace("HOOK_FILE_OUT" , fout))
+    elif "HOOK_DATE_TIME" in line: 
+      line = line.replace("HOOK_DATE_TIME", dt_string)
+      line = line.replace("HOOK_MODEL", model)
+      cfg.write(line)
     else: cfg.write(line)
 
   temp.close()
@@ -113,7 +128,7 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
         '--account=t3',
         '-o {0}/logs/chunk_{1}.log'.format(dt_string,i),
         '-e {0}/errs/chunk_{1}.err'.format(dt_string,i),
-        #'--mem=1200M',
+        '--mem=2500M',
         '--job-name=BDT_{0}'.format(i),
         '--time={0}'.format(time),
         '{0}/submitter_chunk_{1}.sh'.format(dt_string,i),

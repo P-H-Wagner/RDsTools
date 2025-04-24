@@ -26,7 +26,7 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 print("Bonjour!")
 
 model = xgb.Booster()
-model.load_model('/work/pahwagne/RDsTools/classification/bdt_model.json')
+model.load_model('/work/pahwagne/RDsTools/classification/HOOK_DATE_TIME/HOOK_MODEL.json')
 
 
 # Load datasets into chain
