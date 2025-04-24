@@ -8,9 +8,8 @@ selec= "HOOK_SELECTION"
 # skim it!
 
 #create rdf
-files = "HOOK_FILE_IN"
 chain = ROOT.TChain("tree")
-chain.Add(files)
+chain.Add("HOOK_FILE_IN")
 
 #output
 destination = "HOOK_FILE_OUT"

@@ -31,35 +31,51 @@ parser.add_argument('date_time')
 parser.add_argument('channel')     # sig or hb
 parser.add_argument('selection')   # pick selection
 parser.add_argument('constrained', type = boolean_string)
+parser.add_argument('prod')
 args = parser.parse_args()
+
+#python create_skimmer.py 24_04_2025_14_03_22 data base_wout_tv_25 True 25
 
 queue = 'short' 
 time = 10
 nevents = -1
-
+filesPerJob = 50
 
 #naming and files
 
 if args.constrained: 
 
+  if args.prod == "24":
+    #2024 production
+    sig_cons = sig_cons_24
+    if    args.channel == 'sig'    : naming = 'all_signals' 
+    elif  args.channel == 'hb'     : naming = 'hb_inclusive'
+    elif  args.channel == 'b0'     : naming = 'b0'          
+    elif  args.channel == 'bs'     : naming = 'bs'          
+    #elif  args.channel == 'lambdab': naming = 'lambdab'    
+    elif  args.channel == 'bplus'  : naming = 'bplus'       
+    else:                            naming = 'data'        
 
-  if    args.channel == 'sig'    : naming = 'all_signals' ; files = sig_cons;
-  elif  args.channel == 'hb'     : naming = 'hb_inclusive'; files = hb_cons;
-  elif  args.channel == 'b0'     : naming = 'b0'          ; files = b0_cons;
-  elif  args.channel == 'bs'     : naming = 'bs'          ; files = bs_cons;
-  #elif  args.channel == 'lambdab': naming = 'lambdab'     ; files = lamdbab_cons;
-  elif  args.channel == 'bplus'  : naming = 'bplus'       ; files = bplus_cons;
-  else:                            naming = 'data'        ; files = data_cons;
+  else:
+    #2025 production
+    sig_cons = sig_cons_25
+    if    args.channel == 'sig'    : naming = 'all_signals' 
+    elif  args.channel == 'hb'     : naming = 'hb_inclusive'
+    elif  args.channel == 'b0'     : naming = 'b0'          
+    elif  args.channel == 'bs'     : naming = 'bs'          
+    #elif  args.channel == 'lambdab': naming = 'lambdab'    
+    elif  args.channel == 'bplus'  : naming = 'bplus'       
+    else:                            naming = 'data'        
 
 if not args.constrained:
 
-  if    args.channel == 'sig'    : naming = 'all_signals' ; files = sig_unc;
-  elif  args.channel == 'hb'     : naming = 'hb_inclusive'; files = hb_unc;
-  elif  args.channel == 'b0'     : naming = 'b0'          ; files = b0_unc;
-  elif  args.channel == 'bs'     : naming = 'bs'          ; files = bs_unc;
-  #elif  args.channel == 'lambdab': naming = 'lambdab'     ; files = lamdbab_unc;
-  elif  args.channel == 'bplus'  : naming = 'bplus'       ; files = bplus_unc;
-  else:                            naming = 'data'        ; files = data_unc;
+  if    args.channel == 'sig'    : naming = 'all_signals' 
+  elif  args.channel == 'hb'     : naming = 'hb_inclusive'
+  elif  args.channel == 'b0'     : naming = 'b0'          
+  elif  args.channel == 'bs'     : naming = 'bs'          
+  #elif  args.channel == 'lambdab': naming = 'lambdab'    
+  elif  args.channel == 'bplus'  : naming = 'bplus'       
+  else:                            naming = 'data'        
 
 
 if args.channel == 'fakes':
@@ -72,7 +88,6 @@ chain.Add(directory)
 
 # get the inputfiles
 inputfiles = filesFromFolder(directory[:-1]) # remove * used for the chain
-#print(inputfiles)
 
 #define weights for math solution (take the most actual signal sample)
 signals = ROOT.TChain("tree")
@@ -113,20 +128,28 @@ forLoop = "df \\"
 w1, w2 = getWeights("bs_pt")
 
 for name in names:
-
   #check if reco is available
   if "reco_1" in name:
-    core = name[:-7] # get var name without "_reco_1"
+ 
+    # reco_2 string:
+    reco_2 = name.replace("_reco_1", "_reco_2")
+    reco_w = name.replace("_reco_1", "_reco_weighted")
+ 
+    #core = name[:-7] # get var name without "_reco_1"
+    #print("core name is: ", core, "var name is: ", name)
     #w1, w2 = getWeights(core)
-    forLoop += f"\n.Define(\"{core}_reco_weighted\",\"{w1}*{core}_reco_1 + {w2}*{core}_reco_2\")\\"  
+    #forLoop += f"\n.Define(\"{core}_reco_weighted\",\"{w1}*{core}_reco_1 + {w2}*{core}_reco_2\")\\"  
+    forLoop += f"\n.Define(\"{reco_w}\",\"{w1}*{name} + {w2}*{reco_2}\")\\"  
 
 forLoop += f"\n.Filter(selec).Snapshot(\"tree\", destination)"
 print(forLoop)
 
 # loop over all to be skimmed files
 
-for i,fin in enumerate(inputfiles):
+for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
 
+  fin = inputfiles[j:j+filesPerJob]
+ 
   #template
   temp = open("temp_skimmer.py", "rt")
   #file to write to
@@ -136,11 +159,15 @@ for i,fin in enumerate(inputfiles):
   
 
   for line in temp:
-    if "HOOK_DATE_TIME"   in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
-    if "HOOK_SELECTION"   in line: line = line.replace("HOOK_SELECTION", baselines[args.selection])
-    if "HOOK_NEW_BRANCH"  in line: line = line.replace('"HOOK_NEW_BRANCH"', forLoop)
-    if "HOOK_FILE_IN"     in line: line = line.replace("HOOK_FILE_IN",  fin)
-    if "HOOK_FILE_OUT"    in line: line = line.replace("HOOK_FILE_OUT", fout)
+    if   "HOOK_FILE_IN"  in line: 
+      for f in fin:
+        cfg.write(line.replace("HOOK_FILE_IN", f))
+      continue
+
+    elif "HOOK_DATE_TIME"   in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
+    elif "HOOK_SELECTION"   in line: line = line.replace("HOOK_SELECTION", baselines[args.selection])
+    elif "HOOK_NEW_BRANCH"  in line: line = line.replace('"HOOK_NEW_BRANCH"', forLoop)
+    elif "HOOK_FILE_OUT"    in line: line = line.replace("HOOK_FILE_OUT", fout)
   
     cfg.write(line)
 

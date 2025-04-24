@@ -10,15 +10,28 @@ bplus_unc   = ["30_07_2024_11_40_45"]
                #part 1            #part 2            #part 3           #part 4             #part5
 data_unc    = ["20240802_111807", "20240730_223445", "20240728_200528","20240729_090628" , "20240806_090127"]
 
-sig_cons    = ["26_07_2024_14_46_03"]
-hb_cons     = ["25_07_2024_14_23_42"]
-bs_cons     = ["31_07_2024_10_07_17"]
-b0_cons     = ["31_07_2024_10_07_43"]
-bplus_cons  = ["31_07_2024_10_08_00"]
+sig_cons_24    = ["26_07_2024_14_46_03"]
+hb_cons_24     = ["25_07_2024_14_23_42"]
+bs_cons_24     = ["31_07_2024_10_07_17"]
+b0_cons_24     = ["31_07_2024_10_07_43"]
+bplus_cons_24  = ["31_07_2024_10_08_00"]
                #part 1            #part 2            #part 3            #part 4            #part 5
-data_cons   = ["20240724_170443", "20240804_220622", "20240809_082548", "20240809_235436", "20240811_203518"]
+data_cons_24   = ["20240724_170443", "20240804_220622", "20240809_082548", "20240809_235436", "20240811_203518"]
 
 fakes = ["19_09_2024_17_38_06","19_09_2024_19_05_01","19_09_2024_21_24_27","20240919_184219"]
+
+
+# new production round february 25
+
+sig_cons_25    = ["16_03_2025_20_56_34"]
+hb_cons_25     = ["17_03_2025_08_36_11"]
+bs_cons_25     = ["17_03_2025_08_37_23"]
+b0_cons_25     = ["17_03_2025_08_37_03"]
+bplus_cons_25  = ["17_03_2025_08_36_31"]
+               #part 1            #part 2            #part 3            #part 4            #part 5
+data_cons_25   = ["20250227_155416", "20250227_161007", "20250227_161505", "20250227_161842", "20250227_161914"]
+
+
 
 # aftter NN samples
 code = "05Sep2024_15h09m02s"
@@ -46,8 +59,11 @@ code = "12Sep2024_20h19m27s_cons" #100 epochs
 code = "16Sep2024_08h01m39s_cons" #200 epochs
 code = "22Sep2024_11h49m06s_cons" #corresponds to 22Sep2024_15h26m18s_unc (same model but constrained) 
 code = "24Sep2024_10h41m22s_cons" #wout mass - still bad modeling!
-code = "26Sep2024_07h46m21s_cons" #sb and sf
+code = "26Sep2024_07h46m21s_cons" #sb and sf #for inaugural --> what we usually use!!
+#code = "21Mar2025_14h25m24s_cons" #using hammer weights for training
+#code = "21Mar2025_18h04m03s_cons" # using again sb and sf
 #code = "23Aug2024_19h41m42s" #6 classes from optuna
+code = "23Apr2025_18h57m36s_cons" #new NN with pimu wrong only + weights 
 sig_cons_pastNN     = "sig_"    +code 
 hb_cons_pastNN      = "hb_"     +code
 bs_cons_pastNN      = "bs_"     +code
@@ -58,14 +74,25 @@ data_cons_pastNN    = "data_"   +code
 #after hammer samples
 sig_cons_hammer     = "signal_BGLVar_13_01_2025_20_38_04"
 sig_cons_hammer     = "signal_BGLVar_16_01_2025_13_40_56"
-sig_cons_hammer     = "signal_default_10_02_2025_10_07_42" #includes weights for all signals
+sig_cons_hammer     = "signal_default_10_02_2025_10_07_42" #includes weights for all signals, only part of signal
+sig_cons_hammer     = "signal_default_07_03_2025_13_33_38" #all events
 sig_unc_hammer = ""
 
 dsStarTau_w = 3.304854088595039
 dsStarMu_w  = 3.198165968764498
 
 #systematic unc. list
-systematics = [
+scalar_model = "Bcl"
+systematics_scalar = [
+"e1",
+"e2",
+"e3",
+"e4",
+"e5",
+"e6"
+]
+vector_model = "Bgl"
+systematics_vector = [
 "e1",
 "e2",
 "e3",
@@ -77,6 +104,7 @@ systematics = [
 "e9",
 "e10"
 ]
+
 
 #gen production samples (without filter, for hammer average)
 dstau_gen     = "14_10_2024_16_31_39" 
@@ -91,7 +119,7 @@ phiMass_      = 1.019461
 # Define sideband region
 
 nSignalRegion = 3 # signal region is 3 sigma
-nSidebands    = 3 # sideband region starts after 5 sigma
+nSidebands    = 4 # sideband region starts after 5 sigma
 sbWidth       = 2 # sideband region is 1 sigma broad
 
 # alpha = efficiency * f_i * BR 
@@ -190,7 +218,7 @@ f'(mu_pt > 8)',
 '(tv_prob > 0.1)'
 ])
 
-base_wout_tv = ' && '.join([ #remove the charge and ds+mu mass cuts!
+base_wout_tv_24 = ' && '.join([ #remove the charge and ds+mu mass cuts!
 f'(mu_pt > 8)', 
 '(k1_pt > 1)',
 '(k2_pt > 1)',
@@ -198,6 +226,17 @@ f'(mu_pt > 8)',
 '(lxy_ds < 1)',
 '(mu_id_medium == 1)',
 '(mu_rel_iso_03 < 0.3)',
+'(fv_prob > 0.1)'
+])
+
+base_wout_tv_25 = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 8)', 
+'(k1_pt > 1)',
+'(k2_pt > 1)',
+'(pi_pt > 1)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(rel_iso_03_pv < 0.1)',
 '(fv_prob > 0.1)'
 ])
 
@@ -290,21 +329,21 @@ f'(dsMu_m < {bsMass_})',
 '(mu_rel_iso_03 < 0.3)',
 ])
 
-baseline = ' & '.join([
-f'(dsMu_m < {bsMass_})',
-'(k1_charge*k2_charge <0)',
-'(mu_charge*pi_charge < 0)',
-'(mu_pt > 8)',
-'(k1_pt > 1)',
-'(k2_pt > 1)',
-'(pi_pt > 1)',
-'(lxy_ds < 1)',
-'(mu_id_medium == 1)',
-'(mu_rel_iso_03 < 0.3)',
-'(tv_prob > 0.1)',
-'((cosPiK1 < -0.3) || (cosPiK1 > 0.3))',
-'(fv_prob > 0.1)'
-])
+#baseline = ' & '.join([
+#f'(dsMu_m < {bsMass_})',
+#'(k1_charge*k2_charge <0)',
+#'(mu_charge*pi_charge < 0)',
+#'(mu_pt > 8)',
+#'(k1_pt > 1)',
+#'(k2_pt > 1)',
+#'(pi_pt > 1)',
+#'(lxy_ds < 1)',
+#'(mu_id_medium == 1)',
+#'(mu_rel_iso_03 < 0.3)',
+#'(tv_prob > 0.1)',
+#'((cosPiK1 < -0.3) || (cosPiK1 > 0.3))',
+#'(fv_prob > 0.1)'
+#])
 
 addOn1 = ' & '.join([
 '(bs_pt_reco_2 > 10)',
@@ -338,5 +377,6 @@ flip_iso = ' & '.join([
 
 #fill all relevant into dictionary
 baselines = {
-"base_wout_tv": base_wout_tv
+"base_wout_tv_24": base_wout_tv_24,
+"base_wout_tv_25": base_wout_tv_25
 }
