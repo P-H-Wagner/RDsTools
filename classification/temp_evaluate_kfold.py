@@ -26,6 +26,8 @@ import argparse
 from copy import deepcopy as dc
 import re
 import glob
+import ast
+import re
 
 #########################################################
 
@@ -111,8 +113,8 @@ class createDf(object):
 
     #add weights to extra_columns if any 
     #features are the same for all folds, so we can pick fold 0
-    branches = dc(training_info[0].features) + var 
-
+    branches = dc(training_info[0].features) + [e for e in extra_vars if e not in dc(training_info[0].features) ]     
+ 
     if weights:
       branches += weights
 
@@ -167,6 +169,7 @@ class createDf(object):
       #print(selection)
       selection = selection.replace("||", "|")
       #print(selection)
+      #import pdb; pdb.set_trace()
       df   = tree.arrays(branches, library = "pd", entry_start=None, entry_stop=None, cut=selection)
 
     #f = ROOT.TFile(sample)
@@ -212,6 +215,9 @@ class createDf(object):
     print("before removing nans i have:", len(df))
     # remove inf and nan
 
+
+    import pdb
+    #pdb.set_trace();
 
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
@@ -479,18 +485,46 @@ if __name__ == '__main__':
    files = {}
     
    if constrained:
-     #this is only constrained data! (cut on fv only)
-     files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-     #not hammered
-     #files["sig"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
-     #hammered
-     direc          = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_default_13_03_2025_08_42_43/"
-     files["sig"]   = [os.path.join(direc, f) for f in os.listdir(direc)]
 
-     files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
-     files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
-     files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
-     files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
+
+     bdt_data = "17_04_2025_16_04_44"
+     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data}/"
+     files["data"] = [base + f for f in os.listdir(base)]
+     
+     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{sig_cons_24[0]}/"
+     files["sig"] = [base + f for f in os.listdir(base)]
+     
+     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{hb_cons_24[0]}/"
+     files["hb"] = [base + f for f in os.listdir(base)]
+     
+     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bs_cons_24[0]}/"
+     files["bs"] = [base + f for f in os.listdir(base)]
+     
+     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{b0_cons_24[0]}/"
+     files["b0"] = [base + f for f in os.listdir(base)]
+     
+     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bplus_cons_24[0]}/"
+     files["bplus"] = [base + f for f in os.listdir(base)]
+
+
+    
+     #normally 
+     ##this is only constrained data! (cut on fv only)
+     #files["data"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
+
+     ##not hammered
+     ##files["sig"]  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
+     #direc          = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{sig_cons[0]}/"
+
+     ##hammered
+     #direc          = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_default_13_03_2025_08_42_43/"
+
+     #files["sig"]   = [os.path.join(direc, f) for f in os.listdir(direc)]
+
+     #files["hb"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
+     #files["b0"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
+     #files["bs"]    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
+     #files["bplus"] = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
 
    else:
      #this is only unconstrained data! (cut on fv only)
@@ -530,111 +564,125 @@ if __name__ == '__main__':
    test_tree_data = test_file_data.Get("tree")
    var_data       = [branch.GetName() for branch in test_tree_mc.GetListOfBranches()]
 
+   #read features from settings.txt file of the corresponding model
 
-   features = [
-   'bs_boost_reco_weighted',
-   #'bs_boost_reco_1',
-   #'bs_boost_reco_2',
-   #'bs_boost_lhcb_alt',
-   #'bs_boost_coll',
+   features = []
+   with open( training_path + "/settings.txt", "r") as f:
+       for line in f:
+           if line.strip().startswith("Features:"):
+               match = re.search(r"Features:\s*(\[.*\])", line)
+               if match:
+                   features = ast.literal_eval(match.group(1))
+                   break
    
-   'bs_pt_reco_weighted',
-   #'bs_pt_reco_1',
-   #'bs_pt_reco_2',
-   #'bs_pt_lhcb_alt',
-   #'bs_pt_coll',
-   
-   #'cosMuW_reco_weighted', #better separates all signals
-   #'cosMuW_reco_1', #better separates all signals
-   #'cosMuW_reco_2', #better separates all signals
-   #'cosMuW_lhcb_alt', #better separates all signals
-   #'cosMuW_coll', #better separates all signals
-   
-   'cosPhiDs_lhcb',
-   'cosPiK1',
-   #'dsMu_deltaR',
-   'kk_deltaR',
-   
-   'e_gamma',
-   
-   #'e_star_reco_weighted',
-   #'e_star_reco_1',
-   #'e_star_reco_2',
-   'e_star_lhcb_alt',
-   #'e_star_coll',
-   
-   'm2_miss_coll',
-   'm2_miss_lhcb_alt',
-   
-   'mu_rel_iso_03',
-   'phiPi_deltaR',
-   'phiPi_m',              #only for constrained fitter!
-   'dsMu_m',
-   #'pt_miss_....',        #too similar to m2 miss?
-   
-   'q2_reco_weighted',
-   #'q2_reco_1',
-   #'q2_reco_2',
-   #'q2_coll',
-   'q2_lhcb_alt',
-   'mu_pt',
-   'mu_eta',
-   'mu_phi',
-   'pi_pt',
-   
-   'fv_prob',
-   'tv_prob',
-   'sv_prob'
+   print(features)  
+
+   #features = [
+   #'bs_boost_reco_weighted',
+   ##'bs_boost_reco_1',
+   ##'bs_boost_reco_2',
+   ##'bs_boost_lhcb_alt',
+   ##'bs_boost_coll',
+   #
+   #'bs_pt_reco_weighted',
+   ##'bs_pt_reco_1',
+   ##'bs_pt_reco_2',
+   ##'bs_pt_lhcb_alt',
+   ##'bs_pt_coll',
+   #
+   ##'cosMuW_reco_weighted', #better separates all signals
+   ##'cosMuW_reco_1', #better separates all signals
+   ##'cosMuW_reco_2', #better separates all signals
+   ##'cosMuW_lhcb_alt', #better separates all signals
+   ##'cosMuW_coll', #better separates all signals
+   #
+   #'cosPhiDs_lhcb',
+   #'cosPiK1',
+   ##'dsMu_deltaR',
+   #'kk_deltaR',
+   #
+   #'e_gamma',
+   #
+   ##'e_star_reco_weighted',
+   ##'e_star_reco_1',
+   ##'e_star_reco_2',
+   #'e_star_lhcb_alt',
+   ##'e_star_coll',
+   #
+   #'m2_miss_coll',
+   #'m2_miss_lhcb_alt',
+   #
+   #'mu_rel_iso_03',
+   #'phiPi_deltaR',
+   #'phiPi_m',              #only for constrained fitter!
+   #'dsMu_m',
+   ##'pt_miss_....',        #too similar to m2 miss?
+   #
+   #'q2_reco_weighted',
+   ##'q2_reco_1',
+   ##'q2_reco_2',
+   ##'q2_coll',
+   #'q2_lhcb_alt',
+   #'mu_pt',
    #'mu_eta',
    #'mu_phi',
-   #'pi_eta',
-   #'pi_phi',
-   #'phiPi_pt',
-   #'phiPi_phi',
-   #'phiPi_eta',
-   #'dsMu_pt',
-   #'dsMu_eta',
-   #'dsMu_phi',
-   'disc_negativity',
-   'lxy_ds_sig',
-   'ds_vtx_cosine'
-   ]
+   #'pi_pt',
+   #
+   #'fv_prob',
+   #'tv_prob',
+   #'sv_prob',
+   ##'mu_eta',
+   ##'mu_phi',
+   ##'pi_eta',
+   ##'pi_phi',
+   ##'phiPi_pt',
+   ##'phiPi_phi',
+   ##'phiPi_eta',
+   ##'dsMu_pt',
+   ##'dsMu_eta',
+   ##'dsMu_phi',
+   #'disc_negativity',
+   #'lxy_ds_sig',
+   #'ds_vtx_cosine'
+   #]
 
 
 
    extra_vars = [
 
-   ##'bs_boost_reco_weighted',
-   #'bs_boost_lhcb',
-   #'bs_boost_reco_1',
-   #'bs_boost_reco_2',
+   #'bs_boost_reco_weighted',
+   'bs_boost_lhcb',
+   'bs_boost_reco_1',
+   'bs_boost_reco_2',
    'bs_boost_lhcb_alt',
    'bs_boost_coll',
    'bsMassCorr',
 
-   ##'bs_pt_reco_weighted',
-   #'bs_pt_lhcb',
-   #'bs_pt_reco_1',
-   #'bs_pt_reco_2',
+   #'bs_pt_reco_weighted',
+   'bs_pt_lhcb',
+   'bs_pt_reco_1',
+   'bs_pt_reco_2',
    'bs_pt_lhcb_alt',
    'bs_pt_coll',
 
-   'cosMuW_reco_weighted', 
-   #'cosMuW_lhcb', 
-   #'cosMuW_reco_1', #better separates all signals
-   #'cosMuW_reco_2', #better separates all signals
+   #'cosMuW_reco_weighted', 
+   'cosMuW_lhcb_alt', #ADDED
+   'cosMuW_coll', #ADDED
+   'cosMuW_lhcb', 
+   'cosMuW_reco_1', #better separates all signals
+   'cosMuW_reco_2', #better separates all signals
 
 
-   'e_star_reco_weighted',
-   #'e_star_lhcb',
-   #'e_star_reco_1',
-   #'e_star_reco_2',
+   #'e_star_reco_weighted',
+   'e_star_lhcb',
+   'e_star_reco_1',
+   'e_star_reco_2',
    'e_star_coll',
 
-   ##'q2_reco_weighted',
-   #'q2_lhcb',
-   #'q2_reco_1',
-   #'q2_reco_2',
+   #'q2_reco_weighted',
+   'q2_lhcb',
+   'q2_reco_1',
+   'q2_reco_2',
    'q2_coll',
 
    'pt_miss_coll',
@@ -643,21 +691,21 @@ if __name__ == '__main__':
    'disc_is_negative',
    'dsMu_deltaR',
 
-   #'cosPhiDs_coll',
-   #'cosPhiDs_lhcb_alt',
-   #'cosPhiDs_reco_1',
-   #'cosPhiDs_reco_2',
+   'cosPhiDs_coll',
+   'cosPhiDs_lhcb_alt',
+   'cosPhiDs_reco_1',
+   'cosPhiDs_reco_2',
    #'cosPhiDs_reco_weighted',
 
-   #'cosPlaneBs_coll',
-   #'cosPlaneBs_lhcb',
-   #'cosPlaneBs_lhcb_alt',
-   #'cosPlaneBs_reco_1',
-   #'cosPlaneBs_reco_2',
+   'cosPlaneBs_coll',
+   'cosPlaneBs_lhcb',
+   'cosPlaneBs_lhcb_alt',
+   'cosPlaneBs_reco_1',
+   'cosPlaneBs_reco_2',
    #'cosPlaneBs_reco_weighted',
 
    "cosPiK1",
-   #'lxy_ds_sig',
+   'lxy_ds_sig',
    'dxy_mu_sig',
    'pv_prob',
 
@@ -669,18 +717,17 @@ if __name__ == '__main__':
    "k2_pt",
    "k2_charge",
 
-   "phiPi_pt",
-   #"dsMu_m",
-   #"phiPi_m",
+   "dsMu_m",
+   "phiPi_m",
    "dsMu_pt",
    "dsMu_eta",
    "dsMu_phi",
    "lxy_ds",
    
-   #"phiPi_pt",
+   "phiPi_pt",
    "phiPi_eta",
    "phiPi_phi",
-   #"phiPi_m",
+   "phiPi_m",
 
    "pv_x",
    "sv_x",
@@ -696,11 +743,22 @@ if __name__ == '__main__':
    "event"
    ]
 
-   #extra_vars = []
+   extra_vars = [e for e in extra_vars if e not in features]
+   print(extra_vars)
+
    #if not constrained: 
    #  print("appending mass...")
    #extra_vars.append("phiPi_m")
 
+   #HAMMER
+   #if (channel == "sig" and constrained) :
+
+   #  print("hello sir") 
+   #  extra_vars.append("central_w")
+   #  for i in range(1,11):
+   #    extra_vars.append(f"e{i}_up")
+   #    extra_vars.append(f"e{i}_down")
+       
 
    var = {}
    var["sig"]   = features + extra_vars

@@ -52,10 +52,10 @@ def boolean_string(s):
 
 # parsing
 parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--constrained', type=boolean_string, required = True)
+parser.add_argument('-d', '--debug', action='store_true' )
 args = parser.parse_args()
 
-print(f"====> Running constrained fit? {args.constrained}")
+#print(f"====> Running constrained fit? {args.constrained}")
 shap.initjs()
 
 now = datetime.now()
@@ -74,42 +74,26 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 #------------------input files-------------------
 
-if args.constrained:
-  #this is only constrained data! (cut on fv only)
-  file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_cons ]
-  # we need to train the NN on the pre-hammered signal!
-  # not-hammered
-  #file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_cons  ]
-  # hammered
-  direc      = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_default_13_03_2025_08_42_43/"
-  file_sig      = [os.path.join(direc, f) for f in os.listdir(direc)]
+#this is only constrained data! (cut on fv only)
+bdt_data = "17_04_2025_16_04_44"
+base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data}/"
+file_data = [base + f for f in os.listdir(base)]
 
-  file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_cons   ]
-  file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_cons   ]
-  file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_cons   ]
-  file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_cons]
+base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{sig_cons_24[0]}/"
+file_sig = [base + f for f in os.listdir(base)]
 
-else:
-  #this is only unconstrained data! (cut on fv only)
-  file_data  = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in data_unc ]
-  file_sig   = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in sig_unc  ]
-  file_hb    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in hb_unc   ]
-  file_b0    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in b0_unc   ]
-  file_bs    = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bs_unc   ]
-  file_bplus = [f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/skimmed_base_wout_tv_{f}.root" for f in bplus_unc]
+base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{hb_cons_24[0]}/"
+file_hb = [base + f for f in os.listdir(base)]
 
-#def getRdf(inputfiles, debug = False, skimmed = ""):
-#  print(inputfiles)
-#  chain = ROOT.TChain("tree")
-#
-#  for f in inputfiles:
-#    chain.AddFile(f)
-#
-#  rdf = ROOT.RDataFrame(chain)
-#  import pdb
-#  pdb.set_trace()  
-#
-#  return rdf
+base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bs_cons_24[0]}/"
+file_bs = [base + f for f in os.listdir(base)]
+
+base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{b0_cons_24[0]}/"
+file_b0 = [base + f for f in os.listdir(base)]
+
+base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bplus_cons_24[0]}/"
+file_bplus = [base + f for f in os.listdir(base)]
+
 
 def getRdf(dateTimes, debug = None, skimmed = None, hammer = None):
 
@@ -156,36 +140,32 @@ def getRdf(dateTimes, debug = None, skimmed = None, hammer = None):
 
 #--------------------define sideband region (mlow, mhigh) and dump it into pickle ----------------
 
-if args.constrained:
-  chainSig,rdfSig     = getRdf(sig_cons, skimmed = "base_wout_tv", hammer = True) 
-  chainData,rdfData   = getRdf(data_cons, skimmed = "base_wout_tv")
+#chainSig,rdfSig     = getRdf(sig_cons_24) 
+#chainData,rdfData   = getRdf(data_cons)
+#
+#
+#sigma, h          = getSigma(rdfSig, "phiPi_m", base + "& (gen_sig == 0)", dt)
+sigma = 0.009
 
-else:
-  chainSig,rdfSig     = getRdf(sig_unc, skimmed = "base_wout_tv") 
-  chainData,rdfData   = getRdf(data_unc, skimmed = "base_wout_tv")
-
-
-sigma, h          = getSigma(rdfSig, "phiPi_m", base + "& (gen_sig == 0)", dt)
-
-massfit = {}
-massfit["sigma"]  = sigma
-#massfit["h"]      = h 
-
-
-if not args.constrained:
-  dt = datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss') 
-  A, B, C, S        = getABCS( rdfData, base , "phiPi_m", sigma, h, dt, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
-
-  massfit["A"] = A 
-  massfit["B"] = B
-  massfit["C"] = C
-  massfit["S"] = S
-
-#write them into file to use the same constants for the evulation (for later: also use the same for pre-fit plots!)
+#massfit = {}
+#massfit["sigma"]  = sigma
+##massfit["h"]      = h 
+#
+#
+#if not args.constrained:
+#  dt = datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss') 
+#  A, B, C, S        = getABCS( rdfData, base , "phiPi_m", sigma, h, dt, binsFake = 21,      nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
+#
+#  massfit["A"] = A 
+#  massfit["B"] = B
+#  massfit["C"] = C
+#  massfit["S"] = S
+#
+##write them into file to use the same constants for the evulation (for later: also use the same for pre-fit plots!)
 
 
-with open("massfit","wb") as f:
-  pickle.dump(massfit,f)
+#with open("massfit","wb") as f:
+#  pickle.dump(massfit,f)
 
 #signal region
 mlow   = dsMass_ - nSignalRegion*sigma
@@ -204,38 +184,18 @@ leftSB       = f"& ({mlow3} < phiPi_m) & (phiPi_m < {mlow2})"
 rightSB      = f"& ({mhigh2} < phiPi_m) & (phiPi_m < {mhigh3})"
 lowMass      = f"& (dsMu_m < {bsMass_})"
 
-#------------------limit CPU--------------------------------------
-
-def limitCPU(n):
-  print("========> limiting CPU")
-  num_threads = n
-  os.environ['OMP_NUM_THREADS'] = f'{n}'
-  os.environ['TF_NUM_INTRAOP_THREADS'] = f'{n}'
-  os.environ['TF_NUM_INTEROP_THREADS'] = f'{n}'
-
-  tf.config.threading.set_inter_op_parallelism_threads(
-    num_threads
-  )
-  tf.config.threading.set_intra_op_parallelism_threads(
-    num_threads
-  )
-  tf.config.set_soft_device_placement(True)
-
-#limitCPU(1)
-
-#--------------------define features ----------------------
  
 ##the feature vector
 kin_var = [
-'bs_boost_reco_weighted',
-#'bs_boost_reco_1',
-#'bs_boost_reco_2',
+#'bs_boost_reco_weighted',
+'bs_boost_reco_1',
+'bs_boost_reco_2',
 #'bs_boost_lhcb_alt',
 #'bs_boost_coll',
 
-'bs_pt_reco_weighted',
-#'bs_pt_reco_1',
-#'bs_pt_reco_2',
+#'bs_pt_reco_weighted',
+'bs_pt_reco_1',
+'bs_pt_reco_2',
 #'bs_pt_lhcb_alt',
 #'bs_pt_coll',
 
@@ -266,10 +226,10 @@ kin_var = [
 'dsMu_m',
 #'pt_miss_....',        #too similar to m2 miss?
 
-'q2_reco_weighted',
+#'q2_reco_weighted',
 #'q2_reco_1',
 #'q2_reco_2',
-#'q2_coll',
+'q2_coll',
 'q2_lhcb_alt',
 'mu_pt',
 'mu_eta',
@@ -306,9 +266,7 @@ hammer = [
 ]
 
 
-if args.constrained: kin_var.append("phiPi_m") 
-#if not args.constrained: kin_var.append("phiPi_m") 
-
+kin_var.append("phiPi_m") 
 
 class Sample(object):
   '''
@@ -323,13 +281,14 @@ class Sample(object):
     self.tree = tree
     self.signal = signal
 
-    if self.signal in [0,1,2,3]:
+    if self.signal in [0,1,2,3,4]:
       #signals
-      print("hammer branches")
-      branches = kin_var + ['event'] + hammer #event will be removed later!
-
-    else:
+      #print("hammer branches")
+      #branches = kin_var + ['event'] + hammer #event will be removed later!
       branches = kin_var + ['event'] #event will be removed later!
+
+    else: #data
+      branches = kin_var + ['event','sf_weights'] #event will be removed later!
 
 
     if isinstance(filename, list):
@@ -339,7 +298,11 @@ class Sample(object):
         f = ROOT.TFile(name)
         tree_obj = f.Get(self.tree)
 
-        arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+        if args.debug:
+          arr = tree2array(tree_obj,selection = self.selection, branches = branches, stop = 100) #event will be removed later!
+        else:
+          arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+
         pd_list.append(pd.DataFrame(arr))
 
       self.df = pd.concat(pd_list)
@@ -348,7 +311,10 @@ class Sample(object):
     else: 
       f = ROOT.TFile(self.filename)
       tree_obj = f.Get(self.tree)
-      arr = tree2array(tree_obj,selection = self.selection, branches = branches ) #event will be removed later!
+      if args.debug:
+        arr = tree2array(tree_obj,selection = self.selection, branches = branches , stop = 100) #event will be removed later!
+      else:
+        arr = tree2array(tree_obj,selection = self.selection, branches = branches ) #event will be removed later!
       self.df = pd.DataFrame(arr)
 
 
@@ -406,12 +372,11 @@ class Trainer(object):
     f.write("Early stopping: "            + str(self.do_early_stopping)   + "\n")
     f.write("Reduce lr: "                 + str(self.do_reduce_lr)        + "\n")
     f.write("Baseline selection: "        + str(self.baseline_selection)  + "\n")
-    f.write("Constrained fit?"            + str(args.constrained)         + "\n")
     f.write("Signal region up to:"        + str(nSignalRegion) + " sigma" + "\n")
     f.write("Sideband region starts at:"  + str(nSidebands)    + " sigma" + "\n")
     f.write("Sideband region width:"      + str(sbWidth)       + " sigma" + "\n")
-    f.write("frac of sideband events:"    + str(self.frac_sb)             + "\n")
-    f.write("frac of signflip events:"    + str(self.frac_sf)             + "\n")
+    #f.write("frac of sideband events:"    + str(self.frac_sb)             + "\n")
+    #f.write("frac of signflip events:"    + str(self.frac_sf)             + "\n")
     f.close()
 
     return 
@@ -486,35 +451,11 @@ class Trainer(object):
 
     #siebands used for the comb. bkg
 
-    if args.constrained:
-      sign_flip   = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
-      data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
+    sign_flip   = " && ((k1_charge*k2_charge < 0) && (pi_charge*mu_charge>0))"
+    data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
 
-      data_sample = Sample(filename=file_data,   selection=data_selec, tree = 'tree',signal = data_id).df
-
-    else:
-      sign_flip    = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
-      SB           = f'& (( {mlow3} < phiPi_m & phiPi_m < {mlow2}) || ({mhigh2} < phiPi_m & phiPi_m < {mhigh3}))'
-
-      data_selec_sb = self.baseline_selection + SB + lowMass
-      data_selec_sf = self.baseline_selection + sign_flip + signalRegion + lowMass
-
-      data_sample_sb = Sample(filename=file_data,   selection=data_selec_sb, tree = 'tree',signal = data_id).df
-      data_sample_sf = Sample(filename=file_data,   selection=data_selec_sf, tree = 'tree',signal = data_id).df
-
-      #randomly select frac% of the signflip events
-      data_sample_sb = data_sample_sb.sample(frac = self.frac_sb, random_state = 1968)
-      data_sample_sf = data_sample_sf.sample(frac = self.frac_sf, random_state = 1968)
-
-      f = open(self.outdir + "/settings.txt", "a")
-      f.write("Number of sideband events is: "  + str(len(data_sample_sb)) + "\n")
-      f.write("Number of signflip events is: "  + str(len(data_sample_sf)) + "\n")
-      f.close()
-    
-      print("Number of sideband events is: "  + str(len(data_sample_sb)))
-      print("Number of signflip events is: "  + str(len(data_sample_sf)))
-
-      data_sample  = pd.concat([data_sample_sb, data_sample_sf], sort = False)
+    data_sample_sf = Sample(filename=file_data,   selection=data_selec, tree = 'tree',signal = data_id).df
+    data_sample  = pd.concat([data_sample_sf], sort = False)
 
     data_train, data_test = train_test_split(data_sample, test_size=0.2, random_state = 1000)
 
@@ -606,7 +547,7 @@ class Trainer(object):
     # even undo the splitting which is not used for k-folding
     main_df = pd.concat([train,test],sort= False)
 
-    # re-index
+    # re-index (this does not shuffle events, only reindex!)
     main_df.index = np.array(range(len(main_df)))
 
     # shuffle
@@ -614,15 +555,12 @@ class Trainer(object):
 
     # X and Y, keep event number for kfold splitting! will be removed later!
 
-    if constrained: 
-      w_cols = ['central_w', 'event']
-    else:
-      w_cols = ['event']
+    #w_cols = ['central_w', 'event']
+    w_cols = ['sf_weights', 'event']
 
     X       = pd.DataFrame(main_df, columns=list(set(self.features)) + ['event'] )
     Y       = pd.DataFrame(main_df, columns=['is_signal', 'event'])
     weights = pd.DataFrame(main_df, columns=w_cols)
-
     # save the exact list of features
     features_filename = '/'.join([self.outdir, 'input_features.pck'])
     pickle.dump(self.features, open(features_filename, 'wb' ))
@@ -847,11 +785,8 @@ class Trainer(object):
       model[n] = self.defineModel()
 
       print("I reach this point :D")
-      if constrained:
-        history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
+      history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
  
-      else:
-        history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n]), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w )
    
     print(f"class weights: {weight}")
 
@@ -1044,7 +979,8 @@ class Trainer(object):
       dummy = []
 
       for n in range(self.nfolds):
-  
+     
+        print("chan is ", chan, ", n is ", n, ", sig is ", sig) 
         #class predictions 1D
         #is of shape [1,2,5,4,3,2,4,2,1, ....] 
         true_1d = np.argmax(y_val[n], axis=1)
@@ -1491,7 +1427,10 @@ class Trainer(object):
     print('\n========> creating the test dataframes')
     test_notnan , _           = self.createDataframe(test_samples)
 
+
     # preprocessing the dataframes
+
+
     print('\n========> preprocessing and defining folds' )
     main_df, qt, xx_folds, y_folds, w_folds = self.preprocessing(train_notnan, test_notnan)
 
@@ -1543,7 +1482,7 @@ class Trainer(object):
     self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
     self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
 
-
+    return train_notnan, test_notnan
 
 
 if __name__ == '__main__':
@@ -1564,7 +1503,7 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 100 #30 here
+  epochs = 50 #30 here
   batch_size = 128 #128 here
   scaler_type = 'robust'
   do_early_stopping = False
@@ -1572,8 +1511,8 @@ if __name__ == '__main__':
   dirname = 'test'
   baseline_selection = base_wout_tv
   nfolds = 5
-  frac_sb = 0.5
-  frac_sf = 0.5
+  frac_sb = 0.0
+  frac_sf = 1.0
 
   trainer = Trainer(
       features = features, 
@@ -1589,7 +1528,7 @@ if __name__ == '__main__':
       frac_sf = frac_sf
       )
 
-  trainer.process()
+  train_samples, test_samples = trainer.process()
 
 
 
