@@ -27,7 +27,8 @@ from helper import *
 
 
 # Load dataset
-files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20240724_170443/*.root"
+files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20240724_170443/*.root" #old prod
+#files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20250227_155416/*.root" #new prod
 chain = ROOT.TChain("tree")
 chain.Add(files_data)
 rdf_wrong   = ROOT.RDataFrame(chain)
@@ -232,15 +233,19 @@ correct_sign = "&& ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0))"
 high_mass    = f"(dsMu_m > {bsMass_})"
 low_mass     = f"&& (dsMu_m < {bsMass_})"
 
+#trigger
+#trigger = f"&& (mu7_ip4)"
+trigger = f""
+
 start_time = time.time()
 
 ######################################
 # wrong sign data for both sidebands #
 ######################################
 
-rdf_left_wrong  = rdf_wrong.Filter(left_sb_cut  + wrong_sign + low_mass)
-rdf_right_wrong = rdf_wrong.Filter(right_sb_cut + wrong_sign + low_mass)
-rdf_high_wrong  = rdf_wrong.Filter(high_mass    + wrong_sign)
+rdf_left_wrong  = rdf_wrong.Filter(left_sb_cut  + wrong_sign + low_mass + trigger)
+rdf_right_wrong = rdf_wrong.Filter(right_sb_cut + wrong_sign + low_mass + trigger)
+rdf_high_wrong  = rdf_wrong.Filter(high_mass    + wrong_sign + trigger)
 
 df_left_wrong   = rdf_left_wrong .AsNumpy()
 df_right_wrong  = rdf_right_wrong.AsNumpy()
@@ -258,9 +263,9 @@ print(f"=====> We have {neg_events_train} wrong sign events for training in left
 # correct sign data for both sidebands #
 ########################################
 
-rdf_left_correct  = rdf_correct.Filter(left_sb_cut  + correct_sign + low_mass)
-rdf_right_correct = rdf_correct.Filter(right_sb_cut + correct_sign + low_mass)
-rdf_high_correct  = rdf_correct.Filter(high_mass    + correct_sign)
+rdf_left_correct  = rdf_correct.Filter(left_sb_cut  + correct_sign + low_mass + trigger)
+rdf_right_correct = rdf_correct.Filter(right_sb_cut + correct_sign + low_mass + trigger)
+rdf_high_correct  = rdf_correct.Filter(high_mass    + correct_sign + trigger)
 
 df_left_correct   = rdf_left_correct.AsNumpy()
 df_right_correct  = rdf_right_correct.AsNumpy()
@@ -298,12 +303,20 @@ features = [
     "kk_deltaR", 
     "dsMu_deltaR", 
     "bs_pt_lhcb_alt", 
+    #"bs_eta_lhcb_alt", 
+    #"bs_phi_lhcb_alt", 
+    #"bs_pt_coll", 
+    #"bs_phi_lhcb_alt", 
+    #"q2_lhcb_alt", 
     "q2_coll", 
+    "e_star_coll", 
     #"dsMu_m", 
     "phiPi_m", 
     #"q2_lhcb_alt", 
     #"pi_pt",
+    "pi_eta",
     #"mu_pt",
+    "mu_eta",
     #"k1_pt",
     #"k2_pt",
     #"pv_prob",
@@ -349,7 +362,7 @@ X_double_train, X_double_test, y_double_train, y_double_test = train_test_split(
 weights = X_train["weights"]
 weights_double = X_double_train["weights_double"]
 
-bdt_bins = [0.00, 0.25] + list(np.linspace(0.30, 0.75, 20).tolist()) + [0.8, 1.0]
+bdt_bins = [0.00, 0.4] + list(np.linspace(0.45, 0.60, 10).tolist()) + [0.65, 1.0]
 
 
 #now only keep going with features
@@ -373,7 +386,7 @@ dtest_double  = xgb.DMatrix(X_double_test[features], label=y_double_test)
 params = {
   "objective"  : "binary:logistic",
   "eval_metric": "logloss",
-  "max_depth"  : 4, 
+  "max_depth"  : 3, 
   "eta"        : 0.005
 }
 
@@ -387,7 +400,7 @@ history_double= {}
 model = xgb.train(
     params,
     dtrain,
-    num_boost_round=2000,
+    num_boost_round=300,
     evals=evals,
     evals_result=history,
     early_stopping_rounds=30,
@@ -396,7 +409,7 @@ model = xgb.train(
 model_double = xgb.train(
     params,
     dtrain_double,
-    num_boost_round=2000,
+    num_boost_round=400,
     evals=evals_double,
     evals_result=history_double,
     early_stopping_rounds=30,
@@ -471,6 +484,7 @@ predictAndGetWeight(model_double, data_double, df_high_wrong   , X_high_wrong   
 predictAndGetWeight(model_double, data_double, df_high_correct , X_high_correct , bdt_bins, binned_weights_double)
 
 plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "rightSB")
 plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "rightSB")
 plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , flag = "rightSB")
 plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "rightSB")
@@ -479,8 +493,16 @@ plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "
 plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , flag = "rightSB")
 plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , flag = "rightSB")
 plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "mu_pt", 20,  0, 15         , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "k1_pt", 20,  0, 15         , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "k2_pt", 20,  0, 15         , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "k1_eta", 25,  -2.4, 2.4    , flag = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "k2_eta", 25,  -2.4, 2.4    , flag = "rightSB")
 
 plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12        , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "leftSB")
 plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "leftSB")
 plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15          , flag = "leftSB")
 plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "leftSB")
@@ -489,8 +511,12 @@ plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "le
 plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1        , flag = "leftSB")
 plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30   , flag = "leftSB")
 plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968 , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "mu_pt", 20,  0, 15         , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "leftSB")
 
 plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12      , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "high mass")
 plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "high mass")
 plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15          , flag = "high mass")
 plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "high mass")
@@ -499,14 +525,17 @@ plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "hi
 plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1        , flag = "high mass")
 plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30   , flag = "high mass")
 plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028 , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "mu_pt", 20,  0, 15         , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "high mass")
+plotHist(df_high_wrong,df_high_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "high mass")
 
 #X_train['bdt_prob']          = model.predict      (X_train)
 #X_train['bdt_prob'  ] = model.predict_proba(X_train[features])[:, 1]
 
-outfile = uproot.recreate("output_corrected.root")
-outfile['tree_left_wrong'         ] = df_left_wrong
-outfile['tree_left_correct'       ] = df_left_correct
-outfile['tree_right_wrong'        ] = df_right_wrong
-outfile['tree_right_correct'      ] = df_right_correct
+#outfile = uproot.recreate("output_corrected.root")
+#outfile['tree_left_wrong'         ] = df_left_wrong
+#outfile['tree_left_correct'       ] = df_left_correct
+#outfile['tree_right_wrong'        ] = df_right_wrong
+#outfile['tree_right_correct'      ] = df_right_correct
 #outfile['X_train'                 ] = X_train 
 
