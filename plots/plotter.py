@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 
 from sidebands import getSigma, getABCS
-from signflip  import getSignflipRatio
+from signflip  import getSignflipRatio, fitAnotherVar
 from helper import * 
 from histModels import models, pastNN_models, pastNN_2Dmodels
 from blinding import *
@@ -67,13 +67,14 @@ if addSys:
 with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
   #print(averages)
-baseline_name = "base_wout_tv" #old samples
+baseline_name = "base_wout_tv_25" #old samples
 baseline      = baselines[baseline_name]
-baseline      = "(mu_pt>8)" # && !isnan(cosMuW_lhcb_alt) && !isnan(cosMuW_coll)"
+#baseline      = "(mu_pt>8)" # && !isnan(cosMuW_lhcb_alt) && !isnan(cosMuW_coll)"
 
 if prod == "25":
   baseline += " && (mu7_ip4) && (mu_is_global) && (ds_vtx_cosine_xy_pv > 0.8)"
-  bdt_file = "15_04_2025_18_34_01"
+  #bdt_file = "15_04_2025_18_34_01"
+  bdt_file = "25_04_2025_10_29_02" # on pi-mu flip only and skimmed events! use this model only with base_wout_tv_25 
   sig_cons   = sig_cons_25
   hb_cons    = hb_cons_25
   bs_cons    = bs_cons_25
@@ -82,8 +83,11 @@ if prod == "25":
   data_cons  = data_cons_25
 
 else:
-  bdt_file = "14_04_2025_18_35_03" 
-
+  #bdt_file = "14_04_2025_18_35_03" 
+  #bdt_file = "17_04_2025_12_16_46" #with pimu wrong only, left sb
+  bdt_file = "17_04_2025_16_04_44" #with pimu wrong only, both sb and 4-6 sigma
+  #bdt_file = "17_04_2025_18_12_40" # with oimu wrong, both sb and 3-6 sigma
+  bdt_file = "25_04_2025_16_43_51" # with pimu wrong, both sb and 4-6 sigma, trained on skimmed files and all parts
   sig_cons   = sig_cons_24
   hb_cons    = hb_cons_24
   bs_cons    = bs_cons_24
@@ -105,7 +109,7 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 # set NN score cut
 
 if pastNN:
-  score_cut = "&& (score5 <= 1.0)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
+  score_cut = "&& (score5 <= 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
  
 else: 
   score_cut = ""
@@ -287,13 +291,29 @@ if pastNN:
     #sig_sample = sig_cons_pastNN
 
     print("constrained data after NN not processed yet..")
-    chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
-    chainSig,   rdfSig       = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
-    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           )#, debug = 100000)
-    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           )#, debug = 100000)
-    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           )#, debug = 100000)
-    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        )#, debug = 100000)
-    chainData,  rdfData      = getRdf(data_cons_pastNN                         )#, debug = 100000)
+    #chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
+    #chainSig,   rdfSig       = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
+    #chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           )#, debug = 100000)
+    #chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           )#, debug = 100000)
+    #chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           )#, debug = 100000)
+    #chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        )#, debug = 100000)
+    #chainData,  rdfData      = getRdf(data_cons_pastNN                         )#, debug = 100000)
+
+
+    chainSigSB, rdfSigSB     = getRdf(sig_sample                               )#, debug = 1000)
+    chainSig,   rdfSig       = getRdf(sig_sample                               )#, debug = 1000)
+    chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           )#, debug = 1000)
+    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           )#, debug = 1000)
+    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           )#, debug = 1000)
+    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        )#, debug = 1000)
+    chainData,  rdfData      = getRdf(data_cons_pastNN                         )#, debug = 1000)
+
+
+
+
+
+
+
 
     print("rdf has events: ", rdfData.Count().GetValue() )
 
@@ -315,14 +335,14 @@ else:
 
   print("Producing pre-NN plots")
   if constrained:
-    chainSigSB, rdfSigSB     = getRdf(sig_cons                         )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    chainSig,   rdfSig       = getRdf(sig_cons                         )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    chainHb,    rdfHb        = getRdf(hb_cons                          )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    chainBs,    rdfBs        = getRdf(bs_cons                          )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    chainB0,    rdfB0        = getRdf(b0_cons                          )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    chainBplus, rdfBplus     = getRdf(bplus_cons                       )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    chainData,  rdfData      = getRdf(data_cons                        )#, bph_part = 2)# , debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
-    #chainData,  rdfData      = getRdf(data_cons    ,sf_weights = True  )#, debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainSigSB, rdfSigSB     = getRdf(sig_cons                         )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
+    chainSig,   rdfSig       = getRdf(sig_cons                         )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
+    chainHb,    rdfHb        = getRdf(hb_cons                          )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
+    chainBs,    rdfBs        = getRdf(bs_cons                          )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
+    chainB0,    rdfB0        = getRdf(b0_cons                          )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
+    chainBplus, rdfBplus     = getRdf(bplus_cons                       )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
+    #chainData,  rdfData      = getRdf(data_cons                        ,bph_part = 1, debug = 50000 )#, bph_part = 2)# , debug = 20000 )# , skimmed = baseline_name)#, debug = 1)
+    chainData, rdfData      = getRdf(data_cons    ,sf_weights = True   )#, debug = 50000 )# , skimmed = baseline_name)#, debug = 1)
     #print("---------------> rdf has events: ", rdfData.Count().GetValue() )
 
   else:
@@ -2232,8 +2252,9 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     # Data 
  
-    selec_C_Data_sf_kk   = createHistos(  baseline + kk_wrong        ,    rdfData       , variables = ["phiPi_m"] , gen = False)#, sf_weights = True)
-    selec_C_Data_sf_pimu = createHistos(  baseline + pimu_wrong      ,    rdfData       , variables = ["phiPi_m"] , gen = False)#, sf_weights = True)
+    selec_C_Data_sf_kk   = createHistos(  baseline + kk_wrong  ,    rdfData       , variables = ["phiPi_m"] , gen = False , sf_weights = True)
+    #selec_C_Data_sf_kk   = createHistos(  baseline + pimu_wrong      ,    rdfData       , variables = ["phiPi_m"] , gen = False, sf_weights = True)
+    selec_C_Data_sf_pimu = createHistos(  baseline + pimu_wrong ,    rdfData       , variables = ["phiPi_m"] , gen = False, sf_weights = True)
  
     # get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
 
@@ -2257,7 +2278,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
                                       selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
                                       selec_C_DsTau           ["phiPi_m"].Clone()  , 
                                       selec_C_DsStarTau       ["phiPi_m"].Clone()] ) 
-   
+ 
+
       hRest_blind = prepareSignFlip(  selec_C_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
                                      [selec_C_DsMu            ["phiPi_m"].Clone()  , 
                                       selec_C_DsStarMu        ["phiPi_m"].Clone()  , 
@@ -2275,6 +2297,12 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     print("=============> Fit mass again to get signflip ratios")
     kk_postfit,       pimu_postfit,       rest_postfit       , abc = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(), hRest      ,selec_C_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3)
     kk_blind_postfit, pimu_blind_postfit, rest_blind_postfit , abc = getSignflipRatio(selec_C_Data_sf_kk["phiPi_m"].Clone(),selec_C_Data_sf_pimu["phiPi_m"].Clone(), hRest_blind,selec_C_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3)
+    
+    #fitAnotherVar(selec_C_Data_sf_kk["q2_coll"].Clone(),selec_C_Data_sf_pimu["q2_coll"].Clone(),         hRestAnotherVar_q2_coll, selec_C_Data["q2_coll"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, key = "q2_coll", start = 0, stop = 12)
+    #fitAnotherVar(selec_C_Data_sf_kk["cosPiK1"].Clone(),selec_C_Data_sf_pimu["cosPiK1"].Clone(),         hRestAnotherVar_cosPiK1, selec_C_Data["cosPiK1"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, key = "cosPiK1", start = -1, stop = 1)
+    #fitAnotherVar(selec_C_Data_sf_kk["dsMu_deltaR"].Clone(),selec_C_Data_sf_pimu["dsMu_deltaR"].Clone(), hRestAnotherVar_dsMu_deltaR, selec_C_Data["dsMu_deltaR"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, key = "dsMu_deltaR",start =  0, stop = 1)
+
+
 
     scale_kk         = kk_postfit         / kk_prefit 
     scale_kk_blind   = kk_blind_postfit   / kk_prefit 
@@ -2446,8 +2474,9 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   
     if constrained: 
 
-      selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False)#, sf_weights = True)
-      selec_S_Data_sf_pimu = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False)#, sf_weights = True)
+      selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = True)
+      selec_S_Data_sf_pimu = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = True)
+      #selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = True)
       #selec_S_DataL = createHistos(  baseline_region + score_cut + low_mass + leftSB ,  rdfData       , gen = False)#, sf_weights = weights)
       #selec_S_DataR = createHistos(  baseline_region + score_cut + low_mass + rightSB,  rdfData       , gen = False)#, sf_weights = weights)
 
