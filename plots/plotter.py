@@ -67,7 +67,7 @@ if addSys:
 with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
   #print(averages)
-baseline_name = "base_wout_tv_25" #old samples
+baseline_name = "base_wout_tv_24" #old samples
 baseline      = baselines[baseline_name]
 #baseline      = "(mu_pt>8)" # && !isnan(cosMuW_lhcb_alt) && !isnan(cosMuW_coll)"
 
@@ -117,6 +117,7 @@ else:
 # set the to be splitter variable and binning
 #split   = "cosMuW_reco_weighted"
 split   = "q2_coll"
+split   = "class"
 #split   = "phiPi_m"
 #split   = "e_star_reco_weighted"
 #split = "score1"
@@ -129,6 +130,7 @@ split   = "q2_coll"
 #binning = [[0,0.5], [0.5,1.0],[1.0, 1.5], [1.5, 2.0],[2.0, 3.0]] # estar
 #binning = [[0,7],[7,12]]
 binning = [[-100,12]]
+binning = [[0.99,1.01]]
 
 ##############################
 # Load chain into RDataFrame #
@@ -286,9 +288,9 @@ if pastNN:
 
   if constrained:
 
-    if addSys: sig_sample = sig_cons_hammer
-    else: sig_sample = sig_cons_pastNN
-    #sig_sample = sig_cons_pastNN
+    #if addSys: sig_sample = sig_cons_hammer
+    #else: sig_sample = sig_cons_pastNN
+    sig_sample = sig_cons_pastNN
 
     print("constrained data after NN not processed yet..")
     #chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
@@ -303,6 +305,7 @@ if pastNN:
     chainSigSB, rdfSigSB     = getRdf(sig_sample                               )#, debug = 1000)
     chainSig,   rdfSig       = getRdf(sig_sample                               )#, debug = 1000)
     chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           )#, debug = 1000)
+    _,          rdfHbHammer  = getRdf(hb_cons_pastNN                           )#, debug = 1000)
     chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           )#, debug = 1000)
     chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           )#, debug = 1000)
     chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        )#, debug = 1000)
@@ -1768,6 +1771,8 @@ def create1DPlots():
   selec_S_Hb              = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
   selec_S_Data            = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
 
+
+
   # scale the tau histos to get a blind option for data fits
   selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
   selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone()               for key in selec_S_DsStarTau.keys() }
@@ -2203,19 +2208,30 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
  
     selection_massfit = baseline + right_sign 
     selec_massfit     = selections(selection_massfit)
-    hb_scale_massfit  = getHbScale(selec_massfit.hb , selec_massfit.dsMu )
+    #hb_scale_massfit  = getHbScale(selec_massfit.hb , selec_massfit.dsMu )
 
     # Signal and Hb 
     selec_C_DsMu            = createHistos(selec_massfit.dsMu        ,    rdfSig       , variables = ["phiPi_m"] , gen = False, histSys = addSys, sig = "dsmu"     )
+    selec_C_DsMu_woHammer   = createHistos(selec_massfit.dsMu        ,    rdfSig       , variables = ["phiPi_m"] , gen = False)
     selec_C_DsTau           = createHistos(selec_massfit.dsTau       ,    rdfSig       , variables = ["phiPi_m"] , gen = False, histSys = addSys, sig = "dstau"    )
     selec_C_DsStarMu        = createHistos(selec_massfit.dsStarMu    ,    rdfSig       , variables = ["phiPi_m"] , gen = False, histSys = addSys, sig = "dsstarmu" )
     selec_C_DsStarTau       = createHistos(selec_massfit.dsStarTau   ,    rdfSig       , variables = ["phiPi_m"] , gen = False, histSys = addSys, sig = "dsstartau")
     selec_C_Hb              = createHistos(selec_massfit.hb          ,    rdfHb        , variables = ["phiPi_m"] , gen = False)
+    selec_C_Mu_in_Hb        = createHistos(selec_massfit.dsMu        ,    rdfHb        , variables = ["phiPi_m"] , gen = False)
     selec_C_Data            = createHistos(selec_massfit.bare        ,    rdfData      , variables = ["phiPi_m"] , gen = False)
 
     selec_C_DsTau_blind     = { key: selec_C_DsTau[key].Clone()      for key in selec_C_DsTau.keys()     }
     selec_C_DsStarTau_blind = { key: selec_C_DsStarTau[key].Clone()  for key in selec_C_DsStarTau.keys() }
- 
+    import pdb
+    pdb.set_trace()
+    print("")
+    #since the dsmu signal in Hb is not hammered, we calc. the scale for unhammered dsmu and hb. The effects should cancel! 
+    hb_scale_massfit = selec_C_DsMu_woHammer["phiPi_m"].Integral() * selec_C_Hb["phiPi_m"].Integral() / selec_C_Mu_in_Hb["phiPi_m"].Integral()
+     
+    print("----------------------------> hb scale is ", hb_scale_massfit)
+    print("----------------------------> i have ",  selec_C_DsMu_woHammer["phiPi_m"].Integral(), " dsmu wo hammer events")
+    print("----------------------------> i have ",  selec_C_Hb["phiPi_m"].Integral(), " hb events")
+    print("----------------------------> i have ",  selec_C_Mu_in_Hb["phiPi_m"].Integral(), " mu in hb events")
     print("----------------------------> i have ",  selec_C_Data["phiPi_m"].Integral(), " data events")
  
     for key in selec_C_DsTau_blind.keys()    : selec_C_DsTau_blind[key]    .Scale(blind_scalar)    
@@ -2450,19 +2466,24 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   
     print("===> filling signal region ...")
 
-    hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
+    #hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
+
     #for all variables except mass plot only signal region (indicated with 'S')
 
     selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsmu"     )
+    selec_S_DsMu_woHammer  = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False)
     selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dstau"    )
     selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstarmu" )
     selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False, histSys = addSys, sig = "dsstartau")
     selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
+    selec_S_Mu_in_Hb       = createHistos(selec.dsMu        + signalRegion,    rdfHb         , gen = False)
     selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
 
     # scale the tau histos to get a blind option for data fits
     selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
     selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone()               for key in selec_S_DsStarTau.keys() }
+
+    hb_scale_S = selec_S_DsMu_woHammer["phiPi_m"].Integral() * selec_S_Hb["phiPi_m"].Integral() / selec_S_Mu_in_Hb["phiPi_m"].Integral()
 
     for key in selec_S_DsTau_blind.keys()    : selec_S_DsTau_blind[key]    .Scale(blind_scalar)    
     for key in selec_S_DsStarTau_blind.keys(): selec_S_DsStarTau_blind[key].Scale(blind_vector)    
