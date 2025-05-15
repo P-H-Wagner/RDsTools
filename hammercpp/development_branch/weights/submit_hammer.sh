@@ -6,6 +6,7 @@ export channel=$1
 export input=$2
 export target=$3
 export nmax=$4
+export prod=$5
 
 datetime=$(date +"%d_%m_%Y_%H_%M_%S")
 
@@ -14,8 +15,29 @@ mkdir -p /pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/${channel}_${target
 
 make
 
+# get variables from helper file by executing its main function
+config_json=$(python /work/pahwagne/RDsTools/help/helper.py)
+# get bash array out of json for the two signals (24 and 25)
+
+if [ "$prod" = "24" ]; then
+  echo "Getting 2024 production"
+  eval "$(echo "$config_json" | jq -r '.sig_cons_24 | @sh "sig_cons=(\(.[]))"')"
+  eval "$(echo "$config_json" | jq -r '.hb_cons_24  | @sh "hb_cons=(\(.[]))"')"
+fi
+
+if [ "$prod" = "25" ]; then
+  echo "Getting 2025 production"
+  eval "$(echo "$config_json" | jq -r '.sig_cons_25 | @sh "sig_cons=(\(.[]))"')"
+  eval "$(echo "$config_json" | jq -r '.hb_cons_25  | @sh "hb_cons=(\(.[]))"')"
+fi
+
 if [ "$channel" = "signal" ]; then
-    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/sig_26Sep2024_07h46m21s_cons"
+    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/${sig_cons[0]}" # pre NN
+    echo "signal"
+fi
+
+if [ "$channel" = "hb" ]; then
+    path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/${hb_cons[0]}" # pre NN
     echo "signal"
 fi
 
@@ -77,15 +99,15 @@ eval "\$(conda shell.bash hook)"
 cd /work/pahwagne/RDsTools/hammercpp/development_branch/weights
 mkdir -p /scratch/pahwagne/hammer/
 ./hammer_temp \$channel \$input \$target \$file \$counter
-xrdcp /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/\${channel}_\${target}_\${datetime}/
+xrdcp /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/\${prod}/\${channel}_\${target}_\${datetime}/
 rm /scratch/pahwagne/hammer/\${channel}_\${target}_\${counter}.root
 
 
 EOF
 
     if [ -e "$file" ]; then
-        cmd="sbatch -o ${channel}/out_${counter}.txt -e ${channel}/err_${counter}.txt -p short $submitter $channel $input $target $file $counter"
-        sbatch -o ${channel}/out_${counter}.txt -e ${channel}/err_${counter}.txt -p short $submitter $channel $input $target $file $counter
+        cmd="sbatch -o ${channel}/out_${counter}.txt -e ${channel}/err_${counter}.txt -p standard -t 420 $submitter $channel $input $target $file $counter"
+        sbatch -o ${channel}/out_${counter}.txt -e ${channel}/err_${counter}.txt -p standard -t 360 $submitter $channel $input $target $file $counter
         echo $cmd
     else
         echo "No files found in $path"

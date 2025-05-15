@@ -1,3 +1,4 @@
+import json
 
 # samples
 
@@ -31,7 +32,8 @@ bplus_cons_25  = ["17_03_2025_08_36_31"]
                #part 1            #part 2            #part 3            #part 4            #part 5
 data_cons_25   = ["20250227_155416", "20250227_161007", "20250227_161505", "20250227_161842", "20250227_161914"]
 
-
+bdt_data_24 = "25_04_2025_16_43_51" # with skimmed samples for all parts
+bdt_data_25 = "25_04_2025_10_29_02" # with skimmed samples for all parts
 
 # aftter NN samples
 code = "05Sep2024_15h09m02s"
@@ -64,6 +66,8 @@ code = "26Sep2024_07h46m21s_cons" #sb and sf #for inaugural --> what we usually 
 #code = "21Mar2025_18h04m03s_cons" # using again sb and sf
 #code = "23Aug2024_19h41m42s" #6 classes from optuna
 code = "23Apr2025_18h57m36s_cons" #new NN with pimu wrong only + weights 
+code = "25Apr2025_17h05m56s_cons" #new NN with pimu wrong only + weights hammer
+code = "29Apr2025_22h58m14s_cons" #new NN with pimu wrong + weights + new hammer
 sig_cons_pastNN     = "sig_"    +code 
 hb_cons_pastNN      = "hb_"     +code
 bs_cons_pastNN      = "bs_"     +code
@@ -72,10 +76,12 @@ bplus_cons_pastNN   = "bplus_"  +code
 data_cons_pastNN    = "data_"   +code
 
 #after hammer samples
+#2024 prdouction
 sig_cons_hammer     = "signal_BGLVar_13_01_2025_20_38_04"
 sig_cons_hammer     = "signal_BGLVar_16_01_2025_13_40_56"
 sig_cons_hammer     = "signal_default_10_02_2025_10_07_42" #includes weights for all signals, only part of signal
 sig_cons_hammer     = "signal_default_07_03_2025_13_33_38" #all events
+sig_cons_hammer     = "signal_default_29_04_2025_13_51_27" #all events and all branches
 sig_unc_hammer = ""
 
 dsStarTau_w = 3.304854088595039
@@ -380,3 +386,26 @@ baselines = {
 "base_wout_tv_24": base_wout_tv_24,
 "base_wout_tv_25": base_wout_tv_25
 }
+
+# need this when we want to import (some)
+# variables via .sh files (print and then read from shell)
+
+if __name__ == "__main__":
+
+  config = {
+    "sig_cons_24": sig_cons_24,
+    "hb_cons_24": hb_cons_24,
+    "bs_cons_24": bs_cons_24,
+    "b0_cons_24": b0_cons_24,
+    "bplus_cons_24": bplus_cons_24,
+    "data_cons_24": data_cons_24,
+    "fakes": fakes,
+    "sig_cons_25": sig_cons_25,
+    "hb_cons_25": hb_cons_25,
+    "bs_cons_25": bs_cons_25,
+    "b0_cons_25": b0_cons_25,
+    "bplus_cons_25": bplus_cons_25,
+    "data_cons_25": data_cons_25
+    }
+  print(json.dumps(config))
+
