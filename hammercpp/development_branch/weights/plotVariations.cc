@@ -21,7 +21,7 @@ using namespace std;
 // define input files
 string getInputFile(){
 
-  string fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_BGLVar_31_01_2025_06_34_59/*"; //27_01_2025_16_11_01 // first bcl: 24_01_2025_18_31_49, old: 13_01_2025_20_38_04 #new unbound: 13_01_2025_15_18_41
+  string fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_default_10_02_2025_10_07_42/*";
 
   return fin_str;
 
@@ -91,7 +91,7 @@ int main(int nargs, char* args[]){
   //variable for which we want to compute the average weight
   string var(args[1]); //f.e. q2_coll
 
-  map<string, string> labels = {{"q2_coll","Q^{2}(GeV^{2})"}, {"class", "Class prediction"}};
+  map<string, string> labels = {{"q2_coll","Q^{2}(GeV^{2})"}, {"class", "Class prediction"}, {"cosMuW_reco_weighted", "cosMuW"}};
   string xAxisLabel;
 
   if (labels.find(var) != labels.end()) {
@@ -118,13 +118,17 @@ int main(int nargs, char* args[]){
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
 
-  string base_wout_tv = "(mu_pt > 8) && (k1_pt > 1) && (k2_pt > 1) && (pi_pt > 1) && (lxy_ds < 1) && (mu_id_medium == 1) && (mu_rel_iso_03 < 0.3) && (fv_prob > 0.1) && (score5 <= 0.3) && ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)) && (dsMu_m < 5.366) && (1.94134 < phiPi_m) && (phiPi_m < 1.99534) &&";
+  string base_wout_tv = " (mu_pt > 8) && (k1_pt > 1) && (k2_pt > 1) && (pi_pt > 1) && (lxy_ds < 1) && (mu_id_medium == 1) && (mu_rel_iso_03 < 0.3) && (fv_prob > 0.1) && (score5 <= 0.3) && ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)) && (dsMu_m < 5.366) && (1.94134 < phiPi_m) && (phiPi_m < 1.99534)";
 
+  string filter0  = "(gen_sig == 0    ) && " + base_wout_tv; 
+  string filter1  = "(gen_sig == 1    ) && " + base_wout_tv; 
+  string filter10 = "(gen_sig == 10   ) && " + base_wout_tv; 
+  string filter11 = "(gen_sig == 11   ) && " + base_wout_tv; 
 
-  auto df_dsMu       = df->Filter("(gen_sig == 0  )");
-  auto df_dsTau      = df->Filter("(gen_sig == 1  )");
-  auto df_dsStarMu   = df->Filter("(gen_sig == 10  )");
-  auto df_dsStarTau  = df->Filter("(gen_sig == 11  )");
+  auto df_dsMu       = df->Filter(filter0  );
+  auto df_dsTau      = df->Filter(filter1  );
+  auto df_dsStarMu   = df->Filter(filter10 );
+  auto df_dsStarTau  = df->Filter(filter11 );
 
   auto h_dsMu_wout        = df_dsMu.Histo1D(     {"h_dsMu",      "", bins, min, max}, var);
   auto h_dsTau_wout       = df_dsTau.Histo1D(    {"h_dsTau",     "", bins, min, max}, var);
@@ -144,10 +148,10 @@ int main(int nargs, char* args[]){
 
 
   //First, see the effect of the central weight
-  plotWeightEffect(h_dsMu_wout,      h_dsMu ,      "dsmu_weight_effect.pdf");
-  plotWeightEffect(h_dsTau_wout,     h_dsTau ,     "dstau_weight_effect.pdf");
-  plotWeightEffect(h_dsStarMu_wout,  h_dsStarMu ,  "dsstarmu_weight_effect.pdf");
-  plotWeightEffect(h_dsStarTau_wout, h_dsStarTau , "dsstartau_weight_effect.pdf");
+  plotWeightEffect(h_dsMu_wout,      h_dsMu ,      "plots/dsmu_weight_effect.pdf");
+  plotWeightEffect(h_dsTau_wout,     h_dsTau ,     "plots/dstau_weight_effect.pdf");
+  plotWeightEffect(h_dsStarMu_wout,  h_dsStarMu ,  "plots/dsstarmu_weight_effect.pdf");
+  plotWeightEffect(h_dsStarTau_wout, h_dsStarTau , "plots/dsstartau_weight_effect.pdf");
 
 
   h_dsMu->SetLineColor(kBlack); 
@@ -159,10 +163,10 @@ int main(int nargs, char* args[]){
 
   for (size_t i = 1; i < 11; i++){
 
-    string key_dsMu      = "e"+to_string(i)+"_dsmu";
-    string key_dsTau     = "e"+to_string(i)+"_dstau";
-    string key_dsStarMu  = "e"+to_string(i)+"_dsstarmu";
-    string key_dsStarTau = "e"+to_string(i)+"_dsstartau";
+    string key_dsMu      = "plots/e"+to_string(i)+"_dsmu";
+    string key_dsTau     = "plots/e"+to_string(i)+"_dstau";
+    string key_dsStarMu  = "plots/e"+to_string(i)+"_dsstarmu";
+    string key_dsStarTau = "plots/e"+to_string(i)+"_dsstartau";
 
     string toSave_dsMu      = key_dsMu       + ".pdf";
     string toSave_dsTau     = key_dsTau      + ".pdf";
