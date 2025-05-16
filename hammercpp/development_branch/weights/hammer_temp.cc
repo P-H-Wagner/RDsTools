@@ -284,7 +284,7 @@ void prepareHammer(Hammer::Hammer& ham, string decay, string hadronicDecay, stri
   //////////////////////////////
   if ((inputScheme == "BGLVar") || (targetScheme == "BGLVar")){
 
-    // if input scheme is CLN, we have to adapt parameters from HQET (EvtGen) -> CLN (Hammer)
+    // first, set BGL central parameters according to mail from 30.01.2025 
     string paras = getBGLParameters(decay);
 
     // string is of type ham.setOptions("BstoDsBGL: {ChiT: 0.01, ChiL: 0.002}");
@@ -424,6 +424,8 @@ int main(int nargs, char* args[]){
   //for printing
   std::cout << std::fixed << std::setprecision(10);
 
+  std::cout << " ---- HAMMER! ---- " << std::endl;
+
   // check if command line arg is given
   if (nargs < 2) {
     //./hammer_all.cc counts already as 1!
@@ -493,6 +495,7 @@ int main(int nargs, char* args[]){
 
   //max nr of events to loop over
   int maxevents = tree->GetEntries();
+  maxevents = 10;
   if (maxevents > tree->GetEntries()) maxevents = tree->GetEntries();
 
   //define a place holder for the central_weights
@@ -648,9 +651,9 @@ int main(int nargs, char* args[]){
     // Define the decays for which you set up hammer    
     set<int> validDecays = {0,1,10,11};
   
-    if (validDecays.find(int(sig)) == validDecays.end()){
-      continue;
-    }
+    //if (validDecays.find(int(sig)) == validDecays.end()){
+    //  continue;
+    //}
   
     long long event_int = static_cast<long long>(event);
 
@@ -781,7 +784,6 @@ int main(int nargs, char* args[]){
       //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
       //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
     }
-
 
     // if the model has less parameters than e1 - e10 (as for example the bcl), we just fill a negative weight (-1.0)
     central_w = central_weight;
