@@ -69,6 +69,7 @@ class TrainingInfo(object):
     self.qt = self.loadScaler()
     self.features = self.loadFeatures()
 
+
     if not path.exists(self.indir):
       raise RuntimeError(f'Model with label "{self.model_label}" was not to be found in "{self.indir}".')
 
@@ -107,10 +108,10 @@ class createDf(object):
     self.date_time = date_time
     self.channel   = channel 
 
-
   def convertRootToDF(self, sample, training_info, treename, selection, weights, var, channel):
   
 
+    #import pdb; pdb.set_trace()
     #add weights to extra_columns if any 
     #features are the same for all folds, so we can pick fold 0
     branches = dc(training_info[0].features) + [e for e in extra_vars if e not in dc(training_info[0].features) ]     
@@ -118,44 +119,44 @@ class createDf(object):
     if weights:
       branches += weights
 
-    if channel != "data":
-      branches += [
-       "gen_sig",
-       "gen_match_success",
-       "gen_mu_pt",
-       "gen_tau_pt",
-       "gen_ds_pt",
-       "gen_dsStar_pt",
-       "gen_bs_pt",
-    
-       "gen_mu_eta",
-       "gen_tau_eta",
-       "gen_ds_eta",
-       "gen_dsStar_eta",
-       "gen_bs_eta",
-    
-       "gen_mu_phi",
-       "gen_tau_phi",
-       "gen_ds_phi",
-       "gen_dsStar_phi",
-       "gen_bs_phi",
-    
-       "gen_mu_pdgid",
-       "gen_tau_pdgid",
-       "gen_ds_pdgid",
-       "gen_dsStar_pdgid",
-       "gen_bs_pdgid",
-    
-       "gen_ds_charge",
-       "gen_bs_charge",
+    #if channel != "data":
+    #  branches += [
+    #   "gen_sig",
+    #   "gen_match_success",
+    #   "gen_mu_pt",
+    #   "gen_tau_pt",
+    #   "gen_ds_pt",
+    #   "gen_dsStar_pt",
+    #   "gen_bs_pt",
+    #
+    #   "gen_mu_eta",
+    #   "gen_tau_eta",
+    #   "gen_ds_eta",
+    #   "gen_dsStar_eta",
+    #   "gen_bs_eta",
+    #
+    #   "gen_mu_phi",
+    #   "gen_tau_phi",
+    #   "gen_ds_phi",
+    #   "gen_dsStar_phi",
+    #   "gen_bs_phi",
+    #
+    #   "gen_mu_pdgid",
+    #   "gen_tau_pdgid",
+    #   "gen_ds_pdgid",
+    #   "gen_dsStar_pdgid",
+    #   "gen_bs_pdgid",
+    #
+    #   "gen_ds_charge",
+    #   "gen_bs_charge",
 
-       "gen_mu_m",
-       "gen_tau_m",
-       "gen_ds_m",
-       "gen_dsStar_m",
-       "gen_bs_m",
+    #   "gen_mu_m",
+    #   "gen_tau_m",
+    #   "gen_ds_m",
+    #   "gen_dsStar_m",
+    #   "gen_bs_m",
 
-       ]
+    #   ]
       
     #evaluation on MC data
     #we can evaluate on the whole MC sample, since we checked that overtraining is not a problem :)
@@ -215,20 +216,16 @@ class createDf(object):
     print("before removing nans i have:", len(df))
     # remove inf and nan
 
-
-    import pdb
-    #pdb.set_trace();
-
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     #collect all columns except the gen ones
-    non_nan = [col for col in df.keys() if ("gen_" not in col)]
-    #df.dropna(inplace=True) #like this we loose almost all events since gen contains nan if not Ds* tau 
+    #non_nan = [col for col in df.keys() if ("gen_" not in col)]
 
     #select only rows in which we dont have nans in the "non_nan" columns. 
     #gen can contain nans, as not for every event we have tau or dsstar!
-    df.dropna(subset = non_nan, inplace = True) #inplace allows to directly overwrite the df and avoid df = df.dropna(...)
+    #df.dropna(subset = non_nan, inplace = True) #inplace allows to directly overwrite the df and avoid df = df.dropna(...)
 
+    print("after removing nans i have:", len(df))
     # re-index
     df = df.reset_index(drop=True)
 
@@ -317,7 +314,8 @@ class createDf(object):
       print( '\n ========> predicting the score')
       score[n]   = self.predictScore(training_info=training_info[n], df=x_folds[n]) #use head function for debugging on few events
       print(score)     
-
+      import pdb
+      pdb.set_trace()
       all_scores = []
     
       score0 = score[n][:,0] 
@@ -474,6 +472,7 @@ if __name__ == '__main__':
    channel      = os.getenv("channel") 
    modelpath    = os.getenv("modelpath") 
    nchunks      = os.getenv("nchunks")
+   prod         = os.getenv("prod")
    print("parsing command line... evaluate on: ", channel, nchunks)   
 
    
@@ -485,27 +484,54 @@ if __name__ == '__main__':
    files = {}
     
    if constrained:
-
-
-     bdt_data = "17_04_2025_16_04_44"
-     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data}/"
-     files["data"] = [base + f for f in os.listdir(base)]
+     if prod == "24":
      
-     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{sig_cons_24[0]}/"
-     files["sig"] = [base + f for f in os.listdir(base)]
+       baseline_selection = base_wout_tv_24
+      
+       #bdt is evaluated on the skimmed datasets :) 
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_24}/"
+       files["data"] = [base + f for f in os.listdir(base)]
+      
+       #hammer is evaluated on the skimmed datasets :) 
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/signal_default_29_04_2025_13_51_27/" 
+       files["sig"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_24[0]}/"
+       files["hb"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_24[0]}/"
+       files["bs"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_24[0]}/"
+       files["b0"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_24[0]}/"
+       files["bplus"] = [base + f for f in os.listdir(base)]
      
-     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{hb_cons_24[0]}/"
-     files["hb"] = [base + f for f in os.listdir(base)]
+     elif prod == "25":
      
-     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bs_cons_24[0]}/"
-     files["bs"] = [base + f for f in os.listdir(base)]
+       baseline_selection = base_wout_tv_25
+       # for now we only consider mu7
+       baseline_selection += " && (mu7_ip4) && (mu_is_global) && (ds_vtx_cosine_xy_pv > 0.8)"
      
-     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{b0_cons_24[0]}/"
-     files["b0"] = [base + f for f in os.listdir(base)]
-     
-     base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bplus_cons_24[0]}/"
-     files["bplus"] = [base + f for f in os.listdir(base)]
-
+       #bdt is evaluated on the skimmed datasets :) 
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_25}/"
+       files["data"] = [base + f for f in os.listdir(base)]
+       #hammer is evaluated on the skimmed datasets :) 
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/signal_default_16_05_2025_10_36_51/" 
+       files["sig"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_25[0]}/"
+       files["hb"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_25[0]}/"
+       files["bs"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_25[0]}/"
+       files["b0"] = [base + f for f in os.listdir(base)]
+       
+       base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_25[0]}/"
+       files["bplus"] = [base + f for f in os.listdir(base)]
 
     
      #normally 
@@ -554,15 +580,20 @@ if __name__ == '__main__':
 
    force_overwrite=False
 
-   # mc variables which we would like to save in the new trees (just take one file)
-   test_file_mc   = ROOT.TFile(files["sig"][0])
-   test_tree_mc   = test_file_mc.Get("tree")
-   var_mc         = [branch.GetName() for branch in test_tree_mc.GetListOfBranches()]
+   # sig variables which we would like to save in the new trees (just take one file)
+   test_file_sig   = ROOT.TFile(files["sig"][0])
+   test_tree_sig   = test_file_sig.Get("tree")
+   var_sig         = [branch.GetName() for branch in test_tree_sig.GetListOfBranches()]
+
+   # hb variables which we would like to save in the new trees (just take one file)
+   test_file_hb   = ROOT.TFile(files["hb"][0])
+   test_tree_hb   = test_file_hb.Get("tree")
+   var_hb         = [branch.GetName() for branch in test_tree_hb.GetListOfBranches()]
 
    # data variables which we would like to save in the new trees (just take one file)
    test_file_data = ROOT.TFile(files["data"][0])
    test_tree_data = test_file_data.Get("tree")
-   var_data       = [branch.GetName() for branch in test_tree_mc.GetListOfBranches()]
+   var_data       = [branch.GetName() for branch in test_tree_data.GetListOfBranches()]
 
    #read features from settings.txt file of the corresponding model
 
@@ -577,201 +608,77 @@ if __name__ == '__main__':
    
    print(features)  
 
-   #features = [
-   #'bs_boost_reco_weighted',
-   ##'bs_boost_reco_1',
-   ##'bs_boost_reco_2',
-   ##'bs_boost_lhcb_alt',
-   ##'bs_boost_coll',
-   #
-   #'bs_pt_reco_weighted',
-   ##'bs_pt_reco_1',
-   ##'bs_pt_reco_2',
-   ##'bs_pt_lhcb_alt',
-   ##'bs_pt_coll',
-   #
-   ##'cosMuW_reco_weighted', #better separates all signals
-   ##'cosMuW_reco_1', #better separates all signals
-   ##'cosMuW_reco_2', #better separates all signals
-   ##'cosMuW_lhcb_alt', #better separates all signals
-   ##'cosMuW_coll', #better separates all signals
-   #
-   #'cosPhiDs_lhcb',
-   #'cosPiK1',
-   ##'dsMu_deltaR',
-   #'kk_deltaR',
-   #
-   #'e_gamma',
-   #
-   ##'e_star_reco_weighted',
-   ##'e_star_reco_1',
-   ##'e_star_reco_2',
-   #'e_star_lhcb_alt',
-   ##'e_star_coll',
-   #
-   #'m2_miss_coll',
-   #'m2_miss_lhcb_alt',
-   #
-   #'mu_rel_iso_03',
-   #'phiPi_deltaR',
-   #'phiPi_m',              #only for constrained fitter!
-   #'dsMu_m',
-   ##'pt_miss_....',        #too similar to m2 miss?
-   #
-   #'q2_reco_weighted',
-   ##'q2_reco_1',
-   ##'q2_reco_2',
-   ##'q2_coll',
-   #'q2_lhcb_alt',
-   #'mu_pt',
-   #'mu_eta',
-   #'mu_phi',
-   #'pi_pt',
-   #
-   #'fv_prob',
-   #'tv_prob',
-   #'sv_prob',
-   ##'mu_eta',
-   ##'mu_phi',
-   ##'pi_eta',
-   ##'pi_phi',
-   ##'phiPi_pt',
-   ##'phiPi_phi',
-   ##'phiPi_eta',
-   ##'dsMu_pt',
-   ##'dsMu_eta',
-   ##'dsMu_phi',
-   #'disc_negativity',
-   #'lxy_ds_sig',
-   #'ds_vtx_cosine'
-   #]
 
+   #append sf weights for data
+   if (channel == "data" and constrained) :  # throw away all the refitted quantities (not needed for final fit)
+     extra_vars = [e for e in var_data if e not in features ]
 
+   elif (channel == "sig" and constrained) :
+     extra_vars = [e for e in var_sig  if e not in features ]
 
-   extra_vars = [
+   else:
+     extra_vars = [e for e in var_hb   if e not in features ]
 
-   #'bs_boost_reco_weighted',
-   'bs_boost_lhcb',
-   'bs_boost_reco_1',
-   'bs_boost_reco_2',
-   'bs_boost_lhcb_alt',
-   'bs_boost_coll',
-   'bsMassCorr',
-
-   #'bs_pt_reco_weighted',
-   'bs_pt_lhcb',
-   'bs_pt_reco_1',
-   'bs_pt_reco_2',
-   'bs_pt_lhcb_alt',
-   'bs_pt_coll',
-
-   #'cosMuW_reco_weighted', 
-   'cosMuW_lhcb_alt', #ADDED
-   'cosMuW_coll', #ADDED
-   'cosMuW_lhcb', 
-   'cosMuW_reco_1', #better separates all signals
-   'cosMuW_reco_2', #better separates all signals
-
-
-   #'e_star_reco_weighted',
-   'e_star_lhcb',
-   'e_star_reco_1',
-   'e_star_reco_2',
-   'e_star_coll',
-
-   #'q2_reco_weighted',
-   'q2_lhcb',
-   'q2_reco_1',
-   'q2_reco_2',
-   'q2_coll',
-
-   'pt_miss_coll',
-   'pt_miss_lhcb',
-   'pt_miss_lhcb_alt',
-   'disc_is_negative',
-   'dsMu_deltaR',
-
-   'cosPhiDs_coll',
-   'cosPhiDs_lhcb_alt',
-   'cosPhiDs_reco_1',
-   'cosPhiDs_reco_2',
-   #'cosPhiDs_reco_weighted',
-
-   'cosPlaneBs_coll',
-   'cosPlaneBs_lhcb',
-   'cosPlaneBs_lhcb_alt',
-   'cosPlaneBs_reco_1',
-   'cosPlaneBs_reco_2',
-   #'cosPlaneBs_reco_weighted',
-
-   "cosPiK1",
-   'lxy_ds_sig',
-   'dxy_mu_sig',
-   'pv_prob',
-
-   "pi_charge",
-   "mu_charge",
-
-   "k1_pt",
-   "k1_charge",
-   "k2_pt",
-   "k2_charge",
-
-   "dsMu_m",
-   "phiPi_m",
-   "dsMu_pt",
-   "dsMu_eta",
-   "dsMu_phi",
-   "lxy_ds",
-   
-   "phiPi_pt",
-   "phiPi_eta",
-   "phiPi_phi",
-   "phiPi_m",
-
-   "pv_x",
-   "sv_x",
-
-   "pv_y",
-   "sv_y",
-
-   "pv_z",
-   "sv_z",
-
-   "mu_id_medium",
-   "run",
-   "event"
-   ]
-
-   extra_vars = [e for e in extra_vars if e not in features]
    print(extra_vars)
+   print("Branches before clipping:", len(extra_vars))
+   # clip further (these trees we only need for the final fit
+   # remove the reco weighted columns (for now) 
+   extra_vars = [e for e in extra_vars if "_weighted"   not in e ]
+   # remove all the refitted quantities 
+   extra_vars = [e for e in extra_vars if "fitted"   not in e ]
+   # remove all the prescale info
+   extra_vars = [e for e in extra_vars if "prescale" not in e ]
+   # remove the track matching info
+   extra_vars = [e for e in extra_vars if "matched"  not in e ]
+   # remove all gen variables, except the signal info
+   extra_vars = [e for e in extra_vars if "gen_"      not in e ]
+   if channel != "data": 
+     extra_vars.append("gen_sig")
+     extra_vars.append("gen_match_success")
+   # remove all the PV info, except the custom one
+   extra_vars = [e for e in extra_vars if "pv_general" not in e and "pv_dz" not in e]
+   # remove all the isolation info, except the custom w.r.t PV
+   extra_vars = [e for e in extra_vars if "iso_03_sv" not in e]
+   extra_vars = [e for e in extra_vars if "iso_03_tv" not in e]
+   extra_vars = [e for e in extra_vars if "iso_04_sv" not in e]
+   extra_vars = [e for e in extra_vars if "iso_04_tv" not in e]
+   # remove all the photon doubled variables 
+   extra_vars = [e for e in extra_vars if "photon" not in e]
+   extra_vars.append("photon_pt")
+   extra_vars.append("photon_eta")
+   #extra_vars.append("dsPhoton_m") #this is not removed as it has "P"
+   extra_vars.append("bs_mass_corr_photon")
+   extra_vars.append("ds_perp_photon")
+   extra_vars.append("ds_mu_perp_photon")
+   #remove all the btv isolation branches
+   extra_vars = [e for e in extra_vars if "btv" not in e]
+   #remove signed impact 
+   extra_vars = [e for e in extra_vars if "signed_impact" not in e]
+   #remove cosPlanesBs (what is this even!?)
+   extra_vars = [e for e in extra_vars if "cosPlaneBs" not in e]
+   #remove dxy 
+   extra_vars = [e for e in extra_vars if "dxy" not in e]
 
-   #if not constrained: 
-   #  print("appending mass...")
-   #extra_vars.append("phiPi_m")
+   print("Branches after clipping:", len(extra_vars))
 
    #HAMMER
-   #if (channel == "sig" and constrained) :
+   #if ((channel == "sig") and constrained) :
 
-   #  print("hello sir") 
+   #  print("Adding hammer variables") 
    #  extra_vars.append("central_w")
    #  for i in range(1,11):
    #    extra_vars.append(f"e{i}_up")
    #    extra_vars.append(f"e{i}_down")
        
 
-   var = {}
-   var["sig"]   = features + extra_vars
-   var["data"] = features + extra_vars
+   if prod == "24": 
+     cut = base_wout_tv_24
 
-   #files_sig = files_sig[0:1]
-   #get consants for sb method
-   #with open('massfit.pickle', 'rb') as handle:
-   #  massfit = pickle.load(handle)
+   else: 
+     cut = base_wout_tv_25 + " && (mu7_ip4) && (mu_is_global) && (ds_vtx_cosine_xy_pv > 0.8)"
 
    #selection for mc, exlude hb from the inclusive sample and include it explicitly with the hb only sample
-   selections = {"sig":base_wout_tv, "data":base_wout_tv, "bs":base_wout_tv ,"b0":base_wout_tv , "bplus": base_wout_tv , "hb": base_wout_tv}
-
+   selections = {"sig":cut, "data":cut, "bs":cut ,"b0":cut , "bplus": cut , "hb": cut}
 
    print(f"========> Evaluating on {channel} ...")
 
