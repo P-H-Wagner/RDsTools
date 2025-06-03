@@ -33,7 +33,8 @@ bplus_cons_25  = ["17_03_2025_08_36_31"]
 data_cons_25   = ["20250227_155416", "20250227_161007", "20250227_161505", "20250227_161842", "20250227_161914"]
 
 bdt_data_24 = "25_04_2025_16_43_51" # with skimmed samples for all parts
-bdt_data_25 = "25_04_2025_10_29_02" # with skimmed samples for all parts
+#bdt_data_25 = "25_04_2025_10_29_02" # with skimmed samples for all parts
+bdt_data_25 = "22_05_2025_18_01_26" # with skimmed samples for all parts
 
 # aftter NN samples
 code = "05Sep2024_15h09m02s"
@@ -67,13 +68,29 @@ code = "26Sep2024_07h46m21s_cons" #sb and sf #for inaugural --> what we usually 
 #code = "23Aug2024_19h41m42s" #6 classes from optuna
 code = "23Apr2025_18h57m36s_cons" #new NN with pimu wrong only + weights 
 code = "25Apr2025_17h05m56s_cons" #new NN with pimu wrong only + weights hammer
-code = "29Apr2025_22h58m14s_cons" #new NN with pimu wrong + weights + new hammer
-sig_cons_pastNN     = "sig_"    +code 
-hb_cons_pastNN      = "hb_"     +code
-bs_cons_pastNN      = "bs_"     +code
-b0_cons_pastNN      = "b0_"     +code
-bplus_cons_pastNN   = "bplus_"  +code
-data_cons_pastNN    = "data_"   +code
+code_24 = "29Apr2025_22h58m14s_cons" #new NN with pimu wrong + weights + new hammer + old data 24
+#code_25 = "20May2025_11h13m16s_cons" # 25 prod :)
+#code_25 = "22May2025_09h31m46s_cons" #25 prod with all features but only 50 epochs
+code_25 = "23May2025_01h04m20s_cons" # with new isolation cut
+#code_25 = "23May2025_14h33m00s_cons" #no hammer
+
+code_25 = "28May2025_16h33m29s"
+
+sig_cons_pastNN_24     = "sig_"    +code_24 
+hb_cons_pastNN_24      = "hb_"     +code_24
+bs_cons_pastNN_24      = "bs_"     +code_24
+b0_cons_pastNN_24      = "b0_"     +code_24
+bplus_cons_pastNN_24   = "bplus_"  +code_24
+data_cons_pastNN_24    = "data_"   +code_24
+
+
+sig_cons_pastNN_25     = "sig_"    +code_25
+hb_cons_pastNN_25      = "hb_"     +code_25
+bs_cons_pastNN_25      = "bs_"     +code_25
+b0_cons_pastNN_25      = "b0_"     +code_25
+bplus_cons_pastNN_25   = "bplus_"  +code_25
+data_cons_pastNN_25    = "data_"   +code_25
+
 
 #after hammer samples
 #2024 prdouction
@@ -242,7 +259,7 @@ f'(mu_pt > 8)',
 '(pi_pt > 1)',
 '(lxy_ds < 1)',
 '(mu_id_medium == 1)',
-'(rel_iso_03_pv < 0.1)',
+'(rel_iso_03_pv < 0.3)',
 '(fv_prob > 0.1)'
 ])
 
