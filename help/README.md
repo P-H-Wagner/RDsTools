@@ -7,7 +7,7 @@ Todo
 ## Step 2: nano -> flat ntuples
 Todo
 ## Step 3: Skimming of flat ntuples
-The used flat ntuples are indicated in the helper.py file as ```<channel>_cons_25````and located at ```T3_PSI_CH```, under ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano```.
+The used flat ntuples are indicated in the helper.py file as `<channel>_cons_25` and located at ```T3_PSI_CH```, under ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano```.
 We skim these files using the skimmer located at: ```/RDsTools/skim```, by running:
 
 ```
@@ -15,7 +15,7 @@ conda activate tf #or any other python3 env with matching packages
 create_skimmer.py <date_time> <channel> <selection> <cons> <prod>
 ```
 
-where ```<date_time>``` corresponds to the date and time of the variable ```<channel>_cons_25``` in helper.py, ```<channel>``` is the corresponding channel, the ```<selection>``` must be defined in the ````baselines``` dictionary in the ```helper.py```, ```<cons>``` specifies constrained or unconstrained prouction (True for the final analysis), ```<prod>``` the production year (25 for the final analysis). Example:
+where ```<date_time>``` corresponds to the date and time of the variable ```<channel>_cons_25``` in helper.py, ```<channel>``` is the corresponding channel, the ```<selection>``` must be defined in the ```baselines``` dictionary in the ```helper.py```, ```<cons>``` specifies constrained or unconstrained prouction (True for the final analysis), ```<prod>``` the production year (25 for the final analysis). Example:
 
 ```
 create_skimmer.py 24_04_2025_14_03_22 data base_wout_tv_25 True 25
