@@ -340,16 +340,16 @@ void defineDecay(Hammer::Hammer& ham, Hammer::Process& pr, particle b, particle 
 
 };
 
-double getCentralWeight(Hammer::Hammer& ham, vector<string> pars, string decay, string hadronicDecay, string targetScheme){
+double getCentralWeight(Hammer::Hammer& ham, string decay, string hadronicDecay, string targetScheme){
 
   //////cout << "target scheme now is " << targetScheme << endl;
-  map<string, double> variations_central;
+  //map<string, double> variations_central;
 
   // Set all variations to zero to first calculate the central weights
-  for(size_t i = 1; i < pars.size() + 1; i++) { variations_central["delta_e" + to_string(i)] = 0.0;}
+  //for(size_t i = 1; i < pars.size() + 1; i++) { variations_central["delta_e" + to_string(i)] = 0.0;}
 
   // Set these variations
-  ham.setFFEigenvectors(hadronicDecay, targetScheme, variations_central);
+  //ham.setFFEigenvectors(hadronicDecay, targetScheme, variations_central);
 
   // process event
   ham.processEvent();
@@ -450,7 +450,7 @@ int main(int nargs, char* args[]){
   Hammer::Hammer hamDsTau;
   Hammer::Hammer hamDsStarTau;
  
-  // default settings
+  //
   string inputDsMu      = "CLN"; 
   string inputDsTau     = "ISGW2"; 
   string inputDsStarMu  = "CLN"; 
@@ -459,63 +459,17 @@ int main(int nargs, char* args[]){
   string targetDs       = "BCLVar"; 
   string targetDsStar   = "BGLVar"; 
 
-
-  // Change default settings depending on channel.
-  // Only modify single channel if channel is not signal, as we can 
-  // not define all FF models for both, signal and vector.
-
   if (string(args[2]) != "default"){
-
-    // for signal channel, change all models
-    if (string(args[1]) == "signal"){
-      inputDsMu       = args[2];
-      inputDsTau      = args[2];
-      inputDsStarMu   = args[2];
-      inputDsStarTau  = args[2];
-    }
-    // for dsmu channel
-    if ((string(args[1]) == "dsmu") || (string(args[1]) == "dsmu_isgw2")){
-      inputDsMu       = args[2];
-    }
-    // for dsstarmu channel
-    if (string(args[1]) == "dsstarmu" ){
-      inputDsStarMu   = args[2];
-    }
-    // for dstau channel
-    if (string(args[1]) == "dstau"    ){
-      inputDsTau      = args[2];
-    }
-    // for dsstartau channel
-    if (string(args[1]) == "dsstartau"){
-      inputDsStarTau  = args[2];
-    }
+    inputDsMu       = args[2];
+    inputDsTau      = args[2];
+    inputDsStarMu   = args[2];
+    inputDsStarTau  = args[2];
 
   }
 
   if (string(args[3]) != "default"){
-
-    // for signal channel, change all models
-    if (string(args[1]) == "signal"){
-      targetDs        = args[3];
-      targetDsStar    = args[3];
-    }
-    // for dsmu channel
-    if ((string(args[1]) == "dsmu") || (string(args[1]) == "dsmu_isgw2")){
-      targetDs        = args[3];
-    }
-    // for dsstarmu channel
-    if (string(args[1]) == "dsstarmu" ){
-      targetDsStar    = args[3];
-    }
-    // for dstau channel
-    if (string(args[1]) == "dstau"    ){
-      targetDs        = args[3];
-    }
-    // for dsstartau channel
-    if (string(args[1]) == "dsstartau"){
-      targetDsStar    = args[3];
-    }
-
+    targetDs        = args[3];
+    targetDsStar    = args[3];
 
   }
 
@@ -527,14 +481,14 @@ int main(int nargs, char* args[]){
   prepareHammer(hamDsStarTau,     "BsDs*TauNu",     "BsDs*",  inputDsStarTau,  targetDsStar);
   
   //get parameter and variations
-  vector<string> parsDs        = getNames("BsDs", targetDs);
-  vector<string> parsDsStar    = getNames("BsDs*", targetDsStar);
-  
-  string pathDs                = getVariations("BsDs", targetDs); 
-  string pathDsStar            = getVariations("BsDs*", targetDsStar); 
-  
-  YAML::Node varsDs            = YAML::LoadFile(pathDs);
-  YAML::Node varsDsStar        = YAML::LoadFile(pathDsStar);
+  //vector<string> parsDs        = getNames("BsDs", targetDs);
+  //vector<string> parsDsStar    = getNames("BsDs*", targetDsStar);
+  //
+  //string pathDs                = getVariations("BsDs", targetDs); 
+  //string pathDsStar            = getVariations("BsDs*", targetDsStar); 
+  //
+  //YAML::Node varsDs            = YAML::LoadFile(pathDs);
+  //YAML::Node varsDsStar        = YAML::LoadFile(pathDsStar);
   
   //load root File for signal given in command line (dsmu, dstau, dsstar mu, dsstar tau)
   TChain* tree = new TChain("tree");
@@ -547,7 +501,7 @@ int main(int nargs, char* args[]){
   //define a place holder for the central_weights
   map<int, double> central_weights;
   //and one for the variational weights (nested map, since we have several parameters)
-  map<int, map<string,double>> var_weights;
+  //map<int, map<string,double>> var_weights;
 
   //get pt, eta, phi of involved particles
   double bs_pt          = 0;
@@ -633,51 +587,51 @@ int main(int nargs, char* args[]){
 
   //create branches
   float central_w;
-  float e1_up;
-  float e1_down;
-  float e2_up;
-  float e2_down;
-  float e3_up;
-  float e3_down;
-  float e4_up;
-  float e4_down;
-  float e5_up;
-  float e5_down;
-  float e6_up;
-  float e6_down;
-  float e7_up;
-  float e7_down;
-  float e8_up;
-  float e8_down;
-  float e9_up;
-  float e9_down;
-  float e10_up;
-  float e10_down;
+  //float e1_up;
+  //float e1_down;
+  //float e2_up;
+  //float e2_down;
+  //float e3_up;
+  //float e3_down;
+  //float e4_up;
+  //float e4_down;
+  //float e5_up;
+  //float e5_down;
+  //float e6_up;
+  //float e6_down;
+  //float e7_up;
+  //float e7_down;
+  //float e8_up;
+  //float e8_down;
+  //float e9_up;
+  //float e9_down;
+  //float e10_up;
+  //float e10_down;
 
   outputTree->Branch("central_w", &central_w, "central_w/F");
-  outputTree->Branch("e1_up",     &e1_up,     "e1_up/F");
-  outputTree->Branch("e1_down",   &e1_down,   "e1_down/F");
-  outputTree->Branch("e2_up",     &e2_up,     "e2_up/F");
-  outputTree->Branch("e2_down",   &e2_down,   "e2_down/F");
-  outputTree->Branch("e3_up",     &e3_up,     "e3_up/F");
-  outputTree->Branch("e3_down",   &e3_down,   "e3_down/F");
-  outputTree->Branch("e4_up",     &e4_up,     "e4_up/F");
-  outputTree->Branch("e4_down",   &e4_down,   "e4_down/F");
-  outputTree->Branch("e5_up",     &e5_up,     "e5_up/F");
-  outputTree->Branch("e5_down",   &e5_down,   "e5_down/F");
-  outputTree->Branch("e6_up",     &e6_up,     "e6_up/F");
-  outputTree->Branch("e6_down",   &e6_down,   "e6_down/F");
-  outputTree->Branch("e7_up",     &e7_up,     "e7_up/F");
-  outputTree->Branch("e7_down",   &e7_down,   "e7_down/F");
-  outputTree->Branch("e8_up",     &e8_up,     "e8_up/F");
-  outputTree->Branch("e8_down",   &e8_down,   "e8_down/F");
-  outputTree->Branch("e9_up",     &e9_up,     "e9_up/F");
-  outputTree->Branch("e9_down",   &e9_down,   "e9_down/F");
-  outputTree->Branch("e10_up",    &e10_up,   "e10_up/F");
-  outputTree->Branch("e10_down",  &e10_down, "e10_down/F");
+  //outputTree->Branch("e1_up",     &e1_up,     "e1_up/F");
+  //outputTree->Branch("e1_down",   &e1_down,   "e1_down/F");
+  //outputTree->Branch("e2_up",     &e2_up,     "e2_up/F");
+  //outputTree->Branch("e2_down",   &e2_down,   "e2_down/F");
+  //outputTree->Branch("e3_up",     &e3_up,     "e3_up/F");
+  //outputTree->Branch("e3_down",   &e3_down,   "e3_down/F");
+  //outputTree->Branch("e4_up",     &e4_up,     "e4_up/F");
+  //outputTree->Branch("e4_down",   &e4_down,   "e4_down/F");
+  //outputTree->Branch("e5_up",     &e5_up,     "e5_up/F");
+  //outputTree->Branch("e5_down",   &e5_down,   "e5_down/F");
+  //outputTree->Branch("e6_up",     &e6_up,     "e6_up/F");
+  //outputTree->Branch("e6_down",   &e6_down,   "e6_down/F");
+  //outputTree->Branch("e7_up",     &e7_up,     "e7_up/F");
+  //outputTree->Branch("e7_down",   &e7_down,   "e7_down/F");
+  //outputTree->Branch("e8_up",     &e8_up,     "e8_up/F");
+  //outputTree->Branch("e8_down",   &e8_down,   "e8_down/F");
+  //outputTree->Branch("e9_up",     &e9_up,     "e9_up/F");
+  //outputTree->Branch("e9_down",   &e9_down,   "e9_down/F");
+  //outputTree->Branch("e10_up",    &e10_up,   "e10_up/F");
+  //outputTree->Branch("e10_down",  &e10_down, "e10_down/F");
 
   // get max nr of parameters
-  int n_vars = max({int(parsDs.size()),int(parsDsStar.size()) });
+  //int n_vars = max({int(parsDs.size()),int(parsDsStar.size()) });
  
   for(size_t i = 0; i < maxevents; ++i){
   
@@ -725,11 +679,11 @@ int main(int nargs, char* args[]){
     // fill central weight with -1;
     central_w = -1.0;
     // fill variation weights with -1
-    for (size_t i = 0; i < n_vars; i++) {
-      for(auto dir:directions){
-        weights["e"+to_string(i)+"_"+dir] = -1.0;
-      }
-    }
+    //for (size_t i = 0; i < n_vars; i++) {
+    //  for(auto dir:directions){
+    //    weights["e"+to_string(i)+"_"+dir] = -1.0;
+    //  }
+    //}
 
     if (sig == 0){
       //////////////////////////
@@ -743,14 +697,14 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsMu, process, bs, lep, hc);
   
       // get central weight
-      central_weight = getCentralWeight(hamDsMu, parsDs, "BsDsMuNu", "BstoDs", targetDs);
+      central_weight = getCentralWeight(hamDsMu, "BsDsMuNu", "BstoDs", targetDs);
 
-      if (targetDs.find("Var") != string::npos){
-       
-        //get variation weights
-        getVariationWeights(hamDsMu, parsDs, varsDs, "BsDsMuNu", "BstoDs", targetDs, weights);
+      //if (targetDs.find("Var") != string::npos){
+      // 
+      //  //get variation weights
+      //  getVariationWeights(hamDsMu, parsDs, varsDs, "BsDsMuNu", "BstoDs", targetDs, weights);
 
-      } 
+      //} 
  
       //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
       //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
@@ -768,14 +722,14 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsTau, process, bs, lep, hc);
   
       // get central weight
-      central_weight = getCentralWeight(hamDsTau, parsDs, "BsDsTauNu", "BstoDs", targetDs);
+      central_weight = getCentralWeight(hamDsTau, "BsDsTauNu", "BstoDs", targetDs);
 
-      if (targetDs.find("Var") != string::npos){
-       
-        //get variation weights
-        getVariationWeights(hamDsTau, parsDs, varsDs, "BsDsTauNu", "BstoDs", targetDs, weights);
+      //if (targetDs.find("Var") != string::npos){
+      // 
+      //  //get variation weights
+      //  getVariationWeights(hamDsTau, parsDs, varsDs, "BsDsTauNu", "BstoDs", targetDs, weights);
 
-      } 
+      //} 
  
       //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
       //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
@@ -792,14 +746,14 @@ int main(int nargs, char* args[]){
       // define decay chain, particle p4 and start process 
       defineDecay(hamDsStarMu, process, bs, lep, hc);
   
-      if (targetDsStar.find("Var") != string::npos){
-       
-        //get variation weights
-        getVariationWeights(hamDsStarMu, parsDsStar, varsDsStar, "BsDs*MuNu", "BstoDs*", targetDsStar, weights);
+      //if (targetDsStar.find("Var") != string::npos){
+      // 
+      //  //get variation weights
+      //  getVariationWeights(hamDsStarMu, parsDsStar, varsDsStar, "BsDs*MuNu", "BstoDs*", targetDsStar, weights);
 
-      } 
+      //} 
       // get central weight
-      central_weight = getCentralWeight(hamDsStarMu, parsDsStar, "BsDs*MuNu", "BstoDs*", targetDsStar);
+      central_weight = getCentralWeight(hamDsStarMu, "BsDs*MuNu", "BstoDs*", targetDsStar);
 
       //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
       //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
@@ -818,14 +772,14 @@ int main(int nargs, char* args[]){
       defineDecay(hamDsStarTau, process, bs, lep, hc);
   
       // get central weight
-      central_weight = getCentralWeight(hamDsStarTau, parsDsStar, "BsDs*TauNu", "BstoDs*", targetDsStar);
+      central_weight = getCentralWeight(hamDsStarTau, "BsDs*TauNu", "BstoDs*", targetDsStar);
 
-      if (targetDsStar.find("Var") != string::npos){
-       
-        //get variation weights
-        getVariationWeights(hamDsStarTau, parsDsStar, varsDsStar, "BsDs*TauNu", "BstoDs*", targetDsStar, weights);
+      //if (targetDsStar.find("Var") != string::npos){
+      // 
+      //  //get variation weights
+      //  getVariationWeights(hamDsStarTau, parsDsStar, varsDsStar, "BsDs*TauNu", "BstoDs*", targetDsStar, weights);
 
-      } 
+      //} 
  
       //cout << "At index: " << i << " ====> saving " << central_weight << " for event nr " << event_int << endl; 
       //cout << "At index: " << i << " ====> saving " << weights["e2_up"] << " variation for event nr " << event_int << endl; 
@@ -833,26 +787,26 @@ int main(int nargs, char* args[]){
 
     // if the model has less parameters than e1 - e10 (as for example the bcl), we just fill a negative weight (-1.0)
     central_w = central_weight;
-    e1_up     = weights["e1_up"]  ; 
-    e1_down   = weights["e1_down"]; 
-    e2_up     = weights["e2_up"]  ; 
-    e2_down   = weights["e2_down"]; 
-    e3_up     = weights["e3_up"]  ; 
-    e3_down   = weights["e3_down"]; 
-    e4_up     = weights["e4_up"]  ; 
-    e4_down   = weights["e4_down"]; 
-    e5_up     = weights["e5_up"]  ; 
-    e5_down   = weights["e5_down"]; 
-    e6_up     = weights["e6_up"]  ; 
-    e6_down   = weights["e6_down"]; 
-    e7_up     = weights["e7_up"]  ; 
-    e7_down   = weights["e7_down"]; 
-    e8_up     = weights["e8_up"]  ; 
-    e8_down   = weights["e8_down"]; 
-    e9_up     = weights["e9_up"]  ; 
-    e9_down   = weights["e9_down"]; 
-    e10_up    = weights["e10_up"]  ; 
-    e10_down  = weights["e10_down"]; 
+    //e1_up     = weights["e1_up"]  ; 
+    //e1_down   = weights["e1_down"]; 
+    //e2_up     = weights["e2_up"]  ; 
+    //e2_down   = weights["e2_down"]; 
+    //e3_up     = weights["e3_up"]  ; 
+    //e3_down   = weights["e3_down"]; 
+    //e4_up     = weights["e4_up"]  ; 
+    //e4_down   = weights["e4_down"]; 
+    //e5_up     = weights["e5_up"]  ; 
+    //e5_down   = weights["e5_down"]; 
+    //e6_up     = weights["e6_up"]  ; 
+    //e6_down   = weights["e6_down"]; 
+    //e7_up     = weights["e7_up"]  ; 
+    //e7_down   = weights["e7_down"]; 
+    //e8_up     = weights["e8_up"]  ; 
+    //e8_down   = weights["e8_down"]; 
+    //e9_up     = weights["e9_up"]  ; 
+    //e9_down   = weights["e9_down"]; 
+    //e10_up    = weights["e10_up"]  ; 
+    //e10_down  = weights["e10_down"]; 
 
 
     outputTree->Fill(); 

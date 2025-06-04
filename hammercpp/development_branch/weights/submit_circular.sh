@@ -14,8 +14,6 @@ echo $target
 echo $nmax
 echo $prod
 
-#./submit_hammer.sh signal default default 100000 25
-
 datetime=$(date +"%d_%m_%Y_%H_%M_%S")
 
 if [ -z "$prod" ]; then
@@ -46,7 +44,6 @@ if [ "$prod" = "25" ]; then
   echo "signal is: ${sig_cons[0]} and hb is: ${hb_cons[0]}"
 fi
 
-
 echo "Getting unfiltered gen-level MC files"
 dsmu_gen=$(echo "$config_json" | jq -r '.dsmu_gen')
 dsmu_isgw2_gen=$(echo "$config_json" | jq -r '.dsmu_isgw2_gen')
@@ -59,7 +56,6 @@ echo $dsmu_isgw2_gen
 echo $dsstarmu_gen
 echo $dstau_gen
 echo $dsstartau_gen
-
 
 if [ "$channel" = "signal" ]; then
     path="/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/${sig_cons[0]}" # pre NN
@@ -126,9 +122,9 @@ datetime=$datetime
 
 eval "\$(conda shell.bash hook)"
 
-cd /work/pahwagne/RDsTools/hammercpp/development_branch/weights
+cd /work/pahwagne/RDsTools/hammercpp/development_branch/weights/
 mkdir -p /scratch/pahwagne/hammer/\$datetime
-./hammer_temp \$channel \$input \$target \$file \$counter \$datetime
+./hammer_circular \$channel \$input \$target \$file \$counter \$datetime
 xrdcp /scratch/pahwagne/hammer/\$datetime/\${channel}_\${target}_\${counter}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/\${prod}/\${channel}_\${target}_\${datetime}/
 rm /scratch/pahwagne/hammer/\$datetime/\${channel}_\${target}_\${counter}.root
 

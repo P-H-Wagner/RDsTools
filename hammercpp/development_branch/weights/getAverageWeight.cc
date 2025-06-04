@@ -31,7 +31,21 @@ TLegend getLegend(){
 }
 int main(int nargs, char* args[]){
 
+  cout << args[0] << endl; 
+  cout << args[1] << endl; //dsmu
+  cout << args[2] << endl; //dstau
+  cout << args[3] << endl; //dsstarmu
+  cout << args[4] << endl; //dsstartau
+  cout << args[5] << endl; //datetime
+
   gStyle->SetOptStat(0);
+
+  //load hammer trees
+  string dsmu_fin       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[1]) + "/*";
+  string dstau_fin      = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[2]) + "/*";
+  string dsstarmu_fin   = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[3]) + "/*";
+  string dsstartau_fin  = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[4]) + "/*";
+
 
   ROOT::RDataFrame* df_dsMu_tot     = nullptr;
   ROOT::RDataFrame* df_dsTau_tot    = nullptr;
@@ -41,16 +55,10 @@ int main(int nargs, char* args[]){
   // load gen production file
   try{
 
-    // cohen paper
-    //df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_"      +string(args[1]) + "_13_12_2024_14_17_38").c_str());  
-    //df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_"     +string(args[1]) + "_13_12_2024_14_24_08").c_str());  
-    //df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_"  +string(args[1]) + "_13_12_2024_14_20_50").c_str());  
-    //df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_" +string(args[1]) + "_13_12_2024_14_24_19").c_str());  
-
-    df_dsMu_tot      = new ROOT::RDataFrame("tree",  getInputFile("dsmu_default_10_02_2025_11_22_07")    .c_str()); // dsmu_default_27_01_2025_16_10_39 
-    df_dsTau_tot     = new ROOT::RDataFrame("tree",  getInputFile("dstau_default_10_02_2025_11_46_39")   .c_str()); // dstau_default_27_01_2025_16_10_47
-    df_dsStarMu_tot  = new ROOT::RDataFrame("tree",  getInputFile("dsstarmu_default_10_02_2025_12_25_12") .c_str()); // dsstarmu_BGLVar_31_01_2025_06_34_38
-    df_dsStarTau_tot = new ROOT::RDataFrame("tree",  getInputFile("dsstartau_default_10_02_2025_11_51_25").c_str()); // dsstartau_BGLVar_31_01_2025_06_34_50
+    df_dsMu_tot      = new ROOT::RDataFrame("tree", dsmu_fin      ); 
+    df_dsTau_tot     = new ROOT::RDataFrame("tree", dstau_fin     ); 
+    df_dsStarMu_tot  = new ROOT::RDataFrame("tree", dsstarmu_fin  ); 
+    df_dsStarTau_tot = new ROOT::RDataFrame("tree", dsstartau_fin ); 
  
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
@@ -104,7 +112,8 @@ int main(int nargs, char* args[]){
   }
  
   //save it
-  ofstream fout("average_weights.yaml");
+  string saveYaml = string(args[5]) + "/average_weights.yaml";
+  ofstream fout(saveYaml.c_str());
   fout << average_weights;
 
 }

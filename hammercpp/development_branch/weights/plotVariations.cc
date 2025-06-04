@@ -35,7 +35,7 @@ TLegend getLegend(){
 }
 
 
-void plotWeightEffect(auto h_wout, auto h, string key){
+void plotWeightEffect(auto h_wout, auto h, string xLabel, string key){
 
   //get yield effect
   double n = h->Integral();
@@ -64,7 +64,7 @@ void plotWeightEffect(auto h_wout, auto h, string key){
  
   h_wout->SetMaximum(h_wout->GetMaximum()*1.4); 
   h_wout->GetYaxis()->SetTitle("events");
-  h_wout->GetXaxis()->SetTitle("Q^{2}(GeV^{2})");
+  h_wout->GetXaxis()->SetTitle(xLabel.c_str());
 
   h_wout->Draw("HIST");
   h->Draw("HIST SAME");
@@ -77,6 +77,7 @@ void plotWeightEffect(auto h_wout, auto h, string key){
   yield_change->Draw("SAME");
 
   const char* toSave = key.c_str();
+  c->SetLeftMargin(0.15); 
   c->Update();
   c->SaveAs(toSave);
 
@@ -86,12 +87,30 @@ void plotWeightEffect(auto h_wout, auto h, string key){
 
 int main(int nargs, char* args[]){
 
+  cout << args[0] << endl;
+  cout << args[1] << endl; //variable to plot
+  cout << args[2] << endl; //hammered signal file
+  cout << args[3] << endl; //average weights yaml file
+  cout << args[4] << endl; //selection string
+  cout << args[5] << endl; //datetime
+
   gStyle->SetOptStat(0);
 
   //variable for which we want to compute the average weight
   string var(args[1]); //f.e. q2_coll
+  //input signal files (pre NN)
+  string fin_str = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[2]) + "/*";
+  //average weights yaml
+  string yaml;
+  yaml = string(args[3]) + "/average_weights.yaml";
+  //selection
+  string selection = string(args[4]);
+  cout << "selection is: " << selection << endl;
+  //datetime
+  string dt = string(args[5]);
 
-  map<string, string> labels = {{"q2_coll","Q^{2}(GeV^{2})"}, {"class", "Class prediction"}, {"cosMuW_reco_weighted", "cosMuW"}};
+  //plotting labels
+  map<string, string> labels = {{"q2_coll","q^{2}_{coll}(GeV^{2})"}, {"class", "Class prediction"}};
   string xAxisLabel;
 
   if (labels.find(var) != labels.end()) {
@@ -104,8 +123,11 @@ int main(int nargs, char* args[]){
 
   //load average weights and settings 
 
-  YAML::Node average_weights = YAML::LoadFile("average_weightsharrison.yaml"); //from getAverageWeights.cc
-  YAML::Node settings        = YAML::LoadFile("average_models.yaml"); //from histModels.py
+  //YAML::Node average_weights = YAML::LoadFile("average_weightsharrison.yaml"); //from getAverageWeights.cc
+  //YAML::Node settings        = YAML::LoadFile("average_models.yaml"); //from histModels.py
+  YAML::Node average_weights = YAML::LoadFile(yaml); //from getAverageWeights.cc
+  //plotting conventions 
+  YAML::Node settings        = YAML::LoadFile("plottingModels.yaml"); //from histModels.py, executed when running run_plotVariations.sh
 
   int bins   = settings[var]["bins"].as<int>();
   double min = settings[var]["xmin"].as<double>();
@@ -114,16 +136,14 @@ int main(int nargs, char* args[]){
   ROOT::RDataFrame* df = nullptr;
 
   try{
-    df = new ROOT::RDataFrame("tree",  getInputFile());  
+    df = new ROOT::RDataFrame("tree",  fin_str );  
   }
   catch(const exception& e){ cout << "no file found" << endl; exit(1); }
 
-  string base_wout_tv = " (mu_pt > 8) && (k1_pt > 1) && (k2_pt > 1) && (pi_pt > 1) && (lxy_ds < 1) && (mu_id_medium == 1) && (mu_rel_iso_03 < 0.3) && (fv_prob > 0.1) && (score5 <= 0.3) && ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0)) && (dsMu_m < 5.366) && (1.94134 < phiPi_m) && (phiPi_m < 1.99534)";
-
-  string filter0  = "(gen_sig == 0    ) && " + base_wout_tv; 
-  string filter1  = "(gen_sig == 1    ) && " + base_wout_tv; 
-  string filter10 = "(gen_sig == 10   ) && " + base_wout_tv; 
-  string filter11 = "(gen_sig == 11   ) && " + base_wout_tv; 
+  string filter0  = "(gen_sig == 0    ) && " + selection; 
+  string filter1  = "(gen_sig == 1    ) && " + selection; 
+  string filter10 = "(gen_sig == 10   ) && " + selection; 
+  string filter11 = "(gen_sig == 11   ) && " + selection; 
 
   auto df_dsMu       = df->Filter(filter0  );
   auto df_dsTau      = df->Filter(filter1  );
@@ -148,10 +168,10 @@ int main(int nargs, char* args[]){
 
 
   //First, see the effect of the central weight
-  plotWeightEffect(h_dsMu_wout,      h_dsMu ,      "plots/dsmu_weight_effect.pdf");
-  plotWeightEffect(h_dsTau_wout,     h_dsTau ,     "plots/dstau_weight_effect.pdf");
-  plotWeightEffect(h_dsStarMu_wout,  h_dsStarMu ,  "plots/dsstarmu_weight_effect.pdf");
-  plotWeightEffect(h_dsStarTau_wout, h_dsStarTau , "plots/dsstartau_weight_effect.pdf");
+  plotWeightEffect(h_dsMu_wout,      h_dsMu ,      xAxisLabel, "plots/" + dt + "/dsmu_weight_effect.pdf");
+  plotWeightEffect(h_dsTau_wout,     h_dsTau ,     xAxisLabel, "plots/" + dt + "/dstau_weight_effect.pdf");
+  plotWeightEffect(h_dsStarMu_wout,  h_dsStarMu ,  xAxisLabel, "plots/" + dt + "/dsstarmu_weight_effect.pdf");
+  plotWeightEffect(h_dsStarTau_wout, h_dsStarTau , xAxisLabel, "plots/" + dt + "/dsstartau_weight_effect.pdf");
 
 
   h_dsMu->SetLineColor(kBlack); 
@@ -163,10 +183,10 @@ int main(int nargs, char* args[]){
 
   for (size_t i = 1; i < 11; i++){
 
-    string key_dsMu      = "plots/e"+to_string(i)+"_dsmu";
-    string key_dsTau     = "plots/e"+to_string(i)+"_dstau";
-    string key_dsStarMu  = "plots/e"+to_string(i)+"_dsstarmu";
-    string key_dsStarTau = "plots/e"+to_string(i)+"_dsstartau";
+    string key_dsMu      = "plots/" + dt + "/e" + to_string(i) + "_dsmu";
+    string key_dsTau     = "plots/" + dt + "/e" + to_string(i) + "_dstau";
+    string key_dsStarMu  = "plots/" + dt + "/e" + to_string(i) + "_dsstarmu";
+    string key_dsStarTau = "plots/" + dt + "/e" + to_string(i) + "_dsstartau";
 
     string toSave_dsMu      = key_dsMu       + ".pdf";
     string toSave_dsTau     = key_dsTau      + ".pdf";
@@ -217,6 +237,7 @@ int main(int nargs, char* args[]){
     TCanvas *canvMu = new TCanvas("canvas", "Canvas Title", 800, 600);
 
     TLegend legMu = getLegend();
+    legMu.SetTextSize(0.03);
     legMu.AddEntry(h_up_dsMu.GetPtr(), "+ 1#sigma", "L");
     legMu.AddEntry(h_down_dsMu.GetPtr(), "- 1#sigma", "L");
     legMu.AddEntry(h_dsMu.GetPtr(), "central value", "L");
@@ -235,7 +256,7 @@ int main(int nargs, char* args[]){
     legMu.Draw("SAME");
     textMu->Draw("SAME");
 
-
+    canvMu->SetLeftMargin(0.15); 
     canvMu->Update();
     canvMu->SaveAs(toSave_dsMu.c_str());
 
@@ -244,6 +265,7 @@ int main(int nargs, char* args[]){
     TCanvas *canvTau = new TCanvas("canvas", "Canvas Title", 800, 600);
 
     TLegend legTau = getLegend();
+    legTau.SetTextSize(0.03);
     legTau.AddEntry(h_up_dsTau.GetPtr(), "+ 1#sigma", "L");
     legTau.AddEntry(h_down_dsTau.GetPtr(), "- 1#sigma", "L");
     legTau.AddEntry(h_dsTau.GetPtr(), "central value", "L");
@@ -263,6 +285,7 @@ int main(int nargs, char* args[]){
     legTau.Draw("SAME");
     textTau->Draw("SAME");
 
+    canvTau->SetLeftMargin(0.15); 
     canvTau->Update();
     canvTau->SaveAs(toSave_dsTau.c_str());
 
@@ -271,6 +294,7 @@ int main(int nargs, char* args[]){
     TCanvas *canvMuStar = new TCanvas("canvas", "Canvas Title", 800, 600);
 
     TLegend legMuStar = getLegend();
+    legMuStar.SetTextSize(0.03);
     legMuStar.AddEntry(h_up_dsStarMu.GetPtr(), "+ 1#sigma", "L");
     legMuStar.AddEntry(h_down_dsStarMu.GetPtr(), "- 1#sigma", "L");
     legMuStar.AddEntry(h_dsStarMu.GetPtr(), "central value", "L");
@@ -289,6 +313,7 @@ int main(int nargs, char* args[]){
     legMuStar.Draw("SAME");
     textMuStar->Draw("SAME");
 
+    canvMuStar->SetLeftMargin(0.15); 
     canvMuStar->Update();
     canvMuStar->SaveAs(toSave_dsStarMu.c_str());
 
@@ -297,6 +322,7 @@ int main(int nargs, char* args[]){
     TCanvas *canvTauStar = new TCanvas("canvas", "Canvas Title", 800, 600);
 
     TLegend legTauStar = getLegend();
+    legTauStar.SetTextSize(0.03);
     legTauStar.AddEntry(h_up_dsStarTau.GetPtr(), "+ 1#sigma ", "L");
     legTauStar.AddEntry(h_down_dsStarTau.GetPtr(), "- 1#sigma ", "L");
     legTauStar.AddEntry(h_dsStarTau.GetPtr(), "central value", "L");
@@ -315,6 +341,7 @@ int main(int nargs, char* args[]){
     legTauStar.Draw("SAME");
     textTauStar->Draw("SAME");
 
+    canvTauStar->SetLeftMargin(0.15); 
     canvTauStar->Update();
     canvTauStar->SaveAs(toSave_dsStarTau.c_str());
     }

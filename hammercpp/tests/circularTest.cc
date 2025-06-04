@@ -12,12 +12,12 @@ using namespace std;
 // define input files
 const char* getInputFile(string signal){
 
-  const char* fin;
 
-  if (signal == "dsmu") fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/gen/dsmu_ISGW2_20_05_2025_14_37_46/*"; // old: /dsmu_ISGW2_10_12_2024_20_00_43/*"; //produced with HQET2
-  else fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/gen/dsmu_isgw2_CLN_20_05_2025_14_32_36/*"; // old: dsmu_isgw2_CLN_10_12_2024_19_31_12/*"; //produced with ISGW2
+  string fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + signal + "/*"; 
+  cout << "using input file: " << fin << endl;
 
-  return fin;
+  const char* fin_cstr = fin.c_str(); 
+  return fin_cstr;
 
 }
 
@@ -27,13 +27,21 @@ TLegend getLegend(){
   return legend;
 
 }
-int main(){
+int main(int nargs, char* args[]){
+
+  cout << args[0] << endl;
+  cout << args[1] << endl; //dsmu
+  cout << args[2] << endl; //dsmu isgw2
+  cout << args[3] << endl; //datetime
 
   gStyle->SetOptStat(0);
 
   //load hammer trees
-  ROOT::RDataFrame df("tree",  getInputFile("dsmu") );  
-  ROOT::RDataFrame df_isgw2("tree",  getInputFile("dsmu_isgw2") );  
+  string dsmu_fin       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[1]) + "/*";
+  string dsmu_isgw2_fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" + string(args[2]) + "/*";
+
+  ROOT::RDataFrame df("tree",        dsmu_fin       ); //dsmu  
+  ROOT::RDataFrame df_isgw2("tree",  dsmu_isgw2_fin ); //dsmu_isgw2 
 
   //first fill dsmu
   auto h         = df.Filter("(gen_sig == 0)").Histo1D({"h", "", 20, 0, 12}, "gen_q2");
@@ -69,7 +77,7 @@ int main(){
   TCanvas *c1 = new TCanvas("c1", "My Canvas", 800, 600);
   
   h->SetMaximum(0.12); // Set y-axis maximum
-  h->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h->GetXaxis()->SetTitle("gen. q^{2} (GeV^{2})");
   h->GetYaxis()->SetTitle("a.u.");
 
   h->Draw("HIST ");
@@ -83,7 +91,8 @@ int main(){
   
 
   c1->Update();
-  c1->SaveAs("wout_weights.pdf");
+  string savec1 = string(args[3]) + "/wout_weights.pdf";
+  c1->SaveAs( savec1.c_str() );
 
   //////////////////////////////////
   // Draw hqet2 vs. weighted hqet2//
@@ -92,7 +101,7 @@ int main(){
   TCanvas *c2 = new TCanvas("c1", "My Canvas", 800, 600);
   
   h->SetMaximum(0.12); // Set y-axis maximum
-  h->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h->GetXaxis()->SetTitle("gen. q^{2} (GeV^{2})");
   h->GetYaxis()->SetTitle("a.u.");
 
   h->Draw("HIST ");
@@ -106,7 +115,8 @@ int main(){
   
 
   c2->Update();
-  c2->SaveAs("weighted_hqet2.pdf");
+  string savec2 = string(args[3]) + "/weighted_hqet2.pdf";
+  c2->SaveAs( savec2.c_str() );
 
   /////////////////////////////
   // Now weigh hqet2 -> isgw2//
@@ -115,7 +125,7 @@ int main(){
   TCanvas *c3 = new TCanvas("c3", "My Canvas", 800, 600);
   
   h_isgw2->SetMaximum(0.12); // Set y-axis maximum
-  h_isgw2->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h_isgw2->GetXaxis()->SetTitle("gen. q^{2} (GeV^{2})");
   h_isgw2->GetYaxis()->SetTitle("a.u.");
 
 
@@ -130,7 +140,8 @@ int main(){
   
 
   c3->Update();
-  c3->SaveAs("hqet2_to_isgw2.pdf");
+  string savec3 = string(args[3]) + "/hqet2_to_isgw2.pdf";
+  c3->SaveAs( savec3.c_str() );
 
   /////////////////////////////
   // Now weigh isgw2 -> hqet2//
@@ -139,7 +150,7 @@ int main(){
   TCanvas *c4 = new TCanvas("c4", "My Canvas", 800, 600);
   
   h->SetMaximum(0.12); // Set y-axis maximum
-  h->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h->GetXaxis()->SetTitle("gen. q^{2} (GeV^{2})");
   h->GetYaxis()->SetTitle("a.u.");
   h->Draw("HIST ");
   h_isgw2_w->Draw("HIST SAME");
@@ -152,7 +163,8 @@ int main(){
   
 
   c4->Update();
-  c4->SaveAs("isgw2_to_hqet2.pdf");
+  string savec4 = string(args[3]) + "/isgw2_to_hqet2.pdf";
+  c4->SaveAs( savec4.c_str() );
 
 
 
