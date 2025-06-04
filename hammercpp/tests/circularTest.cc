@@ -14,8 +14,8 @@ const char* getInputFile(string signal){
 
   const char* fin;
 
-  if (signal == "dsmu") fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/dsmu_ISGW2_10_12_2024_20_00_43/*"; //produced with HQET2
-  else fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/dsmu_isgw2_CLN_10_12_2024_19_31_12/*"; //produced with ISGW2
+  if (signal == "dsmu") fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/gen/dsmu_ISGW2_20_05_2025_14_37_46/*"; // old: /dsmu_ISGW2_10_12_2024_20_00_43/*"; //produced with HQET2
+  else fin = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/gen/dsmu_isgw2_CLN_20_05_2025_14_32_36/*"; // old: dsmu_isgw2_CLN_10_12_2024_19_31_12/*"; //produced with ISGW2
 
   return fin;
 
@@ -69,6 +69,9 @@ int main(){
   TCanvas *c1 = new TCanvas("c1", "My Canvas", 800, 600);
   
   h->SetMaximum(0.12); // Set y-axis maximum
+  h->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h->GetYaxis()->SetTitle("a.u.");
+
   h->Draw("HIST ");
   h_isgw2->Draw("HIST SAME");
 
@@ -89,6 +92,9 @@ int main(){
   TCanvas *c2 = new TCanvas("c1", "My Canvas", 800, 600);
   
   h->SetMaximum(0.12); // Set y-axis maximum
+  h->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h->GetYaxis()->SetTitle("a.u.");
+
   h->Draw("HIST ");
   h_w->Draw("HIST SAME");
 
@@ -109,6 +115,10 @@ int main(){
   TCanvas *c3 = new TCanvas("c3", "My Canvas", 800, 600);
   
   h_isgw2->SetMaximum(0.12); // Set y-axis maximum
+  h_isgw2->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h_isgw2->GetYaxis()->SetTitle("a.u.");
+
+
   h_isgw2->Draw("HIST ");
   h_w->Draw("HIST SAME");
 
@@ -129,6 +139,8 @@ int main(){
   TCanvas *c4 = new TCanvas("c4", "My Canvas", 800, 600);
   
   h->SetMaximum(0.12); // Set y-axis maximum
+  h->GetXaxis()->SetTitle("gen. Q^{2} (GeV^{2})");
+  h->GetYaxis()->SetTitle("a.u.");
   h->Draw("HIST ");
   h_isgw2_w->Draw("HIST SAME");
 
