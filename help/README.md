@@ -41,4 +41,71 @@ python create_submitter_bdt.py -d <date_time> -s <sidebands> -p <prod> -n <nfile
 
 ```
 
-where ```<sidebands>``` specifies if we use the bdt trained on 'left' or both ('double') sidebands ('double' for final analysis). The BDT weighted data will be stored at ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data`/<date_time>```, with <date_time> being the ```<bdt_data_25>```.
+where ```<sidebands>``` specifies if we use the bdt trained on 'left' or both ('double') sidebands ('double' for final analysis). The BDT weighted data will be stored at ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data`/<date_time>```, with <date_time> being the ```<bdt_data_25>``` or ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data`/leftSB/<date_time>``` if evaluating only on the leftSB trained BDT.
+
+
+## Step 5: Calculate Hammer weights for signals
+
+For the hammer procedure we need unfiltered gen-level samples for all signals, and an additional dsmu simulation with the ISGW2 model for the circualar test. Similary to the other samples, they are indicated in the `helper.py` file as ```<channel>\_gen``` and saved under `/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano`.
+
+Before calculating the hammer weights, we perform the circular test on the unfiltered gen-level dsmu signal samples. First, we calculate the weights using `hammer\_circular.cc` in `RDsTools/hammercpp/development\_branch\weights`:
+
+```
+conda activate hammercpp
+cmake .
+make
+./submit_circular.sh <channel> <input> <target> <nfiles> <prod>
+```
+So run:
+```
+./submit_circular.sh dsmu       CLN   ISGW2 10000 25
+./submit_circular.sh dsmu_isgw2 ISGW2 CLN   10000 25
+```
+The weighted samples are stored under ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/<prod>/``` and indicated in the `helper.py` file under: ```dsmu_isgw2_to_cln``` and ```dsmu_to_isgw2```. 
+To produce the plots use `circularTest.cc` in `RDsTools/hammercpp/tests`:
+```
+./run_circularTest
+```
+The plots are saved under a datetime folder in the same directory.
+Secondly, we now have to calculate the average unfiltered gen-level weights when weighting the unfiltered gen-level MC samples to BCL/BGL by using the `hammer\_temp.cc` in the same folder:
+
+```
+./submit_hammer.sh <channel> <input> <target> <nfiles> <prod>
+```
+So run:
+```
+./submit_hammer.sh dsmu       CLN   BCLVar 10000 25
+./submit_hammer.sh dstau      ISGW2 BCLVar 10000 25
+./submit_hammer.sh dsstarmu   CLN   BGLVar 10000 25
+./submit_hammer.sh dsstartau  ISGW2 BGLVar 10000 25
+```
+The weighted samples are stored under ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/<prod>/``` and indicated in the `helper.py` file under: ```<channel>_to_<target>```. 
+To calculate the average weights use `getAverageWeight.cc`:
+
+```
+`./run_averageWeight
+```
+The average weights will be stored as a yaml file in a datetime folde rin the same directory.
+
+Finally, we weight our flat signal MC samples using again `hammer\_temp.cc`:
+
+
+```
+./submit_hammer.sh <channel> <input> <target> <nfiles> <prod>
+```
+So run with the default option, which reweights the different signals correctly to BCL/BGL (only posible for <channel> = "signal"):
+
+```
+./submit_hammer.sh signal default default 100000 25
+```
+
+The weighted samples are stored under ```/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/<prod>/``` and indicated in the `helper.py` file under: ```sig_cons_hammer_25```.
+To produce the weight effect plots for the signal use `plotVariations.cc` in the same folder:
+
+```
+./run_plotVariations <var>
+
+```
+where ```<var>``` is the variable you want to plot. The plots are saved under a ```plots/<datetime>``` folder in the same directory.
+
+
