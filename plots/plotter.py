@@ -67,14 +67,19 @@ if addSys:
 with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
   #print(averages)
-baseline_name = "base_wout_tv_24" #old samples
+baseline_name = "base_wout_tv_25" #old samples
 baseline      = baselines[baseline_name]
 #baseline      = "(mu_pt>8)" # && !isnan(cosMuW_lhcb_alt) && !isnan(cosMuW_coll)"
 
 if prod == "25":
-  baseline += " && (mu7_ip4) && (mu_is_global) && (ds_vtx_cosine_xy_pv > 0.8)"
+
+  baseline_name = "base_wout_tv_25" #old samples
+  baseline      = baselines[baseline_name]
+  print(baseline)
+  baseline += " && (mu7_ip4) "
   #bdt_file = "15_04_2025_18_34_01"
   bdt_file = "25_04_2025_10_29_02" # on pi-mu flip only and skimmed events! use this model only with base_wout_tv_25 
+  bdt_data   = bdt_data_25
   sig_cons   = sig_cons_25
   hb_cons    = hb_cons_25
   bs_cons    = bs_cons_25
@@ -82,18 +87,40 @@ if prod == "25":
   bplus_cons = bplus_cons_25
   data_cons  = data_cons_25
 
+  sig_cons_pastNN     =  sig_cons_pastNN_25    
+  hb_cons_pastNN      =  hb_cons_pastNN_25     
+  bs_cons_pastNN      =  bs_cons_pastNN_25     
+  b0_cons_pastNN      =  b0_cons_pastNN_25     
+  bplus_cons_pastNN   =  bplus_cons_pastNN_25  
+  data_cons_pastNN    =  data_cons_pastNN_25   
+
+
+
+
 else:
+
+  baseline_name = "base_wout_tv_24" #old samples
+  baseline      = baselines[baseline_name]
+
   #bdt_file = "14_04_2025_18_35_03" 
   #bdt_file = "17_04_2025_12_16_46" #with pimu wrong only, left sb
   bdt_file = "17_04_2025_16_04_44" #with pimu wrong only, both sb and 4-6 sigma
   #bdt_file = "17_04_2025_18_12_40" # with oimu wrong, both sb and 3-6 sigma
   bdt_file = "25_04_2025_16_43_51" # with pimu wrong, both sb and 4-6 sigma, trained on skimmed files and all parts
+  bdt_data   = bdt_data_24
   sig_cons   = sig_cons_24
   hb_cons    = hb_cons_24
   bs_cons    = bs_cons_24
   b0_cons    = b0_cons_24
   bplus_cons = bplus_cons_24
   data_cons  = data_cons_24
+
+  sig_cons_pastNN     =  sig_cons_pastNN_24    
+  hb_cons_pastNN      =  hb_cons_pastNN_24     
+  bs_cons_pastNN      =  bs_cons_pastNN_24     
+  b0_cons_pastNN      =  b0_cons_pastNN_24     
+  bplus_cons_pastNN   =  bplus_cons_pastNN_24  
+  data_cons_pastNN    =  data_cons_pastNN_24   
 
 # disable title and stats and displaying
 ROOT.gStyle.SetOptTitle(0)
@@ -109,7 +136,7 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 # set NN score cut
 
 if pastNN:
-  score_cut = "&& (score5 <= 0.3)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
+  score_cut = "&& (score5 <= 0.05)" #&& ((score0 > 0.3) || (score1 > 0.3) || (score2 > 0.5) || (score3 > 0.5))"
  
 else: 
   score_cut = ""
@@ -117,7 +144,7 @@ else:
 # set the to be splitter variable and binning
 #split   = "cosMuW_reco_weighted"
 split   = "q2_coll"
-split   = "class"
+#split   = "class"
 #split   = "phiPi_m"
 #split   = "e_star_reco_weighted"
 #split = "score1"
@@ -129,8 +156,11 @@ split   = "class"
 #binning = [[1.94, 1.95],[1.95, 1.96], [1.96, 1.98], [1.98,2.0]] #mass]
 #binning = [[0,0.5], [0.5,1.0],[1.0, 1.5], [1.5, 2.0],[2.0, 3.0]] # estar
 #binning = [[0,7],[7,12]]
-binning = [[-100,12]]
-binning = [[0.99,1.01]]
+binning = [[-100000,1000000]]
+#binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
+#binning = [[0.99,1.01]]
+#binning = [[4.99,5.01]]
+#binning = [[-99,99]]
 
 ##############################
 # Load chain into RDataFrame #
@@ -181,7 +211,7 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
 
   if sf_weights:
     print("picking sf weighted files")
-    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_file}/*" #test
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data}/*" #test
     chain.Add(files)
     if debug:
       reduced_chain = chain.CloneTree(debug); 
@@ -264,6 +294,8 @@ def getRegions(sigma):
   anti_signalRegion = f"&& ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3}))) "
   leftSB            = f"&& ({mlow3} < phiPi_m) && (phiPi_m < {mlow2})"
   rightSB           = f"&& ({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})"
+ 
+  print("Signal Region is:", signalRegion)
 
   return mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, signalRegion, anti_signalRegion, leftSB, rightSB
 
@@ -293,30 +325,15 @@ if pastNN:
     sig_sample = sig_cons_pastNN
 
     print("constrained data after NN not processed yet..")
-    #chainSigSB, rdfSigSB     = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
-    #chainSig,   rdfSig       = getRdf(sig_sample             , rdfSys = addSys )#, debug = 100000)
-    #chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           )#, debug = 100000)
-    #chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           )#, debug = 100000)
-    #chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           )#, debug = 100000)
-    #chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        )#, debug = 100000)
-    #chainData,  rdfData      = getRdf(data_cons_pastNN                         )#, debug = 100000)
 
-
-    chainSigSB, rdfSigSB     = getRdf(sig_sample                               )#, debug = 1000)
-    chainSig,   rdfSig       = getRdf(sig_sample                               )#, debug = 1000)
+    chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN                          )#, debug = 1000)
+    chainSig,   rdfSig       = getRdf(sig_cons_pastNN                          )#, debug = 1000)
     chainHb,    rdfHb        = getRdf(hb_cons_pastNN                           )#, debug = 1000)
     _,          rdfHbHammer  = getRdf(hb_cons_pastNN                           )#, debug = 1000)
     chainBs,    rdfBs        = getRdf(bs_cons_pastNN                           )#, debug = 1000)
     chainB0,    rdfB0        = getRdf(b0_cons_pastNN                           )#, debug = 1000)
     chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN                        )#, debug = 1000)
     chainData,  rdfData      = getRdf(data_cons_pastNN                         )#, debug = 1000)
-
-
-
-
-
-
-
 
     print("rdf has events: ", rdfData.Count().GetValue() )
 
@@ -832,7 +849,9 @@ def plotSignFlipShapes(kk,pimu,both,var):
 
 
 
-def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale_rest = None, scale_n = None, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, region = None, blind = False):
+def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scale_rest = None, scale_n = None, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, region = None, blind = False):
+
+  histos = {key: hist.Clone() for key, hist in histos2.items()}
 
   print("==========> number of tau* signals right after calling stackedPlot", histos["dsStarTau"].Integral())
   print("==========> number of mu* signals right after calling stackedPlot", histos["dsStarMu"].Integral())
@@ -880,10 +899,8 @@ def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale
 
   #scale hb to other mc
 
-  if hb_scale == 0: 
-    histos["hb"].Scale(0.0 )
-
-  else:
+  # if there is no hb in this bin, there is nothing to scale!
+  if histos["hb"].Integral() != 0: 
     histos["hb"].Scale(hb_scale / histos["hb"].Integral())
 
   if newHb:
@@ -1003,7 +1020,6 @@ def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale
       if ('data' not in key):
         histos[key].Scale( histos["data"].Integral() / (nSig + nComb))
         #print("scale_n inside :", histos["data"].Integral())
-        print("rescaling...", key)
   else:
     #For sideband method, combinatorial is already normalized to data!
     nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
@@ -1224,7 +1240,14 @@ def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale
       f.write( f" And the following score cut: {score_cut} \n")
     f.write( f" Baseline selection is: \n {baseline} \n")
     if region: f.write( f" Splitting variable {split} into regions {binning} \n")
-    
+
+    for key in histos.keys():
+      f.write( f" Overall number of {key} entries: {histos[key].Integral()} \n")
+
+      n_bins = histos[key].GetNbinsX() 
+      for i in range(1, n_bins + 1):  # ROOT bins start from 1
+        f.write( f" number of {key} entries in bin {i}: {histos[key].GetBinContent(i)} \n")
+
 
   if log:
     c1.SaveAs( toSave + f"/log/{var}_{name}.pdf")
@@ -1263,6 +1286,297 @@ def stackedPlot(histos, var, hb_scale, scale_kk = None, scale_pimu = None, scale
   #print(weight_str)
 
   return returnHisto, weight_str
+
+def shapesPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scale_rest = None, scale_n = None, log = False, fakemass = None, A = None, B = None, C = None, S = None, bs = None, b0 = None, bplus = None, region = None, blind = False):
+
+  histos = {key: hist.Clone() for key, hist in histos2.items()}
+  color, labels = getColorAndLabelSignalDistinction("stacked")
+
+  for i,key in enumerate(histos.keys()):
+    print("my key in histos is: ", key)
+    if ("Up" in key) or ("Down" in key): continue
+
+    try: histos[key] = histos[key].GetValue()
+    except: histos[key] = histos[key]
+
+    histos[key].SetFillStyle(0)
+    histos[key].SetLineColor(color[key])
+    histos[key].SetLineWidth(3)
+
+    if key == "data":
+       histos[key].SetMarkerStyle(8) 
+
+  # take as model
+  bins  = histos["dsMu"].GetNbinsX()
+  start = histos["dsMu"].GetXaxis().GetBinLowEdge(1)   # first bin
+  stop  = histos["dsMu"].GetXaxis().GetBinUpEdge(bins) # last bin
+
+  # mass histo for fakemass
+
+  hComb = ROOT.TH1D(var,"",bins,start,stop)
+  hComb.SetName("mass")
+  hComb.GetXaxis().SetTitleOffset(1.3)
+  hComb.GetYaxis().SetTitleSize(1*hComb.GetYaxis().GetTitleSize())
+  hComb.GetXaxis().SetTitleSize(1*hComb.GetXaxis().GetTitleSize())  
+  hComb.SetFillColor(ROOT.kGray)
+  hComb.SetLineColor(ROOT.kGray)
+
+  #scale hb to other mc
+
+  if hb_scale == 0: 
+    histos["hb"].Scale(0.0 )
+
+  else:
+    histos["hb"].Scale(hb_scale / histos["hb"].Integral())
+
+  if newHb:
+    histos["bs"].Scale(histos["hb"].Integral()    * bs/ histos["bs"].Integral())
+    histos["b0"].Scale(histos["hb"].Integral()    * b0/ histos["b0"].Integral())
+    histos["bplus"].Scale(histos["hb"].Integral() * bplus/ histos["bplus"].Integral())
+    #change from inclusive to exlusive
+    histos["hb"] = histos["bs"].Clone()
+    histos["hb"].Add(histos["b0"])
+    histos["hb"].Add(histos["bplus"])
+
+  nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+
+  ###################################
+  ## Combinatorial treatment       ##
+  ###################################
+
+  if constrained:
+
+    # normalize
+    hComb      = histos["data_sf_kk"].Clone()
+    hComb.Scale(scale_kk)
+
+    hComb_kk   = hComb.Clone()
+    hComb_kk.SetLineColor(ROOT.kCyan +4)
+    hComb_kk.SetFillColor(ROOT.kCyan +4)
+    hComb_kk.SetFillStyle(3444)
+
+ 
+    hComb_pimu = histos["data_sf_pimu"].Clone()
+    hComb_pimu.Scale(scale_pimu)
+
+    hComb_pimu.SetLineColor(ROOT.kMagenta -3)
+    hComb_pimu.SetFillStyle(3244)
+    hComb_pimu.SetFillColor(ROOT.kMagenta -3)
+
+    hComb.Add(hComb_pimu)
+
+  else: 
+    #do sideband method
+    if var != "phiPi_m":
+      # use sideband method
+      # left one
+      hComb = histos["combL"].Clone()
+      hComb.SetName("combS") #signal region
+      hComb.Scale(B/(2*A))
+  
+      # right one
+      hCombR = histos["combR"].Clone()
+      hCombR.Scale(B/(2*C))
+      hComb.Add(hCombR)
+  
+    else:
+      for i in range(bins):
+        hComb.SetBinContent(i+1,fakemass[i])
+        hComb.SetBinError(i+1,np.sqrt(fakemass[i]))
+      
+  nComb = hComb.Integral()
+  
+  histos["comb"] = hComb # append to create datacard later
+  ###################################
+  ## Scale MC to data              ##
+  ###################################
+
+  if constrained:
+
+    #histos['comb'].Scale( histos["data"].Integral()  )
+
+    nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+
+    for key in histos.keys():
+
+      #normalize and scale the signals and hb
+      if ('comb' not in key) and ('data' not in key):
+        if nSig > 0:
+          # if we have any signal or hb, normalize the proportions
+          # if nSig = 0, there is nothing to normalize, all are zero
+          #histos[key].Scale((histos["data"].Integral() - nComb) /nSig )
+          histos[key].Scale(scale_rest) # NEW
+
+    nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+
+    #print("nsig has integral:", nSig)
+
+    for key in histos.keys(): # NEW
+      #normalize to data!
+      if ('data' not in key):
+        histos[key].Scale( histos["data"].Integral() / (nSig + nComb))
+        #print("scale_n inside :", histos["data"].Integral())
+  else:
+    #For sideband method, combinatorial is already normalized to data!
+    nSig = histos["dsMu"].Integral() + histos["dsTau"].Integral() + histos["dsStarMu"].Integral() + histos["dsStarTau"].Integral() + histos["hb"].Integral()
+
+    for key in histos.keys():
+      if ('comb' not in key) and ('data' not in key):
+        histos[key].Scale((histos["data"].Integral() - nComb) / nSig)
+
+
+  ###################################
+  ## Normalize                     ## 
+  ###################################
+
+  for key in histos.keys():
+    try: histos[key].Scale( 1 / histos[key].Integral())
+    except: pass #in case no mc (can happen if we test on small subsample)
+
+  ###################################
+  ## Create Pads                   ## 
+  ###################################
+
+  c1 = ROOT.TCanvas(var, '', 700, 700)
+  c1.Draw()
+  c1.cd()
+  main_pad = ROOT.TPad('main_pad', '', 0., 0.0, 1. , 1.  )
+  main_pad.Draw()
+  c1.cd()
+  #ratio_pad = ROOT.TPad('ratio_pad', '', 0., 0., 1., 0.25)
+  #ratio_pad.Draw()
+  main_pad.SetTicks(True)
+  #main_pad.SetBottomMargin(0.)
+  #main_pad.SetLeftMargin(.16)
+  #ratio_pad.SetTopMargin(0.)
+  #ratio_pad.SetLeftMargin(.16)
+  #ratio_pad.SetGridy()
+  #ratio_pad.SetBottomMargin(0.45)
+  if log:
+    ROOT.gPad.SetLogx()
+
+  main_pad.cd()
+
+  ###################################
+  ## legends                       ## 
+  ###################################
+ 
+  #legend
+  leg = ROOT.TLegend(.2,.72,.88,0.88)
+  leg.SetBorderSize(0)
+  leg.SetFillColor(0)
+  leg.SetFillStyle(0)
+  leg.SetTextFont(42)
+  leg.SetTextSize(0.035)
+  leg.SetNColumns(2)
+  leg.AddEntry(histos["dsStarMu"]   ,'B_{s}#rightarrow D*_{s}#mu#nu' ,'L' )
+  leg.AddEntry(histos["dsMu"]       ,'B_{s}#rightarrow D_{s}#mu#nu'  ,'L' )
+  leg.AddEntry(histos["dsStarTau"]  ,'B_{s}#rightarrow D*_{s}#tau#nu','L' )
+  leg.AddEntry(histos["dsTau"]      ,'B_{s}#rightarrow D_{s}#tau#nu' ,'L' )
+
+  if newHb:
+    leg.AddEntry(histos["bs"]       ,'B_{s}#rightarrow D_{s} + #mu ' ,'L' )
+    leg.AddEntry(histos["b0"]       ,'B_{0}#rightarrow D_{s} + #mu ' ,'L' )
+    leg.AddEntry(histos["bplus"]    ,'B_{+}#rightarrow D_{s} + #mu ' ,'L' )
+  else:
+    leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'L' )
+  #leg.AddEntry(histos["data"]       ,'Data','LEP')
+  leg.AddEntry(histos["comb"]                           ,'Comb. Bkg.'  ,'L' )
+  
+  #plot mainpad
+  key1 = next(iter(histos)) # get first key (will be drawn first)
+
+  if log:
+    ROOT.gPad.SetLogy()
+    histos[key1].GetYaxis().SetRangeUser(1e-3, getYMax(list(histos.values()) + [hComb]) * 1000)#histos[key1].GetMaximum()*1000)
+
+  else:
+    histos[key1].GetYaxis().SetRangeUser(1e-3, getYMax(list(histos.values()) + [hComb]) * 1.5 ) #histos[key1].GetMaximum()*1.5)
+    histos[key1].GetYaxis().SetTitle('a.u.')
+
+  # draw all
+  for i,key in enumerate(histos.keys()):
+
+    if "data" in key: continue
+    print(f"drawing variable {key}")
+
+    #if ("comb" in key) or ("hb" in key and newHb == True): 
+    #  #comes later, dont draw sidebands
+    #  continue
+
+    if i == 0:
+      histos[key].Draw("HIST")
+    else:
+      histos[key].Draw("HIST SAME")
+
+  leg.Draw("SAME")
+
+  #CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = '6.4 fb^{-1}')
+  
+  #saving
+  c1.Modified()
+  c1.Update()
+
+  if constrained: name = "constrained"
+  else: name = "unconstrained"
+
+  if newHb: name += "_newHb"
+  else: name += ""
+
+  if pastNN: 
+    name += "_pastNN"
+    folder = nnModel
+  else: 
+    name += ""
+    folder = "/"
+
+  if region:
+    name += f"_{region}" 
+    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots_binned/{dt}/shapes/"
+
+  else:
+    toSave = f"/work/pahwagne/RDsTools/plots/cmsplots/{dt}/shapes/"
+
+  if blind: 
+    toSave += "blind/"
+
+  if not os.path.exists(toSave): 
+    os.makedirs(toSave)
+    os.makedirs(toSave + "/log")  
+
+  with open( toSave + f"/info.txt", "w") as f:
+    # save nn info
+    if pastNN: 
+      f.write( f" These plots use the following NN model: {nnModel} \n")
+      f.write( f" And the following score cut: {score_cut} \n")
+    # write selection info
+    f.write( f" Baseline selection is: \n {baseline} \n")
+    if region: f.write( f" Splitting variable {split} into regions {binning} \n")
+    # save the bin entry numbers in txt file
+    for key in histos.keys():
+      f.write( f" Overall number of {key} entries: {histos[key].Integral()} \n")
+
+      n_bins = histos[key].GetNbinsX() 
+      for i in range(1, n_bins + 1):  # ROOT bins start from 1
+        f.write( f" number of {key} entries in bin {i}: {histos[key].GetBinContent(i)} \n")
+      
+
+  if log:
+    c1.SaveAs( toSave + f"/log/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/log/{var}_{name}.png")
+  else:
+    c1.SaveAs( toSave + f"/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/{var}_{name}.png")
+  print(f"===> Produced plot: {var}.pdf")
+
+
+  # return a copy, otherwise the histosScaled get overwritten when we change histos in f.e. normplots! (Weird???)
+  returnHisto = {}
+  for key in histos.keys():
+    returnHisto[key] = histos[key].Clone()
+
+  return returnHisto
+
 
 
 
@@ -1772,7 +2086,6 @@ def create1DPlots():
   selec_S_Data            = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
 
 
-
   # scale the tau histos to get a blind option for data fits
   selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
   selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone()               for key in selec_S_DsStarTau.keys() }
@@ -2222,9 +2535,9 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     selec_C_DsTau_blind     = { key: selec_C_DsTau[key].Clone()      for key in selec_C_DsTau.keys()     }
     selec_C_DsStarTau_blind = { key: selec_C_DsStarTau[key].Clone()  for key in selec_C_DsStarTau.keys() }
-    import pdb
-    pdb.set_trace()
-    print("")
+
+
+
     #since the dsmu signal in Hb is not hammered, we calc. the scale for unhammered dsmu and hb. The effects should cancel! 
     hb_scale_massfit = selec_C_DsMu_woHammer["phiPi_m"].Integral() * selec_C_Hb["phiPi_m"].Integral() / selec_C_Mu_in_Hb["phiPi_m"].Integral()
      
@@ -2483,7 +2796,11 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
     selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone()               for key in selec_S_DsStarTau.keys() }
 
-    hb_scale_S = selec_S_DsMu_woHammer["phiPi_m"].Integral() * selec_S_Hb["phiPi_m"].Integral() / selec_S_Mu_in_Hb["phiPi_m"].Integral()
+    if selec_S_Mu_in_Hb["phiPi_m"].Integral() != 0:
+      hb_scale_S = selec_S_DsMu_woHammer["phiPi_m"].Integral() * selec_S_Hb["phiPi_m"].Integral() / selec_S_Mu_in_Hb["phiPi_m"].Integral()
+    else:
+      hb_scale_S = 0
+    #hb_scale_S = hb_scale_massfit 
 
     for key in selec_S_DsTau_blind.keys()    : selec_S_DsTau_blind[key]    .Scale(blind_scalar)    
     for key in selec_S_DsStarTau_blind.keys(): selec_S_DsStarTau_blind[key].Scale(blind_vector)    
@@ -2688,6 +3005,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
                  "hb"        :  selec_S_Hb[var]       .Clone(), 
                  "data"      :  selec_S_Data[var]     .Clone()}
   
+  
         if newHb:
           histos["bs"]    = selec_S_Bs[var]           .Clone() 
           histos["b0"]    = selec_S_B0[var]           .Clone() 
@@ -2726,6 +3044,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
           histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
           histosScaled_blind , _ = stackedPlot(histos_blind, var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk_blind, scale_pimu = scale_pimu_blind, scale_rest = scale_rest_blind, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = True  )
  
+          histosScaled_shapes = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
+          histosScaled_shapes_log = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False , log = True)
         
  
         else:
