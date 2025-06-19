@@ -29,28 +29,46 @@ from helper import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--prod", required = True, help = "Specify '24' or '25' to specify the data production")
+parser.add_argument("-t", "--trigger", required = True, help = "Specify '7' or '9' to specify trigger menu")
 args = parser.parse_args()
 
 if args.prod not in ["24", "25"]:
   raise ValueError ("Error: Not a valid key for --prod, please use '24' or '25'")
 else: prod = args.prod
 
+if args.trigger not in ["7", "9"]:
+  raise ValueError ("Error: Not a valid key for --trigger, please use '7' or '9'")
+else: trig = args.trigger
+
 
 # Load datasets (only part 1)
-if prod == "24":
-  files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20240724_170443/*.root" #old prod
-  trigger = f""
-else:
-  files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20250227_155416/*.root" #new prod
-  trigger = f"&& (mu7_ip4)"
-
 chain = ROOT.TChain("tree")
-chain.Add(files_data)
+
+if prod == "24":
+
+  for f in data_cons_24:
+    chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/*.root") # old prod
+  #files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20240724_170443/*.root" #old prod
+  #chain.Add(files_data)
+  trigger = f""
+
+else:
+  #files_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{data_cons_25[0]}/*.root" # new prod
+  #chain.Add(files_data)
+  for f in data_cons_25:
+    chain.Add(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/*.root") # new prod
+
+  if trig == "7":
+    trigger = f"&& (mu7_ip4) "
+  else: 
+    trigger = f"&& (mu9_ip6) && (!mu7_ip4) "
+
+
 rdf_wrong   = ROOT.RDataFrame(chain)
 rdf_correct = ROOT.RDataFrame(chain)
 
-file_list = glob.glob(files_data)
-print(f"=====> loading {len(file_list)} files")
+#file_list = glob.glob(files_data)
+#print(f"=====> loading {len(file_list)} files")
 #tree_name = "tree"
 
 #define sidebands for now
@@ -127,7 +145,7 @@ def plotRoc(model, data, X, X_tt, y_tt, bdt_bins, flag = "", roc_type = "train")
   # axes[1].set_yscale("log")  # Set y-axis to logarithmic scale
   axes[1].set_xlabel('Predicted Probability')
   axes[1].set_ylabel('Frequency')
-  axes[1].set_title('Prediction Distribution by Target')
+  axes[1].set_title('Prediction Distribution')
   axes[1].legend()
   axes[1].grid()
   
@@ -182,8 +200,7 @@ def plotLoss(history, flag = ""):
   plt.plot(epochs, loss_train, 'g', label='Training loss')
   plt.plot(epochs, loss_val, 'b', label='Validation loss')
 
-  plt.title('Training and Validation Loss')
-  plt.xlabel('Epochs')
+  plt.xlabel('Rounds')
   plt.ylabel('Loss')
   plt.legend()
   plt.savefig(dt + f'/plots{flag}/loss.pdf')
@@ -204,18 +221,22 @@ def plotHist(df_wrong,df_correct, var, bins, start,stop, flag = "", region = "")
   plt.figure(figsize=(8, 6))
   
   # Plot the first normalized histogram (df_wrong)
-  plt.hist(df_wrong[var], bins=bins, label=f'{region} Wrong', histtype='step', linewidth=2, density=True, color = "red")
+  plt.hist(df_wrong[var], bins=bins, label=f'Wrong sign', histtype='step', linewidth=2, density=True, color = "red")
   
   # Plot the second normalized histogram (df_correct)
-  plt.hist(df_correct[var], bins=bins, label=f'{region}  Correct', histtype='step', linewidth=2, density=True, color = "green")
+  plt.hist(df_correct[var], bins=bins, label=f'Correct sign', histtype='step', linewidth=2, density=True, color = "green")
   
   # Plot the third normalized histogram (df_wrong with per event weights)
-  plt.hist(df_wrong[var], bins=bins, weights=df_wrong['sf_weights']/norm_factor_weighted, label=f'{region} Wrong (Weighted)', histtype='step', linewidth=2, density=True, color = "blue")
+  plt.hist(df_wrong[var], bins=bins, weights=df_wrong['sf_weights']/norm_factor_weighted, label=f'Wrong sign weighted', histtype='step', linewidth=2, density=True, color = "blue")
   
+  label = var
   # Labels and legend
-  plt.xlabel(var)
+  if "lhcb_alt" in var: label = var.replace("lhcb_alt", "xyz")
+  if "reco"     in var: label = var.replace("reco", "math")
+  plt.xlabel(label)
   plt.ylabel('a.u.')
-  plt.legend(loc='upper right', bbox_to_anchor=(1.05, 1), borderaxespad=0.)
+  plt.title(f'{region} region', loc='left')
+  plt.legend(loc='lower right', bbox_to_anchor=(1, 1), borderaxespad=0.)
   plt.savefig( dt + f"/plots{flag}/{var}_{region}.pdf")
 
 
@@ -312,7 +333,7 @@ df_right_correct["weights_double"] = 1.0
 end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"Execution Time: {elapsed_time:.4f} seconds")
-print(f"Loading Time per file: {elapsed_time/len(file_list)} seconds")
+#print(f"Loading Time per file: {elapsed_time/len(file_list)} seconds")
 
 
 # Define features and target
@@ -415,7 +436,7 @@ evals_double = [(dtrain_double, "train"), (dtest_double, "eval")]
 history= {}
 history_double= {}
 
-rounds = 900
+rounds =1000 
 es = 30
 
 model = xgb.train(
@@ -428,7 +449,7 @@ model = xgb.train(
     verbose_eval=True
 )
 
-rounds_double = 400
+rounds_double =1000 
 es_double = 30
 
 model_double = xgb.train(
@@ -483,35 +504,57 @@ predictAndGetWeight(model, data, df_left_correct , X_left_correct , bdt_bins, bi
 predictAndGetWeight(model, data, df_high_wrong   , X_high_wrong   , bdt_bins, binned_weights)
 predictAndGetWeight(model, data, df_high_correct , X_high_correct , bdt_bins, binned_weights)
 
-plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "phiPi_deltaR", 20, 0 ,0.5  , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , region = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_deltaR", 20, 0 ,0.5  , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "mu_pt", 20,  0, 15         , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "mu_eta", 25,  -2.4, 2.4    , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "pi_eta", 25,  -2.4, 2.4    , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k1_pt", 20,  0, 15         , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k2_pt", 20,  0, 15         , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k1_eta", 25,  -2.4, 2.4    , region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k2_eta", 25,  -2.4, 2.4    , region = "Right SB")
 
-plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12          , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15            , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5       , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "phiPi_deltaR", 20, 0 ,0.5    , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1       , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1          , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30     , region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968   , region = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12          , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15            , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5       , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_deltaR", 20, 0 ,0.5    , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1       , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1          , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30     , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968   , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "mu_pt", 20,  0, 15           , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "mu_eta", 25,  -2.4, 2.4      , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "pi_eta", 25,  -2.4, 2.4      , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k1_pt", 20,  0, 15           , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k2_pt", 20,  0, 15           , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k1_eta", 25,  -2.4, 2.4      , region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k2_eta", 25,  -2.4, 2.4      , region = "Left SB")
 
-plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12        , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15            , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5       , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "phiPi_deltaR", 20, 0 ,0.5    , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1       , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1          , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30     , region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028   , region = "high mass")
+
+plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12        , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15            , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5       , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_deltaR", 20, 0 ,0.5    , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1       , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1          , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30     , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028   , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "mu_pt", 20,  0, 15           , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "mu_eta", 25,  -2.4, 2.4      , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "pi_eta", 25,  -2.4, 2.4      , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k1_pt", 20,  0, 15           , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k2_pt", 20,  0, 15           , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k1_eta", 25,  -2.4, 2.4      , region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k2_eta", 25,  -2.4, 2.4      , region = "High mass")
 
 predictAndGetWeight(model_double, data_double, df_right_wrong  , X_right_wrong  , bdt_bins_double, binned_weights_double)
 predictAndGetWeight(model_double, data_double, df_right_correct, X_right_correct, bdt_bins_double, binned_weights_double)
@@ -520,51 +563,63 @@ predictAndGetWeight(model_double, data_double, df_left_correct , X_left_correct 
 predictAndGetWeight(model_double, data_double, df_high_wrong   , X_high_wrong   , bdt_bins_double, binned_weights_double)
 predictAndGetWeight(model_double, data_double, df_high_correct , X_high_correct , bdt_bins_double, binned_weights_double)
 
-plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "mu_pt", 20,  0, 15         , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "k1_pt", 20,  0, 15         , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "k2_pt", 20,  0, 15         , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "k1_eta", 25,  -2.4, 2.4    , flag = "_double", region = "rightSB")
-plotHist(df_right_wrong,df_right_correct, "k2_eta", 25,  -2.4, 2.4    , flag = "_double", region = "rightSB")
+plotHist(df_right_wrong,df_right_correct, "q2_coll", 20, 0 ,12        , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "bs_pt_lhcb_alt", 20, 0 ,60 , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "pi_pt", 20, 0 ,15          , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "kk_deltaR", 20, 0 ,0.5     , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "cosPiK1", 20, -1 ,1        , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "pt_miss_coll", 20, 0 ,30   , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "phiPi_m", 20, 1.968, 2.028 , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "mu_pt", 20,  0, 15         , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k1_pt", 20,  0, 15         , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k2_pt", 20,  0, 15         , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k1_eta", 25,  -2.4, 2.4    , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k2_eta", 25,  -2.4, 2.4    , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k1_pt", 20,  0, 15         , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k2_pt", 20,  0, 15         , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k1_eta", 25,  -2.4, 2.4    , flag = "_double", region = "Right SB")
+plotHist(df_right_wrong,df_right_correct, "k2_eta", 25,  -2.4, 2.4    , flag = "_double", region = "Right SB")
 
-plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12          , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "q2_lhcb_alt", 20, 0 ,12      , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15            , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5       , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "phiPi_deltaR", 20, 0 ,0.5    , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1       , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1          , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30     , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968   , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "mu_pt", 20,  0, 15           , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "mu_eta", 25,  -2.4, 2.4      , flag = "_double", region = "leftSB")
-plotHist(df_left_wrong,df_left_correct, "pi_eta", 25,  -2.4, 2.4      , flag = "_double", region = "leftSB")
+plotHist(df_left_wrong,df_left_correct, "q2_coll", 20, 0 ,12          , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "q2_lhcb_alt", 20, 0 ,12      , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "pi_pt", 20, 0 ,15            , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "kk_deltaR", 20, 0 ,0.5       , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_deltaR", 20, 0 ,0.5    , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "dsMu_deltaR", 20, 0 ,1       , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "cosPiK1", 20, -1 ,1          , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "pt_miss_coll", 20, 0 ,30     , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "phiPi_m", 20,  1.91, 1.968   , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "mu_pt", 20,  0, 15           , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "mu_eta", 25,  -2.4, 2.4      , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "pi_eta", 25,  -2.4, 2.4      , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k1_pt", 20,  0, 15           , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k2_pt", 20,  0, 15           , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k1_eta", 25,  -2.4, 2.4      , flag = "_double", region = "Left SB")
+plotHist(df_left_wrong,df_left_correct, "k2_eta", 25,  -2.4, 2.4      , flag = "_double", region = "Left SB")
 
-plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12        , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "q2_lhcb_alt", 20, 0 ,12      , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15            , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5       , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "phiPi_deltaR", 20, 0 ,0.5    , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1       , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1          , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30     , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028   , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "mu_pt", 20,  0, 15           , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "mu_eta", 25,  -2.4, 2.4      , flag = "_double", region = "high mass")
-plotHist(df_high_wrong,df_high_correct, "pi_eta", 25,  -2.4, 2.4      , flag = "_double", region = "high mass")
+plotHist(df_high_wrong,df_high_correct, "q2_coll", 20, -12 ,12        , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "q2_lhcb_alt", 20, 0 ,12      , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "bs_pt_lhcb_alt", 20, 0 ,60   , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "pi_pt", 20, 0 ,15            , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "kk_deltaR", 20, 0 ,0.5       , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_deltaR", 20, 0 ,0.5    , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "dsMu_deltaR", 20, 0 ,1       , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "cosPiK1", 20, -1 ,1          , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "pt_miss_coll", 20, 0 ,30     , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "phiPi_m", 20,  1.91, 2.028   , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "mu_pt", 20,  0, 15           , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "mu_eta", 25,  -2.4, 2.4      , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "pi_eta", 25,  -2.4, 2.4      , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k1_pt", 20,  0, 15           , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k2_pt", 20,  0, 15           , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k1_eta", 25,  -2.4, 2.4      , flag = "_double", region = "High mass")
+plotHist(df_high_wrong,df_high_correct, "k2_eta", 25,  -2.4, 2.4      , flag = "_double", region = "High mass")
 
 #X_train['bdt_prob']          = model.predict      (X_train)
 #X_train['bdt_prob'  ] = model.predict_proba(X_train[features])[:, 1]
