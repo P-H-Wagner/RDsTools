@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, fitAnotherVar
 from helper import * 
-from histModels import models, pastNN_models, pastNN_2Dmodels
+from histModels import models, pastNN_models, pastNN_2Dmodels, special_models
 from blinding import *
 
 import numpy as np
@@ -189,21 +189,22 @@ with open( toSave_plots + f"/info.txt", "a") as f:
 
 # set the to be splitter variable and binning
 #split   = "cosMuW_reco_weighted"
-split   = "q2_coll"
-#split   = "class"
+#split   = "q2_coll"
+#split   = "q2_lhcb_alt"
+split   = "class"
 #split   = "phiPi_m"
 #split   = "e_star_reco_weighted"
 #split = "score1"
 #split = "score2"
 #binning = [[0,0.05],[0.05,0.18],[0.18,0.3],[0.3,1]] #score 1
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
-#binning = [[0,6],[6,7],[7,8],[8,9],[9,12]]
+#binning = [[0,4],[4,8],[8,12]]
 #binning = [[-1,-0.8],[-0.8, -0.4], [-0.4, 0], [0,0.4],[0.4,0.8],[0.8,1]] #cosmuw
 #binning = [[1.94, 1.95],[1.95, 1.96], [1.96, 1.98], [1.98,2.0]] #mass]
 #binning = [[0,0.5], [0.5,1.0],[1.0, 1.5], [1.5, 2.0],[2.0, 3.0]] # estar
 #binning = [[0,7],[7,12]]
-binning = [[-100000,1000000]]
-#binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
+#binning = [[-100000,1000000]]
+binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
 #binning = [[-99,99]]
@@ -367,7 +368,7 @@ if pastNN:
   if constrained:
 
     sig_sample = sig_cons_pastNN
-
+    print("sample is:", sig_cons_pastNN)
     print("constrained data after NN not processed yet..")
 
     chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN                 , debug = debug)
@@ -379,7 +380,8 @@ if pastNN:
     chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN               , debug = debug)
     chainData,  rdfData      = getRdf(data_cons_pastNN                , debug = debug)
 
-    print("rdf has events: ", rdfData.Count().GetValue() )
+    print("rdf data has events: ", rdfData.Count().GetValue() )
+    print("rdf sig has events: ", rdfSig.Count().GetValue() )
 
   else:
 
@@ -669,14 +671,28 @@ def addSystematics(hist_dict, var, selec_DsTau, selec_DsMu, selec_DsStarTau, sel
 ## CREATE DEFAULT HISTOS               ##
 #########################################
 
-def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, variables = None, hammer_central = False, hammer_sys = False, sig = None, sf_weights = None):
+def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, variables = None, hammer_central = False, hammer_sys = False, sig = None, sf_weights = None, region = None):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
 
+  print("we are here in bin", region)
 
   histos = {}
   for var,model in models.items(): 
+
+      print("var is", var, "split is", split)
+
+      ################################
+      # Special binnings             #
+      ################################
+      if var == "score1" and split == "class" and region != None:
+        
+        #adapt the binning
+        print(f"Adapt binning for {var} and region {region}")
+  
+        model = special_models[var + f"_bin{region}" ]
+
   
       ##############################################
       # Fill only variables, if explicitly given!  #
@@ -712,16 +728,28 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
         if hammer_central:
           #this only happens for signal
           #central weights
+
           central_av = averages[ "central_w_" + sig]
-          
+           
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr","central_w") 
           histos[var].Scale(1.0 / central_av) 
  
+
+        elif sf_weights:
+          # this only happens for data
+          # sf_weight is a smart string
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" ,"sf_weights")
+
+        else:
+          #fill without any weights
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" )
+
+
         if hammer_sys:
           #add also systematical shape variations as variables 
 
           if "star" not in sig: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
-          else:                 sys_dir = sys_vector     #take e1-e10
+          else:                 sys_dir = sys_vector #take e1-e10
 
           for s in sys_dir:
 
@@ -735,22 +763,11 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
             func_down = s_down + f" / ({ var_down_av })" 
 
             # fill histogram with weight "s"
-            #histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Define("m_corr", tofill).Define("hammer_w_" + s_up  , func_up).  Histo1D(model[0], "m_corr", "hammer_w_" + s_up   )
             histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_up"   )
             histos[var + "_" + s + "Up"].Scale(1.0 / var_up_av)
 
-            #histos[var + "_" + s + "Down"] = rdf.Filter(selection).Define("m_corr", tofill).Define("hammer_w_" + s_down, func_down).Histo1D(model[0], "m_corr", "hammer_w_" + s_down )  
             histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_down"   )
             histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
-
-        elif (sf_weights):
-          # this only happens for data
-          # sf_weight is a smart string
-          #histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("sf_weight", sb_weights).Histo1D(model[0], "m_corr" ,"sf_weight")
-          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" ,"sf_weights")
-
-        else:
-          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" )
 
 
       ##############################################
@@ -766,14 +783,21 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
         if hammer_central: 
 
           central_av = averages[ "central_w_" + sig]
-          #histos[var] = rdf.Filter(selection).Define("hammer_w_c", f"central_w / {central_av} " ).Histo1D(model[0], tofill,"hammer_w_c")
+            
+          histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill,"central_w") 
+          histos[var].Scale(1.0 / central_av) 
+ 
+        elif (sf_weights):
+          # this only happens for data
+          # sf_weight is a smart string
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], tofill, "sf_weights")
 
-          histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill,"central_w") # THIS IS THE OLD CORRECT
-          #histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
-          histos[var].Scale(1.0 / central_av) # THIS IS THE OLD CORRECT
-        
+
+        else:
+          histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
+
         if hammer_sys:
-
+          #add also systematical shape variations as variables 
           # fill sysmetatic up and down variations
           if "star" not in sig: sys_dir = sys_scalar     #only take e1 - e6 for scalar signals (BCL)
           else:                 sys_dir = sys_vector     #take e1-e10
@@ -789,22 +813,10 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
             func_down = s_down + f" / ({ var_down_av })" 
 
             # fill histogram with weight "s"
-            #histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Define("hammer_w_" + s + "_up"   , f"get_hammer_weight({s + '_up'}   ,gen_sig)").Histo1D(model[0], tofill, "hammer_w_" + s + "_up"   )
             histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Histo1D(model[0], tofill, s + "_up"   )
             histos[var + "_" + s + "Up"].Scale(1.0 / var_up_av)
-            #histos[var + "_" + s + "Down"] = rdf.Filter(selection).Define("hammer_w_" + s + "_down" , f"get_hammer_weight({s + '_down'} ,gen_sig)").Histo1D(model[0], tofill, "hammer_w_" + s + "_down" )
             histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Histo1D(model[0], tofill, s + "_down"   )
             histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
- 
-        elif (sf_weights):
-          # this only happens for data
-          # sf_weight is a smart string
-          #histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("sf_weight",sf_weights).Histo1D(model[0], tofill, "sf_weight")
-          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], tofill, "sf_weights")
-
-
-        else:
-          histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
 
 
       histos[var].GetXaxis().SetTitle(model[1])
@@ -902,11 +914,13 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
 
   histos = {key: hist.Clone() for key, hist in histos2.items()}
 
-  print("==========> number of tau* signals right after calling stackedPlot", histos["dsStarTau"].Integral())
-  print("==========> number of mu* signals right after calling stackedPlot", histos["dsStarMu"].Integral())
-  print("==========> number of pimu  wrong right after calling stackedPlot", histos["data_sf_pimu"].Integral())
-  print("==========> number of kk wrong right after calling stackedPlot", histos["data_sf_kk"].Integral())
-  print("==========> number of data events right calling stackedPlot", histos["data"].Integral())
+  #print("==========> number of tau signals right after calling stackedPlot", histos["dsTau"].Integral())
+  #print("==========> number of tau* signals right after calling stackedPlot", histos["dsStarTau"].Integral())
+  #print("==========> number of mu signals right after calling stackedPlot", histos["dsMu"].Integral())
+  #print("==========> number of mu* signals right after calling stackedPlot", histos["dsStarMu"].Integral())
+  #print("==========> number of pimu  wrong right after calling stackedPlot", histos["data_sf_pimu"].Integral())
+  #print("==========> number of kk wrong right after calling stackedPlot", histos["data_sf_kk"].Integral())
+  #print("==========> number of data events right calling stackedPlot", histos["data"].Integral())
 
   color, labels = getColorAndLabelSignalDistinction("stacked")
 
@@ -991,28 +1005,6 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
     hComb_pimu.SetFillColor(ROOT.kMagenta -3)
 
     hComb.Add(hComb_pimu)
-
-
-    #if var != "phiPi_m":
-    #  # use sideband method
-    #  hComb = histos["combL"].Clone()
-    #  hCombR = histos["combR"].Clone()
-    #  a = hComb.Integral()
-    #  c = hCombR.Integral()
-
-    #  # left one
-    #  hComb.SetName("combS") #signal region
-    #  hComb.Scale(B/(a+c))
-  
-    #  # right one
-    #  hCombR.Scale(B/(a+c))
-    #  hComb.Add(hCombR)
-  
-    #  print("BONJOUR")
-    #else:
-    #  for i in range(bins):
-    #    hComb.SetBinContent(i+1,fakemass[i])
-    #    hComb.SetBinError(i+1,np.sqrt(fakemass[i]))
 
 
     print("hcomb has now integral: ", hComb.Integral())
@@ -2063,11 +2055,6 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     hb_ratio_massfit = selec_M_Hb["phiPi_m"].Integral() / selec_M_Mu_in_Hb["phiPi_m"].Integral()
     hb_scale_massfit = selec_M_DsMu_woHammer["phiPi_m"].Integral() * hb_ratio_massfit 
      
-    print("----------------------------> hb scale of the massfit over C is ", hb_scale_massfit)
-    print("----------------------------> i have ",  selec_M_DsMu_woHammer["phiPi_m"].Integral(), " dsmu wo hammer events")
-    print("----------------------------> i have ",  selec_M_Hb["phiPi_m"].Integral(), " hb events")
-    print("----------------------------> i have ",  selec_M_Mu_in_Hb["phiPi_m"].Integral(), " mu in hb events")
-    print("----------------------------> i have ",  selec_M_Data["phiPi_m"].Integral(), " data events")
  
     for key in selec_M_DsTau_blind.keys()    : selec_M_DsTau_blind[key]    .Scale(blind_scalar)    
     for key in selec_M_DsStarTau_blind.keys(): selec_M_DsStarTau_blind[key].Scale(blind_vector)    
@@ -2260,15 +2247,16 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     #hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
 
     #for all variables except mass plot only signal region (indicated with 'S')
+    print("hammer_central, hammer_sys are:", hammer_central, hammer_sys)
+    selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsmu"     , region = i)
+    selec_S_DsMu_woHammer  = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False,                                                                               region = i) 
+    selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dstau"    , region = i)
+    selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstarmu" , region = i)
+    selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstartau", region = i)
+    selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False,                                                                               region = i)
+    selec_S_Mu_in_Hb       = createHistos(selec.dsMu        + signalRegion,    rdfHb         , gen = False,                                                                               region = i)
+    selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False,                                                                               region = i)
 
-    selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsmu"     )
-    selec_S_DsMu_woHammer  = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False) 
-    selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dstau"    )
-    selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstarmu" )
-    selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstartau")
-    selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False)
-    selec_S_Mu_in_Hb       = createHistos(selec.dsMu        + signalRegion,    rdfHb         , gen = False)
-    selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False)
 
     # scale the tau histos to get a blind option for data fits
     selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
@@ -2280,18 +2268,18 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     for key in selec_S_DsStarTau_blind.keys(): selec_S_DsStarTau_blind[key].Scale(blind_vector)    
  
     if newHb:
-      selec_S_Bs           = createHistos(selec.bs          + signalRegion,    rdfBs         , gen = False)
-      selec_S_B0           = createHistos(selec.b0          + signalRegion,    rdfB0         , gen = False)
-      selec_S_Bplus        = createHistos(selec.bplus       + signalRegion,    rdfBplus      , gen = False)
+      selec_S_Bs           = createHistos(selec.bs          + signalRegion,    rdfBs         , gen = False, region = i)
+      selec_S_B0           = createHistos(selec.b0          + signalRegion,    rdfB0         , gen = False, region = i)
+      selec_S_Bplus        = createHistos(selec.bplus       + signalRegion,    rdfBplus      , gen = False, region = i)
   
     if constrained: 
 
-      selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights)
-      selec_S_Data_sf_pimu = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights)
+      selec_S_Data_sf_kk   = createHistos(baseline_region + score_cut + kk_wrong   + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights, region = i)
+      selec_S_Data_sf_pimu = createHistos(baseline_region + score_cut + pimu_wrong + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights, region = i)
 
     else:
-        selec_S_DataL      = createHistos(selec.bare        + leftSB,          rdfData       , gen = False)
-        selec_S_DataR      = createHistos(selec.bare        + rightSB,         rdfData       , gen = False)
+        selec_S_DataL      = createHistos(selec.bare        + leftSB,          rdfData       , gen = False, region = i)
+        selec_S_DataR      = createHistos(selec.bare        + rightSB,         rdfData       , gen = False, region = i)
    
     print("===> signal region done...")
   

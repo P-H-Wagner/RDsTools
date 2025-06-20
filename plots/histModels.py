@@ -38,11 +38,11 @@ models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"            
 #models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      2,   8), r"D_{s}+#mu mass (GeV)"                       ,    0)
 ##models["dsMu_pt" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      0,  70), r"p_{T}(D_{s}+#mu) (GeV)"                       ,    0)
 ###
-##models["q2_coll" ]                   = (ROOT.RDF.TH1DModel("q2_coll"                           , '',   21,       0,    12), r"q^{2}_{coll} (GeV^{2})"                          ,    0)
+#models["q2_coll" ]                   = (ROOT.RDF.TH1DModel("q2_coll"                           , '',   21,       0,    12), r"q^{2}_{coll} (GeV^{2})"                          ,    0)
 #models["q2_coll" ]                   = (ROOT.RDF.TH1DModel("q2_coll"                           , '',   21,       -12,    12), r"q^{2}_{coll} (GeV^{2})"                          ,    0)
 ####models["gen_q2" ]                   = (ROOT.RDF.TH1DModel("gen_q2"                           , '',   21,       0,    12), r"q^{2} (GeV^{2})"                            ,    0)
 ####models["q2_lhcb" ]                   = (ROOT.RDF.TH1DModel("q2_lhcb"                           , '',   21,      0,    12), r"q^{2} (GeV^{2})"                            ,    0)
-##models["q2_lhcb_alt" ]               = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                       , '',   21,      0,    12), r"q^{2}_{xyz} (GeV^{2})"                            ,    0)
+#models["q2_lhcb_alt" ]               = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                       , '',   21,      0,    12), r"q^{2}_{xyz} (GeV^{2})"                            ,    0)
 #models["q2_lhcb_alt" ]               = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                       , '',   21,      -12,    12), r"q^{2}_{xyz} (GeV^{2})"                            ,    0)
 ##models["q2_reco_1" ]                 = (ROOT.RDF.TH1DModel("q2_reco_1"                         , '',   21,      0,    12), r"q^{2}_{math,1} (GeV^{2})"                         ,    0)
 ##models["q2_reco_2" ]                 = (ROOT.RDF.TH1DModel("q2_reco_2"                         , '',   21,      0,    12), r"q^{2}_{math,2} (GeV^{2})"                         ,    0)
@@ -192,12 +192,12 @@ models["phiPi_pt" ]               = (ROOT.RDF.TH1DModel("phiPi_pt"              
 
 pastNN_models["class" ]                    = (ROOT.RDF.TH1DModel("class"                            , '',   6,       0,    5.9999), r"Class"                            ,    0)
 
-#pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    0.6), r"Score 0"                            ,    0)
-#pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    1), r"Score 1"                            ,    0)
+#pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    1), r"Score 0"                            ,    0)
+pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    1), r"Score 1"                            ,    0)
 #pastNN_models["score2" ]                   = (ROOT.RDF.TH1DModel("score2"                           , '',   31,       0,    1), r"Score 2"                            ,    0)
 #pastNN_models["score3" ]                   = (ROOT.RDF.TH1DModel("score3"                           , '',   31,       0,    1), r"Score 3"                            ,    0)
 #pastNN_models["score4" ]                   = (ROOT.RDF.TH1DModel("score4"                           , '',   31,       0,    1), r"Score 4"                            ,    0)
-#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   31,       0,    0.2), r"Score 5"                            ,    0)
+#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   31,       0,    1), r"Score 5"                            ,    0)
 #pastNN_models["score5" ]                = (ROOT.RDF.TH1DModel("score5_WP_lower"                           , '',   100,      0,    0.1), r"Score 5"                            ,    0)
 #pastNN_models["score0" ]                = (ROOT.RDF.TH1DModel("score0_WP_upper"                           , '',   200,      0,    0.2), r"Score 0"                            ,    0)
 #
@@ -219,3 +219,41 @@ with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/plotting
 
 print("Included models are:", models.keys())
 print("Included past NN models are:", pastNN_models.keys())
+
+
+#here we define special binnings for the final fit
+#binning of score3 when fitted in bins of class
+
+special_models = {}
+special_models["score1_bin0" ]                   = (ROOT.RDF.TH1DModel("score1_bin0"                           , '',   31,       0  ,    0.45), r"Score 1"                            ,    0)
+special_models["score1_bin1" ]                   = (ROOT.RDF.TH1DModel("score1_bin1"                           , '',   31,       0.2,    0.8 ), r"Score 1"                            ,    0)
+special_models["score1_bin2" ]                   = (ROOT.RDF.TH1DModel("score1_bin2"                           , '',   31,       0  ,    0.2 ), r"Score 1"                            ,    0)
+special_models["score1_bin3" ]                   = (ROOT.RDF.TH1DModel("score1_bin3"                           , '',   31,       0  ,    0.45), r"Score 1"                            ,    0)
+special_models["score1_bin4" ]                   = (ROOT.RDF.TH1DModel("score1_bin4"                           , '',   31,       0  ,    0.45), r"Score 1"                            ,    0)
+special_models["score1_bin5" ]                   = (ROOT.RDF.TH1DModel("score1_bin5"                           , '',   31,       0  ,    1   ), r"Score 1"                            ,    0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
