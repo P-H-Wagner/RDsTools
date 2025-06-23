@@ -10,6 +10,7 @@ import glob
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 
+ROOT.gROOT.SetBatch(True)
 
 # parsing
 parser = argparse.ArgumentParser()
@@ -105,43 +106,100 @@ for f in files:
     if (("dsStarMu"  in key) and ("Up" not in key) and ("Down" not in key)): central_10 = key
     if (("dsStarTau" in key) and ("Up" not in key) and ("Down" not in key)): central_11 = key
 
+  titles = []
   for i in range(6):
+
+    c_0.cd()
+    #draw title on main canvas
+    title = ROOT.TPaveText(0.3, 0.94, 0.7, 0.99, "NDC")  # top center
+    title.AddText(r"B_{s} #rightarrow D_{s} #mu #nu")
+    title.SetTextAlign(22)
+    title.SetTextSize(0.02)
+    title.SetFillColor(0)
+    title.SetFillStyle(0)
+    title.SetBorderSize(0)
+    titles.append(title)
+    title.Draw("SAME")  
 
     #draw central, scalar shapes
     c_0.cd(i+1)
     h = rf.Get(central_0)
+    h.SetName(f"dsMu_central_bin{i+1}")
     h.SetFillStyle(0)
     h.SetLineWidth(1)
-
-    text = ROOT.TPaveText(.18,.7,.5,.88,"NDC");
-    text.SetFillColor(0)
-    text.SetFillStyle(0)
-    text.SetTextAlign(11)
-    text.AddText(f"Direction e{i+1}")
     h.Draw("HIST")
-    text.Draw("SAME")
+    h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
+    c_0.Update() 
+ 
+    c_1.cd()
+    #draw title on main canvas
+    title = ROOT.TPaveText(0.3, 0.94, 0.7, 0.99, "NDC")  # top center
+    title.AddText(r"B_{s} #rightarrow D_{s} #tau #nu")
+    title.SetTextAlign(22)
+    title.SetTextSize(0.02)
+    title.SetFillColor(0)
+    title.SetFillStyle(0)
+    title.SetBorderSize(0)
+    titles.append(title)
+    title.Draw("SAME")  
 
-  #  c_1.cd(i+1)
-  #  h = rf.Get(central_1)
-  #  h.SetFillStyle(0)
-  #  h.SetLineWidth(1)
-  #  h.Draw("HIST")
+    #draw central, scalar shapes
+    c_1.cd(i+1)
+    h = rf.Get(central_1)
+    h.SetName(f"dsMu_central_bin{i+1}")
+    h.SetFillStyle(0)
+    h.SetLineWidth(1)
+    h.Draw("HIST")
+    h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
+    c_1.Update() 
 
-  #for i in range(10):
+  for i in range(10): 
+    c_10.cd()
+    #draw title on main canvas
+    title = ROOT.TPaveText(0.3, 0.94, 0.7, 0.99, "NDC")  # top center
+    title.AddText(r"B_{s} #rightarrow D*_{s} #mu #nu")
+    title.SetTextAlign(22)
+    title.SetTextSize(0.02)
+    title.SetFillColor(0)
+    title.SetFillStyle(0)
+    title.SetBorderSize(0)
+    titles.append(title)
+    title.Draw("SAME")  
 
-  #  #draw central, vector shapes
-  #  c_10.cd(i+1)
-  #  h = rf.Get(central_10)
-  #  h.SetFillStyle(0)
-  #  h.SetLineWidth(1)
-  #  h.Draw("HIST")
+    #draw central, scalar shapes
+    c_10.cd(i+1)
+    h = rf.Get(central_10)
+    h.SetName(f"dsMu_central_bin{i+1}")
+    h.SetFillStyle(0)
+    h.SetLineWidth(1)
+    h.Draw("HIST")
+    h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
+    c_10.Update()   
 
-  #  c_11.cd(i+1)
-  #  h = rf.Get(central_11)
-  #  h.SetFillStyle(0)
-  #  h.SetLineWidth(1)
-  #  h.Draw("HIST")
+    c_11.cd()
+    #draw title on main canvas
+    title = ROOT.TPaveText(0.3, 0.94, 0.7, 0.99, "NDC")  # top center
+    title.AddText(r"B_{s} #rightarrow D*_{s} #tau #nu")
+    title.SetTextAlign(22)
+    title.SetTextSize(0.02)
+    title.SetFillColor(0)
+    title.SetFillStyle(0)
+    title.SetBorderSize(0)
+    titles.append(title)
+    title.Draw("SAME")  
 
+    #draw central, scalar shapes
+    c_11.cd(i+1)
+    h = rf.Get(central_11)
+    h.SetName(f"dsMu_central_bin{i+1}")
+    h.SetFillStyle(0)
+    h.SetLineWidth(1)
+    h.Draw("HIST")
+    h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
+    c_11.Update()   
+
+
+  legends = []
   for k in keys:
    
     key = k.GetName() 
@@ -157,24 +215,119 @@ for f in files:
     direc  = rest.split("B")[0] 
 
     if signal == "dsMu"     :
-      print("This is dsmu in pad: ", int(direc)+1)
-      c_0.cd(int(direc)+1)
- 
-  #  if signal == "dsTau"    : 
-  #    print("This is dstau in pad: ", int(direc)+1)
-  #    c_1.cd(int(direc)+1)
+      print("This is dsmu in pad: ", int(direc)) #no need for +1 here, we extract the nr from the name (starting at 1 already)
+      c_0.cd(int(direc))
+      c_0.Update() 
 
-  #  if signal == "dsStarMu" : 
-  #    print("This is ds*mu in pad: ", int(direc)+1)
-  #    c_10.cd(int(direc)+1)
+      import pdb
+      #pdb.set_trace() 
+      h = rf.Get(key)
+      h.SetLineWidth(1)
+      h.SetLineStyle(2)
+      h.SetLineColor(ROOT.kRed)
+      h.Draw("HIST SAME")
+      c_0.Update() 
 
-  #  if signal == "dsStarTau": 
-  #    print("This is ds*tau in pad: ", int(direc)+1)
-  #    c_11.cd(int(direc)+1)
+      legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
+      legend.SetTextSize(0.04)
+      legend.SetBorderSize(0)
+      legend.SetFillStyle(0)
+      #extract central curve
+      pad = ROOT.gPad 
+      objs = pad.GetListOfPrimitives()
+      for obj in objs:
+        print(obj.GetName(), "->", obj.ClassName())
+        if "central" in obj.GetName(): 
+          legend.AddEntry(obj, "Central curve", "L")  
+      legend.AddEntry(h, f"Deviation e{direc}", "L")  
+      legend.Draw("SAME")
+      legends.append(legend) 
+      c_0.Update() 
+
+
+    if signal == "dsTau"    : 
+      print("This is dstau in pad: ", int(direc))
+      c_1.cd(int(direc))
+      import pdb
+      #pdb.set_trace() 
+      h = rf.Get(key)
+      h.SetLineWidth(1)
+      h.SetLineStyle(2)
+      h.SetLineColor(ROOT.kRed)
+      h.Draw("HIST SAME")
+      c_1.Update() 
+
+      legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
+      legend.SetTextSize(0.04)
+      legend.SetBorderSize(0)
+      legend.SetFillStyle(0)
+      #extract central curve
+      pad = ROOT.gPad 
+      objs = pad.GetListOfPrimitives()
+      for obj in objs:
+        print(obj.GetName(), "->", obj.ClassName())
+        if "central" in obj.GetName(): 
+          legend.AddEntry(obj, "Central curve", "L")  
+      legend.AddEntry(h, f"Deviation e{direc}", "L")  
+      legend.Draw("SAME")
+      legends.append(legend) 
+      c_1.Update() 
+
+    if signal == "dsStarMu" : 
+      print("This is ds*mu in pad: ", int(direc))
+      c_10.cd(int(direc))
 
       h = rf.Get(key)
       h.SetLineWidth(1)
+      h.SetLineStyle(2)
+      h.SetLineColor(ROOT.kRed)
       h.Draw("HIST SAME")
+      c_10.Update() 
+
+      legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
+      legend.SetTextSize(0.04)
+      legend.SetBorderSize(0)
+      legend.SetFillStyle(0)
+      #extract central curve
+      pad = ROOT.gPad 
+      objs = pad.GetListOfPrimitives()
+      for obj in objs:
+        print(obj.GetName(), "->", obj.ClassName())
+        if "central" in obj.GetName(): 
+          legend.AddEntry(obj, "Central curve", "L")  
+      legend.AddEntry(h, f"Deviation e{direc}", "L")  
+      legend.Draw("SAME")
+      legends.append(legend) 
+      c_10.Update() 
+
+    if signal == "dsStarTau": 
+      print("This is ds*tau in pad: ", int(direc))
+      c_11.cd(int(direc))
+
+      #pdb.set_trace() 
+      h = rf.Get(key)
+      h.SetLineWidth(1)
+      h.SetLineStyle(2)
+      h.SetLineColor(ROOT.kRed)
+      h.Draw("HIST SAME")
+      c_11.Update() 
+
+      legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
+      legend.SetTextSize(0.04)
+      legend.SetBorderSize(0)
+      legend.SetFillStyle(0)
+      #extract central curve
+      pad = ROOT.gPad 
+      objs = pad.GetListOfPrimitives()
+      for obj in objs:
+        print(obj.GetName(), "->", obj.ClassName())
+        if "central" in obj.GetName(): 
+          legend.AddEntry(obj, "Central curve", "L")  
+      legend.AddEntry(h, f"Deviation e{direc}", "L")  
+      legend.Draw("SAME")
+      legends.append(legend) 
+      c_11.Update() 
+
 
   c_0 .SaveAs(f"{dest}/{var_bin[0]}_in_bin_{var_bin[1]}_dsmu_variations.pdf")
   c_1 .SaveAs(f"{dest}/{var_bin[0]}_in_bin_{var_bin[1]}_dstau_variations.pdf")
