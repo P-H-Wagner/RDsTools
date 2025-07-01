@@ -16,8 +16,11 @@ from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras import regularizers
 import shap
 from contextlib import redirect_stdout
+import pdb
 
 #import seaborn as sns
+from matplotlib.ticker import LogLocator, LogFormatterExponent
+
 
 import tensorflow as tf
 import ROOT
@@ -52,10 +55,13 @@ def boolean_string(s):
 
 # parsing
 parser = argparse.ArgumentParser()
-parser.add_argument('-d', '--debug', action='store_true' )
+parser.add_argument("-p", "--prod"   , required = True, help = "Specify '24' or '25' to specify the data production")
+parser.add_argument("-t", "--trigger", required = True, help = "Specify 'mu7' or 'mu9' ")
+parser.add_argument('-d', '--debug'  , action='store_true' )
 args = parser.parse_args()
 
-#print(f"====> Running constrained fit? {args.constrained}")
+trigger = args.trigger
+
 shap.initjs()
 
 now = datetime.now()
@@ -74,26 +80,63 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 #------------------input files-------------------
 
-#this is only constrained data! (cut on fv only)
-bdt_data = "17_04_2025_16_04_44"
-base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data}/"
-file_data = [base + f for f in os.listdir(base)]
+if args.prod == "24":
 
-base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{sig_cons_24[0]}/"
-file_sig = [base + f for f in os.listdir(base)]
+  baseline_selection = base_wout_tv_24
+ 
+  #bdt is evaluated on the skimmed datasets :) 
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_24}/"
+  file_data = [base + f for f in os.listdir(base)]
+ 
+  #hammer is evaluated on the skimmed datasets :) 
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{sig_cons_hammer_24}/" 
+  file_sig = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_24[0]}/"
+  file_hb = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_24[0]}/"
+  file_bs = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_24[0]}/"
+  file_b0 = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_24[0]}/"
+  file_bplus = [base + f for f in os.listdir(base)]
 
-base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{hb_cons_24[0]}/"
-file_hb = [base + f for f in os.listdir(base)]
+elif args.prod == "25":
 
-base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bs_cons_24[0]}/"
-file_bs = [base + f for f in os.listdir(base)]
+  baseline_selection = base_wout_tv_25
 
-base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{b0_cons_24[0]}/"
-file_b0 = [base + f for f in os.listdir(base)]
+  if trigger == "mu7":
+    trigger_data = " && (mu7_ip4)" #on data we select on the trigger
+    trigger_mc   = "" #" && (event % 2 == 0) " #on mc we use event nr (all triggers are on for mc!)
+  else:
+    trigger_data = " && ((mu9_ip6) && !(mu7_ip4)) "
+    trigger_mc   = " && (event % 2 == 1) " 
 
-base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{bplus_cons_24[0]}/"
-file_bplus = [base + f for f in os.listdir(base)]
+  #bdt is evaluated on the skimmed datasets :) 
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_25}/"
+  file_data = [base + f for f in os.listdir(base)]
+  
+  #hammer is evaluated on the skimmed datasets :) 
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/{sig_cons_hammer_25}/" 
+  file_sig = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_25[0]}/"
+  file_hb = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_25[0]}/"
+  file_bs = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_25[0]}/"
+  file_b0 = [base + f for f in os.listdir(base)]
+  
+  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_25[0]}/"
+  file_bplus = [base + f for f in os.listdir(base)]
 
+else:
+  raise ValueError ("Not a valid production year! Choose 24 or 25")
 
 def getRdf(dateTimes, debug = None, skimmed = None, hammer = None):
 
@@ -187,78 +230,62 @@ lowMass      = f"& (dsMu_m < {bsMass_})"
  
 ##the feature vector
 kin_var = [
-#'bs_boost_reco_weighted',
-'bs_boost_reco_1',
-'bs_boost_reco_2',
-#'bs_boost_lhcb_alt',
-#'bs_boost_coll',
 
-#'bs_pt_reco_weighted',
-'bs_pt_reco_1',
-'bs_pt_reco_2',
-#'bs_pt_lhcb_alt',
-#'bs_pt_coll',
-
-#'cosMuW_reco_weighted', #better separates all signals
-#'cosMuW_reco_1', #better separates all signals
-#'cosMuW_reco_2', #better separates all signals
-#'cosMuW_lhcb_alt', #better separates all signals
-#'cosMuW_coll', #better separates all signals
-
-'cosPhiDs_lhcb',
+# helicity
+'cosPhiDs_lhcb_alt',
+'cosPhiDs_reco_1',
+'cosPhiDs_reco_2',
+#
 'abs(cosPiK1)',
-#'dsMu_deltaR',
-'kk_deltaR',
 
-'e_gamma',
+'cosMuW_lhcb_alt', 
+'cosMuW_reco_1', 
+'cosMuW_reco_2', 
 
-#'e_star_reco_weighted',
-#'e_star_reco_1',
-#'e_star_reco_2',
-'e_star_lhcb_alt',
-#'e_star_coll',
+# vertex info
+'fv_chi2', # dont take prob, they can hit the prec. limit when small!
+'tv_chi2', # "
+'sv_chi2', # "
 
-'m2_miss_coll',
-'m2_miss_lhcb_alt',
+# displacement
+'lxy_ds_sig',
 
-'mu_rel_iso_03',
-'phiPi_deltaR',
-'dsMu_m',
-#'pt_miss_....',        #too similar to m2 miss?
-
-#'q2_reco_weighted',
-#'q2_reco_1',
-#'q2_reco_2',
-'q2_coll',
-'q2_lhcb_alt',
+# kinematics
 'mu_pt',
 'mu_eta',
-'mu_phi',
 'pi_pt',
-#'pi_eta',
-#'pi_phi',
-#'kk_eta',
-#'kk_phi',
-#'phi_fitted_pt',
-#'ds_fitted_pt',
-#'bs_fitted_pt',
+'pi_eta',
 
-'fv_prob',
-'tv_prob',
-'sv_prob',
-#'mu_eta',
-#'mu_phi',
-#'pi_eta',
-#'pi_phi',
-#'phiPi_pt',
-#'phiPi_phi',
-#'phiPi_eta',
-#'dsMu_pt',
-#'dsMu_eta',
-#'dsMu_phi',
+# masses
+'kk_m',
+'phiPi_m',
+'dsMu_m',
+
+# delta R
+'kk_deltaR',
+'phiPi_deltaR',
+'dsMu_deltaR',
+
+# q2 and co
+'q2_coll',
+
+'bs_boost_lhcb_alt',
+'bs_pt_lhcb_alt',
+'e_star_lhcb_alt',
+'m2_miss_lhcb_alt',
+'pt_miss_lhcb_alt',
+
+'bs_boost_reco_1',
+'bs_pt_reco_1',
+'e_star_reco_1',
+'q2_reco_1',
+
+'bs_boost_reco_2',
+'bs_pt_reco_2',
+'e_star_reco_2',
+'q2_reco_2',
+
 'disc_negativity',
-'lxy_ds_sig',
-'ds_vtx_cosine'
 ]
 
 hammer = [
@@ -266,7 +293,48 @@ hammer = [
 ]
 
 
-kin_var.append("phiPi_m") 
+
+if args.prod == "24":
+
+  #old variable names
+
+  #displacement
+  kin_var.append("ds_vtx_cosine")
+  #kinematics
+  kin_var.append("e_gamma")
+  #isolation
+  kin_var.append("mu_rel_iso_03")
+
+if args.prod == "25":
+
+  #old defintions
+  #kin_var.append("ds_vtx_cosine_xy_pv")
+  #kinematics
+  #kin_var.append("e_gamma")
+  #isolation
+  #kin_var.append("rel_iso_03")
+
+
+
+
+  #displacement
+  kin_var.append("lxy_bs_sig")
+  kin_var.append("ds_vtx_cosine_xy_pv")
+  kin_var.append("ds_vtx_cosine_xy")
+  kin_var.append("signed_decay_ip3d_mu_ds_sv")
+
+  #kinematics
+  kin_var.append("e_gamma/photon_pt")
+  kin_var.append("bs_mass_corr")
+  kin_var.append("bs_mass_corr_photon")
+  kin_var.append("ds_perp")
+  kin_var.append("ds_perp_photon")
+  kin_var.append("ds_mu_perp")
+  kin_var.append("ds_mu_perp_photon")
+   
+  #isolation
+  kin_var.append("rel_iso_03_pv")
+
 
 class Sample(object):
   '''
@@ -281,10 +349,13 @@ class Sample(object):
     self.tree = tree
     self.signal = signal
 
-    if self.signal in [0,1,2,3,4]:
+    if self.signal in [0,1,2,3]:
       #signals
       #print("hammer branches")
-      #branches = kin_var + ['event'] + hammer #event will be removed later!
+      branches = kin_var + ['event'] + hammer #event will be removed later!
+      #branches = kin_var + ['event'] #event will be removed later!
+
+    elif self.signal == 4: #hb
       branches = kin_var + ['event'] #event will be removed later!
 
     else: #data
@@ -297,7 +368,6 @@ class Sample(object):
       for name in filename:
         f = ROOT.TFile(name)
         tree_obj = f.Get(self.tree)
-
         if args.debug:
           arr = tree2array(tree_obj,selection = self.selection, branches = branches, stop = 100) #event will be removed later!
         else:
@@ -306,6 +376,7 @@ class Sample(object):
         pd_list.append(pd.DataFrame(arr))
 
       self.df = pd.concat(pd_list)
+      pdb.set_trace()
 
 
     else: 
@@ -372,6 +443,8 @@ class Trainer(object):
     f.write("Early stopping: "            + str(self.do_early_stopping)   + "\n")
     f.write("Reduce lr: "                 + str(self.do_reduce_lr)        + "\n")
     f.write("Baseline selection: "        + str(self.baseline_selection)  + "\n")
+    f.write("year of data: "              + str(args.prod)                + "\n")
+    f.write("trigger: "                   + str(args.trigger)             + "\n")
     f.write("Signal region up to:"        + str(nSignalRegion) + " sigma" + "\n")
     f.write("Sideband region starts at:"  + str(nSidebands)    + " sigma" + "\n")
     f.write("Sideband region width:"      + str(sbWidth)       + " sigma" + "\n")
@@ -421,17 +494,22 @@ class Trainer(object):
       class_label[class_id].append(label[mc_id]) 
 
       if mc_id >= 0: 
-        mc_sample           = Sample(filename = file_sig,    selection=self.baseline_selection  + f'& gen_sig == {mc_id}' + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample            = Sample(filename = file_sig,    selection=self.baseline_selection  + trigger_mc + f'&& (gen_sig == {mc_id})' + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
 
       else:
-        #mc_sample          = Sample(filename = file_hb,     selection=self.baseline_selection  + hb_selec,               + signalRegion + lowMass,                tree = tree_name,signal = class_id)
-        mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample            = Sample(filename = file_hb,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
 
-        mc_sample           = pd.concat([mc_sample1,mc_sample2,mc_sample3], sort = False)
-
+        #mc_sample           = pd.concat([mc_sample1,mc_sample2,mc_sample3], sort = False)
+      
       mc_train, mc_test = train_test_split(mc_sample,test_size = 0.2,random_state = 1000)
+      f = open(self.outdir + "/settings.txt", "a")
+      f.write(f"train sample for signal {mc_id} has class name {class_id} and contains {len(mc_train)} events \n" )
+      f.write(f"test sample for signal {mc_id} has class name {class_id} and contains {len(mc_test)} events \n"   )
+      f.close()
+
       print(f"train sample for signal {mc_id} has class name {class_id} and contains {len(mc_train)} events")
       print(f"test sample for signal {mc_id} has class name {class_id} and contains {len(mc_test)} events")
   
@@ -454,7 +532,7 @@ class Trainer(object):
     sign_flip   = " && ((k1_charge*k2_charge < 0) && (pi_charge*mu_charge>0))"
     data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
 
-    data_sample_sf = Sample(filename=file_data,   selection=data_selec, tree = 'tree',signal = data_id).df
+    data_sample_sf = Sample(filename=file_data,   selection=data_selec + trigger_data , tree = 'tree',signal = data_id).df
     data_sample  = pd.concat([data_sample_sf], sort = False)
 
     data_train, data_test = train_test_split(data_sample, test_size=0.2, random_state = 1000)
@@ -462,13 +540,18 @@ class Trainer(object):
     train[data_id] = data_train
     test [data_id] = data_test
 
+    f = open(self.outdir + "/settings.txt", "a")
+    f.write(f"train sample for data has class name {data_id} and  has {len(data_train)} events \n")
+    f.write(f"test sample for data has class name {data_id} and  has {len(data_test)} events \n"  )
+    f.close()
+
     print(f"train sample for data has class name {data_id} and  has {len(data_train)} events")
     print(f"test sample for data has class name {data_id} and  has {len(data_test)} events")
 
 
     
     print(f'========> it took {round(time() - now,2)} seconds' )
-
+    pdb.set_trace()
     return train, test, class_label 
 
   def createDataframe(self, samples):
@@ -540,9 +623,14 @@ class Trainer(object):
 
     # since our dataset is cleaned from nans (except the one we get from concatenating),
     # we can replace them with 1.0. Like this, all non-hammered events have simply weight 1
-
+    # same for sf_weight, it will be 1.0 for MC
+    #pdb.set_trace()
     train = train.fillna(1.0)
     test  = test .fillna(1.0)
+
+    # create new column which holds the multiplication of all weights
+    train["total_w"] = train["sf_weights"] * train["central_w"]
+    test ["total_w"] = test ["sf_weights"] * test ["central_w"]
 
     # even undo the splitting which is not used for k-folding
     main_df = pd.concat([train,test],sort= False)
@@ -556,7 +644,8 @@ class Trainer(object):
     # X and Y, keep event number for kfold splitting! will be removed later!
 
     #w_cols = ['central_w', 'event']
-    w_cols = ['sf_weights', 'event']
+    #w_cols = ['sf_weights', 'central_w', 'event']
+    w_cols = ['total_w', 'event']
 
     X       = pd.DataFrame(main_df, columns=list(set(self.features)) + ['event'] )
     Y       = pd.DataFrame(main_df, columns=['is_signal', 'event'])
@@ -609,36 +698,47 @@ class Trainer(object):
     decay_rate=0.9
 )
 
-    l2_rate = 0.01
-
+    l2_rate = regularizers.l2(0.01)
+    learning_rate = 0.00005
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input((len(features),)))
-    #model.add(tf.keras.layers.Dense(40, activation= 'swish'))
-    #model.add(tf.keras.layers.Dense(32, activation= 'relu'))
-    #model.add(tf.keras.layers.Dropout(.2))
-    #model.add(tf.keras.layers.Dense(20, activation ='relu'))
-    #model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    #model.add(tf.keras.layers.Dropout(.2))
-    #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    #model.add(tf.keras.layers.Dense(159, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    #model.add(tf.keras.layers.Dense(128, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    #model.add(tf.keras.layers.Dense(64, activation ='relu', kernel_regularizer=regularizers.l2(0.01)))
-    #model.add(tf.keras.layers.Dense(256,  activation ='swish' )) #, kernel_regularizer=regularizers.l2(0.01)))
-    model.add(tf.keras.layers.Dense(64,   activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
-    model.add(tf.keras.layers.Dense(128,  activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
-    model.add(tf.keras.layers.Dense(128,  activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
-    model.add(tf.keras.layers.Dense(128,   activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
-    model.add(tf.keras.layers.Dense(64,   activation ='swish', kernel_regularizer=regularizers.l2(l2_rate)))
-    #model.add(tf.keras.layers.Dropout(.2))
-    #model.add(tf.keras.layers.Dense(20, activation ='relu')) #, kernel_regularizer=regularizers.l2(0.01)))#, kernel_regularizer=regularizers.l2(0.01))) #also 64 works
-    #model.add(tf.keras.layers.Dropout(.2))
-    model.add(tf.keras.layers.Dense(6, activation= 'softmax'))
-
-
-    learning_rate = 0.00005
+    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    model.add(tf.keras.layers.Dense(64 ,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    model.add(tf.keras.layers.Dense(6  ,  activation= 'softmax'                                            ))
     opt = keras.optimizers.Adam(learning_rate=learning_rate) 
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
-    
+   
+    # OPTUNA SUGGESTION 
+    # Trial 57 finished with value: 0.8491290502301749 and parameters: 
+    #{'n_layers': 7, 'regu_rate': 0.0010307639101928131, 
+    #'num_nodes_0': 246, 
+    #'num_nodes_1': 300, 
+    #'num_nodes_2': 44, 
+    #'num_nodes_3': 275, 
+    #'num_nodes_4': 265, 
+    #'num_nodes_5': 299, 
+    #'num_nodes_6': 55, 
+    #'optimizer': 'Adam', 'adam_learning_rate': 0.00021996309401293347, 'batch_size': 40}. 
+
+    #l2_rate = regularizers.l2(0.001)
+    #learning_rate = 0.00022
+    #model = tf.keras.Sequential()
+    #model.add(tf.keras.layers.Input((len(features),)))
+    #model.add(tf.keras.layers.Dense(246,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    #model.add(tf.keras.layers.Dense(300,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    #model.add(tf.keras.layers.Dense(44,   activation ='swish'  ,  kernel_regularizer=l2_rate))
+    #model.add(tf.keras.layers.Dense(275,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    #model.add(tf.keras.layers.Dense(265,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    #model.add(tf.keras.layers.Dense(299,  activation ='swish'  ,  kernel_regularizer=l2_rate))
+    #model.add(tf.keras.layers.Dense(6  ,  activation= 'softmax'                                            ))
+    #opt = keras.optimizers.Adam(learning_rate=learning_rate) 
+    #model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
+
+
+ 
     print(model.summary()) #not enough
 
     def print_model_summary(model):
@@ -677,7 +777,7 @@ class Trainer(object):
     '''
     # early stopping
     monitor = 'val_loss'
-    es = EarlyStopping(monitor=monitor, mode='auto', verbose=1, patience=8)
+    es = EarlyStopping(monitor=monitor, mode='auto', verbose=1, patience=10)
     
     # reduce learning rate when at plateau, fine search the minimum
     reduce_lr = ReduceLROnPlateau(monitor=monitor, mode='auto', factor=0.2, patience=5, min_lr=0.000001, cooldown=10, verbose=True)
@@ -760,6 +860,7 @@ class Trainer(object):
       eff_pop = np.zeros(6)
 
       for i in range(0,6):
+
         # effective population of classes 0-5 for fold n:
         eff_pop[i] = w_train[n][y_train[n]['is_signal'] == i].sum()
 
@@ -786,6 +887,7 @@ class Trainer(object):
 
       print("I reach this point :D")
       history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
+      #history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w) 
  
    
     print(f"class weights: {weight}")
@@ -798,19 +900,30 @@ class Trainer(object):
       Plot the loss for training and validation sets
     '''
 
+    # folds can have different length due to early stopping!!!
+
+    #training
     average_loss = []
-    
+    #max epochs (get max epochs)
+    max_epochs = max(len(history[n].history['loss']) for n in range(self.nfolds))
 
     for n in range(self.nfolds):
 
       loss_train = history[n].history['loss']
-      average_loss.append(np.array(loss_train))
+      #average_loss.append(np.array(loss_train))
       epochs = range(1, len(loss_train)+1)
       plt.plot(epochs, loss_train, self.colors[n], label=f'Fold {n}')
 
-    #import pdb; pdb.set_trace();
-    average_loss = sum(average_loss)/self.nfolds
-    plt.plot(epochs, average_loss, 'black' , label='Average loss', linestyle= 'dashed')
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the loss (the rest stays nan)
+      padded[:len(loss_train)] = loss_train
+      #append the padded array to the average loss
+      average_loss.append(padded)
+
+    #take the average loss and ignore nans
+    average_loss = np.nanmean(np.vstack(average_loss), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_loss, 'black' , label='Average loss', linestyle= 'dashed')
 
     plt.title('Training Loss')
     plt.xlabel('Epochs')
@@ -819,24 +932,87 @@ class Trainer(object):
     self.saveFig(plt, 'training_loss')
     plt.clf()
 
+    #log
+ 
+    average_loss = []
+    for n in range(self.nfolds):
 
+      loss_train = history[n].history['loss']
+      #average_loss.append(np.array(loss_train))
+      epochs = range(1, len(loss_train)+1)
+      plt.plot(epochs, loss_train, self.colors[n], label=f'Fold {n}')
 
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the loss (the rest stays nan)
+      padded[:len(loss_train)] = loss_train
+      #append the padded array to the average loss
+      average_loss.append(padded)
+
+    #import pdb; pdb.set_trace();
+    average_loss = np.nanmean(np.vstack(average_loss), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_loss, 'black' , label='Average loss', linestyle= 'dashed')
+    plt.title('Training Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.yscale('log')  
+    plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
+    plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+    plt.legend()
+    self.saveFig(plt, 'training_loss_log')
+    plt.clf()
+
+    #validation
     average_loss = []
     for n in range(self.nfolds):
 
       loss_val = history[n].history['val_loss']
-      average_loss.append(np.array(loss_val))
-      epochs = range(1, len(loss_train)+1)
-      epochs = range(1, len(loss_train)+1)
+      epochs = range(1, len(loss_val)+1)
       plt.plot(epochs, loss_val, self.colors[n], label=f'Fold {n}')
 
-    average_loss = sum(average_loss)/self.nfolds
-    plt.plot(epochs, average_loss, 'black' , label='Average loss', linestyle= 'dashed')
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the loss (the rest stays nan)
+      padded[:len(loss_val)] = loss_val
+      #append the padded array to the average loss
+      average_loss.append(padded)
+
+
+    average_loss = np.nanmean(np.vstack(average_loss), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_loss, 'black' , label='Average loss', linestyle= 'dashed')
     plt.title('Validation Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
     self.saveFig(plt, 'validation_loss')
+    plt.clf()
+
+    #log
+    average_loss = []
+    for n in range(self.nfolds):
+
+      loss_val = history[n].history['val_loss']
+      epochs = range(1, len(loss_val)+1)
+      plt.plot(epochs, loss_val, self.colors[n], label=f'Fold {n}')
+
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the loss (the rest stays nan)
+      padded[:len(loss_val)] = loss_val
+      #append the padded array to the average loss
+      average_loss.append(padded)
+
+
+    average_loss = np.nanmean(np.vstack(average_loss), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_loss, 'black' , label='Average loss', linestyle= 'dashed')
+    plt.title('Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.yscale('log')  
+    plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
+    plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+    plt.legend()
+    self.saveFig(plt, 'validation_loss_log')
     plt.clf()
 
 
@@ -845,43 +1021,119 @@ class Trainer(object):
       Plot the accuracy for training and validation sets
     '''
 
- 
-    average_accuracy = []
+    #training
+    average_acc = []
+
+    #max epochs (get max epochs)
+    max_epochs = max(len(history[n].history['acc']) for n in range(self.nfolds))
+
     for n in range(self.nfolds):
 
       acc_train = history[n].history['acc']
-      average_accuracy.append(np.array(acc_train))
+      #average_acc.append(np.array(acc_train))
       epochs = range(1, len(acc_train)+1)
-      plt.plot(epochs, acc_train, self.colors[n], label='Fold {n}')
+      plt.plot(epochs, acc_train, self.colors[n], label=f'Fold {n}')
+
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the acc (the rest stays nan)
+      padded[:len(acc_train)] = acc_train
+      #append the padded array to the average acc
+      average_acc.append(padded)
 
 
-    average_accuracy = sum(average_accuracy)/self.nfolds
-    plt.plot(epochs, average_accuracy, 'black' , label='Average accuracy', linestyle= 'dashed')
+    average_acc = np.nanmean(np.vstack(average_acc), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_acc, 'black' , label='Average acc', linestyle= 'dashed')
 
     plt.title('Training Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
-    self.saveFig(plt, 'training_accuracy')
+    self.saveFig(plt, 'training_acc')
     plt.clf()
 
-    average_accuracy = []
+    #log
+    average_acc = []
+    for n in range(self.nfolds):
+
+      acc_train = history[n].history['acc']
+      #average_acc.append(np.array(acc_train))
+      epochs = range(1, len(acc_train)+1)
+      plt.plot(epochs, acc_train, self.colors[n], label=f'Fold {n}')
+
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the acc (the rest stays nan)
+      padded[:len(acc_train)] = acc_train
+      #append the padded array to the average acc
+      average_acc.append(padded)
+
+    average_acc = np.nanmean(np.vstack(average_acc), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_acc, 'black' , label='Average acc', linestyle= 'dashed')
+    plt.title('Training Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.yscale('log')  
+    plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
+    plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+
+    plt.legend()
+    self.saveFig(plt, 'training_acc_log')
+    plt.clf()
+
+    #validation
+    average_acc = []
     for n in range(self.nfolds):
 
       acc_val = history[n].history['val_acc']
-      average_accuracy.append(np.array(acc_val))
-      epochs = range(1, len(acc_train)+1)
+      #average_acc.append(np.array(acc_val))
+      epochs = range(1, len(acc_val)+1)
       plt.plot(epochs, acc_val, self.colors[n], label=f'Fold {n}')
 
-    
-    average_accuracy = sum(average_accuracy)/self.nfolds 
-    plt.plot(epochs, average_accuracy, 'black' , label='Average accuracy', linestyle= 'dashed')
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the acc (the rest stays nan)
+      padded[:len(acc_val)] = acc_val
+      #append the padded array to the average acc
+      average_acc.append(padded)
 
+
+    average_acc = np.nanmean(np.vstack(average_acc), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_acc, 'black' , label='Average acc', linestyle= 'dashed')
     plt.title('Validation Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
-    self.saveFig(plt, 'validation_accuracy')
+    self.saveFig(plt, 'validation_acc')
+    plt.clf()
+
+    #log
+    average_acc = []
+    for n in range(self.nfolds):
+
+      acc_val = history[n].history['val_acc']
+      #average_acc.append(np.array(acc_val))
+      epochs = range(1, len(acc_val)+1)
+      plt.plot(epochs, acc_val, self.colors[n], label=f'Fold {n}')
+
+      #create a full array of nans of length max_epochs       
+      padded = np.full(max_epochs, np.nan)
+      #fill the first part with the acc (the rest stays nan)
+      padded[:len(acc_val)] = acc_val
+      #append the padded array to the average acc
+      average_acc.append(padded)
+
+    average_acc = np.nanmean(np.vstack(average_acc), axis=0)
+    plt.plot(range(1, max_epochs + 1), average_acc, 'black' , label='Average acc', linestyle= 'dashed')
+    plt.title('Validation Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.yscale('log')  
+    plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
+    plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+
+    plt.legend()
+    self.saveFig(plt, 'validation_acc_log')
     plt.clf()
 
 
@@ -1025,7 +1277,6 @@ class Trainer(object):
 
   def plotCorr(self, model, xx_train, y_train, xx_val, y_val, class_label, fold):
 
-
     #get the score
     score  =  model[fold].predict(xx_val[fold]) #this is a list of length #classes!
 
@@ -1052,6 +1303,10 @@ class Trainer(object):
     # Draw the heatmap with the mask and correct aspect ratio
     g = seaborn.heatmap(corr, cmap=cmap, vmax=1., vmin=-1, center=0, annot=True, fmt='.1f', square=True, linewidths=.8, cbar_kws={"shrink": .8},  annot_kws={"size": 2})
     
+    # force all ticklabels to show (otherwise it gives an error with set_xticklabels(..)
+    g.set_xticks(range(len(test_x.keys())))
+    g.set_yticks(range(len(test_x.keys())))
+
     # rotate axis labels
     g.set_xticklabels(test_x.keys().tolist(), rotation='vertical')
     g.set_yticklabels(test_x.keys().tolist(), rotation='horizontal')
@@ -1286,13 +1541,13 @@ class Trainer(object):
       y_score[n] = model[n].predict(x[n])
       y_onehot_test[n] = label_binarizer[n].transform(y[n])
      
-    plt.figure()
     col =['c','g','m','r','b','k']
     linestyles = ['solid','dotted','dashed', 'dashdot',(0, (1, 10)),(0,(3, 5, 1, 5, 1, 5))]
 
     #plot roc for every class 
-    for sig in range(5):
+    for sig in range(6):
       #and plot all folds in one plot
+      plt.figure()
       for n in range(self.nfolds):
 
 
@@ -1314,6 +1569,32 @@ class Trainer(object):
       self.saveFig(plt, f'ROC_{key}_class_{sig}')
       plt.clf()
 
+      #log scale
+      plt.figure()
+      for n in range(self.nfolds):
+
+
+        #plot roc for every class 
+        class_id = np.flatnonzero(label_binarizer[n].classes_ == sig)[0]
+        fpr,tpr,_ = roc_curve(y_onehot_test[n][:, class_id],y_score[n][:, class_id])    
+        #save it
+        np.savetxt(f"{self.outdir}/tprfpr_{sig}_{key}_fold_{n}.csv",np.array([fpr,tpr]),delimiter = ",")
+        roc_auc = auc(fpr,tpr)
+        plt.plot(fpr, tpr, label=f'Fold {n}, AUC = {round(roc_auc,2)}',color = self.colors[n] ,linestyle = linestyles[sig])
+
+
+      plt.title(f'{key} ROC of class {sig}')
+      plt.xlabel('False positive rate')
+      plt.ylabel('True positive rate')
+      xy = [i*j for i,j in product([10.**i for i in range(-8, 0)], [1,2,4,8])]+[1]
+      plt.plot(xy, xy, color='grey', linestyle='--', label='No skill')
+      plt.yscale('log')  
+      plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=[1.0]))
+      plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+
+      plt.legend()
+      self.saveFig(plt, f'ROC_{key}_class_{sig}_log')
+      plt.clf()
 
 
   
@@ -1393,7 +1674,7 @@ class Trainer(object):
 
     ks_score = h1.KolmogorovTest(h2)
     ks_value = ROOT.TPaveText(0.5, 0.76, 0.88, 0.80, 'nbNDC')
-    ks_value.AddText(f'Average KS score of signal {sig} = {round(ks_score,3)}')
+    ks_value.AddText(f'Average KS score of class {sig} = {round(ks_score,3)}')
     ks_value.SetFillColor(0)
     ks_value.Draw('EP SAME')
 
@@ -1467,11 +1748,7 @@ class Trainer(object):
     self.plotScore(model, xx_train, y_train, xx_val, y_val, 4,class_label)
     self.plotScore(model, xx_train, y_train, xx_val, y_val, 5,class_label)
     #self.plotScoreOneVsAll(model, xx_train, y_train, xx_val, y_val, 1,class_label)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 0)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 1)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 2)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 3)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 4)
+
     ####self.plotCM(model, main_test_df, class_label)
     self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
     self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
@@ -1481,6 +1758,16 @@ class Trainer(object):
     self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3)
     self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
     self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
+ 
+    #one corr for every fold (not class!)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 0)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 1)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 2)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 3)
+    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 4)
+
+
+
 
     return train_notnan, test_notnan
 
@@ -1503,13 +1790,14 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 50 #30 here
-  batch_size = 128 #128 here
+  epochs = 1000 #30 here
+  #batch_size = 128 #128 here
+  batch_size = 40 #128 here
   scaler_type = 'robust'
-  do_early_stopping = False
+  do_early_stopping = True  
   do_reduce_lr = False
   dirname = 'test'
-  baseline_selection = base_wout_tv
+  baseline_selection = baseline_selection 
   nfolds = 5
   frac_sb = 0.0
   frac_sf = 1.0
