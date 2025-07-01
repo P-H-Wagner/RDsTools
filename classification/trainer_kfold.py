@@ -48,6 +48,16 @@ from sidebands import getSigma, getABCS
 from helper import *
 import argparse
 import seaborn
+import yaml
+
+
+tf.config.run_functions_eagerly(True)
+#tf.data.experimental.enable_debug_mode()
+
+with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
+  averages = yaml.safe_load(f)
+
+
 def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
@@ -181,6 +191,60 @@ def getRdf(dateTimes, debug = None, skimmed = None, hammer = None):
 
   return (chain,rdf)
 
+
+def dist_corr(output, hammer_var, true_label):
+  print("======== Calculate distance correlation penalty ========")
+
+  #output is a list of 6dim arrays, holding the score predictions
+
+  #hammer_var is a list of n-dims arrays, holding the n-variables we want to decorrrelate from the scores
+  #in our case its the e{i}_up for the truth label
+
+  #true_label is a list of the true_labels
+
+  # STEP 1. Restrict the metric to signal events only (only have hammer variations for those!) 
+  mask              = tf.squeeze(tf.logical_and(tf.not_equal(true_label, 4), tf.not_equal(true_label, 5)), axis=-1) 
+  
+  output_filt       = tf.boolean_mask(output    , mask)  
+  hammer_var_filt   = tf.boolean_mask(hammer_var, mask)  
+
+  # STEP 2. Restrict the output to the signals scores only (score0 - score3)
+  score0to3         = output_filt[:, :4] #keep all events (:) but only first 4 cols
+
+  # STEP 3. Calculate the two distance matrices
+  score_i           = tf.expand_dims(score0to3, axis=1) 
+  score_j           = tf.expand_dims(score0to3, axis=0) 
+  score_diff        = score_i - score_j
+  score_dist_mat    = tf.norm(score_diff, axis=2)  
+
+  score_row_mean    = tf.reduce_mean(score_dist_mat, axis=1, keepdims=True) 
+  score_col_mean    = tf.reduce_mean(score_dist_mat, axis=0, keepdims=True) 
+  score_total_mean  = tf.reduce_mean(score_dist_mat)
+
+  score_dist_mat    = score_dist_mat - score_row_mean - score_col_mean - score_total_mean 
+
+  hammer_i          = tf.expand_dims(hammer_var_filt, axis=1) 
+  hammer_j          = tf.expand_dims(hammer_var_filt, axis=0) 
+  hammer_diff       = hammer_i - hammer_j
+  hammer_dist_mat   = tf.norm(hammer_diff, axis=2)  
+ 
+  hammer_row_mean   = tf.reduce_mean(hammer_dist_mat, axis=1, keepdims=True) 
+  hammer_col_mean   = tf.reduce_mean(hammer_dist_mat, axis=0, keepdims=True) 
+  hammer_total_mean = tf.reduce_mean(hammer_dist_mat)
+
+  hammer_dist_mat   = hammer_dist_mat - hammer_row_mean - hammer_col_mean - hammer_total_mean 
+
+  pdb.set_trace()
+  print("output:", output.shape, output.dtype)
+  print("hammer_var:", hammer_var.shape, hammer_var.dtype)
+  print("true_label:", true_label.shape, true_label.dtype)
+
+  tf.print("Output values:", output, summarize=-1)
+  tf.print("Decorrelator values:", hammer_var, summarize=-1)
+  tf.print("True label values:", true_label, summarize=-1)
+
+  return tf.reduce_mean(output) * 0.01
+
 #--------------------define sideband region (mlow, mhigh) and dump it into pickle ----------------
 
 #chainSig,rdfSig     = getRdf(sig_cons_24) 
@@ -290,6 +354,12 @@ kin_var = [
 
 hammer = [
 "central_w",
+"e1_up",
+"e2_up",
+"e3_up",
+"e4_up",
+"e5_up",
+"e6_up",
 ]
 
 
@@ -365,18 +435,20 @@ class Sample(object):
     if isinstance(filename, list):
 
       pd_list = []
+      
+      if args.debug: filename = filename[:1]
       for name in filename:
         f = ROOT.TFile(name)
         tree_obj = f.Get(self.tree)
-        if args.debug:
-          arr = tree2array(tree_obj,selection = self.selection, branches = branches, stop = 100) #event will be removed later!
-        else:
-          arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+        #if args.debug:
+        #  arr = tree2array(tree_obj,selection = self.selection, branches = branches, stop = 100) #event will be removed later!
+        #else:
+        #  arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+        arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
 
         pd_list.append(pd.DataFrame(arr))
 
       self.df = pd.concat(pd_list)
-      pdb.set_trace()
 
 
     else: 
@@ -551,7 +623,6 @@ class Trainer(object):
 
     
     print(f'========> it took {round(time() - now,2)} seconds' )
-    pdb.set_trace()
     return train, test, class_label 
 
   def createDataframe(self, samples):
@@ -629,8 +700,36 @@ class Trainer(object):
     test  = test .fillna(1.0)
 
     # create new column which holds the multiplication of all weights
-    train["total_w"] = train["sf_weights"] * train["central_w"]
-    test ["total_w"] = test ["sf_weights"] * test ["central_w"]
+
+    #trick
+    averages["central_w_hb"]     = 1.0
+    averages["central_w_comb"]   = 1.0
+    for i in range(1,7):
+      averages[f"e{i}_up_hb"]    = 1.0
+      averages[f"e{i}_up_comb"]  = 1.0
+
+
+    keys = {0: 'dstau', 1: 'dsstartau', 2:'dsmu' , 3: 'dsstarmu', 4:'hb', 5:'comb'}
+
+    #for every event, pick the correct central_av accoding to is_signal
+    central_av_train = [averages["central_w_" + keys[sig]] for sig in train["is_signal"]]
+    central_av_test  = [averages["central_w_" + keys[sig]] for sig in test ["is_signal"]]
+    #for every event, pick the correct variational av according to signal
+    var_av_train     = {}
+    var_av_test      = {}
+    for i in range(1,7):
+
+      var_av_train[f"average_e{i}_up"] = [averages[f"e{i}_up_" + keys[sig]] for sig in train["is_signal"]]
+      var_av_test [f"average_e{i}_up"] = [averages[f"e{i}_up_" + keys[sig]] for sig in test ["is_signal"]]
+
+      #normalize weights
+      train[f"e{i}_up"] =  train[f"e{i}_up"] /  var_av_train[f"average_e{i}_up"]
+      test [f"e{i}_up"] =  test[f"e{i}_up"]  /  var_av_test [f"average_e{i}_up"]
+
+    pdb.set_trace()
+    train["total_w"] = train["sf_weights"] * train["central_w"] / central_av_train
+    test ["total_w"] = test ["sf_weights"] * test ["central_w"] / central_av_test
+    
 
     # even undo the splitting which is not used for k-folding
     main_df = pd.concat([train,test],sort= False)
@@ -645,11 +744,14 @@ class Trainer(object):
 
     #w_cols = ['central_w', 'event']
     #w_cols = ['sf_weights', 'central_w', 'event']
-    w_cols = ['total_w', 'event']
+    w_cols   = ['total_w', 'event']
+    hammer_var_cols = ['e1_up','e2_up','e3_up','e4_up','e5_up','e6_up', 'event']
 
     X       = pd.DataFrame(main_df, columns=list(set(self.features)) + ['event'] )
     Y       = pd.DataFrame(main_df, columns=['is_signal', 'event'])
     weights = pd.DataFrame(main_df, columns=w_cols)
+    hammer  = pd.DataFrame(main_df, columns=hammer_var_cols)
+
     # save the exact list of features
     features_filename = '/'.join([self.outdir, 'input_features.pck'])
     pickle.dump(self.features, open(features_filename, 'wb' ))
@@ -658,6 +760,7 @@ class Trainer(object):
     x_folds = {}
     y_folds = {}
     w_folds = {}
+    h_folds = {}
 
     xx_folds = {}
     for n in range(self.nfolds):
@@ -666,11 +769,14 @@ class Trainer(object):
       x_folds[n] = X      [ X["event"]       % self.nfolds == n ]
       y_folds[n] = Y      [ Y["event"]       % self.nfolds == n ]
       w_folds[n] = weights[ weights["event"] % self.nfolds == n ]
+      h_folds[n] = hammer [ hammer ["event"] % self.nfolds == n ]
 
       #delete event columns afterwards!
       x_folds[n] = x_folds[n].drop("event", axis = 1)
       y_folds[n] = y_folds[n].drop("event", axis = 1)
       w_folds[n] = w_folds[n].drop("event", axis = 1)
+      h_folds[n] = h_folds[n].drop("event", axis = 1)
+
 
       # scale the features
       # this is an important step!
@@ -683,62 +789,53 @@ class Trainer(object):
       print( ' ========> {} created'.format(scaler_filename))
  
  
-    return main_df, qt, xx_folds, y_folds, w_folds
+    return main_df, qt, xx_folds, y_folds, w_folds, h_folds
 
+ 
+    
 
   def defineModel(self):
     '''
       Define the NN
     '''
-    #NOTE for the moment, everything is hardcoded
 
-    rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.00001,
-    decay_steps=10000,
-    decay_rate=0.9
-)
-
+    #params
     l2_rate = regularizers.l2(0.01)
     learning_rate = 0.00005
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Input((len(features),)))
-    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    model.add(tf.keras.layers.Dense(128,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    model.add(tf.keras.layers.Dense(64 ,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    model.add(tf.keras.layers.Dense(6  ,  activation= 'softmax'                                            ))
+    lambda_dcorr = 10.0
+
+    #inputs
+    features   = tf.keras.Input(shape=(len(self.features),), name="features")
+    hammer_var = tf.keras.Input(shape=(6,)            , name="hammer_var") #6 hammer variations for distance correlation
+    true_label = tf.keras.Input(shape=(1,)            , name="true_label") #hammer variations for distance correlation
+
+
+    #body
+    body = tf.keras.layers.Dense(64 , activation='swish', kernel_regularizer=regularizers.l2(0.01))(features)
+    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
+    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
+    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
+    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
+    body = tf.keras.layers.Dense(64 , activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
+    
+    #output
+    output = tf.keras.layers.Dense(6, activation='softmax')(body)
+
+    #create model
+    model = tf.keras.models.Model(inputs=[features, hammer_var, true_label], outputs=output)
+
+    #optimizer
     opt = keras.optimizers.Adam(learning_rate=learning_rate) 
-    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
-   
-    # OPTUNA SUGGESTION 
-    # Trial 57 finished with value: 0.8491290502301749 and parameters: 
-    #{'n_layers': 7, 'regu_rate': 0.0010307639101928131, 
-    #'num_nodes_0': 246, 
-    #'num_nodes_1': 300, 
-    #'num_nodes_2': 44, 
-    #'num_nodes_3': 275, 
-    #'num_nodes_4': 265, 
-    #'num_nodes_5': 299, 
-    #'num_nodes_6': 55, 
-    #'optimizer': 'Adam', 'adam_learning_rate': 0.00021996309401293347, 'batch_size': 40}. 
 
-    #l2_rate = regularizers.l2(0.001)
-    #learning_rate = 0.00022
-    #model = tf.keras.Sequential()
-    #model.add(tf.keras.layers.Input((len(features),)))
-    #model.add(tf.keras.layers.Dense(246,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    #model.add(tf.keras.layers.Dense(300,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    #model.add(tf.keras.layers.Dense(44,   activation ='swish'  ,  kernel_regularizer=l2_rate))
-    #model.add(tf.keras.layers.Dense(275,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    #model.add(tf.keras.layers.Dense(265,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    #model.add(tf.keras.layers.Dense(299,  activation ='swish'  ,  kernel_regularizer=l2_rate))
-    #model.add(tf.keras.layers.Dense(6  ,  activation= 'softmax'                                            ))
-    #opt = keras.optimizers.Adam(learning_rate=learning_rate) 
-    #model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['acc'])
+    # add penality term
+    #model.add_loss(self.dist_corr(hammer_var, output, true_label))
+    #model.add_loss(self.lambda_dcorr * dist_corr_loss)
+    penalty = tf.keras.layers.Lambda(lambda x: dist_corr(x[0], x[1], x[2]))([output, hammer_var, true_label])  
+    model.add_loss(penalty)
 
-
- 
+    #compile
+    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=[], weighted_metrics=['acc'])
+  
     print(model.summary()) #not enough
 
     def print_model_summary(model):
@@ -799,7 +896,7 @@ class Trainer(object):
     return callbacks
 
 
-  def prepareInputs(self, xx_folds, y_folds, w_folds):
+  def prepareInputs(self, xx_folds, y_folds, w_folds, h_folds):
     '''
       Note: the input xx should arlready be scaled
     '''
@@ -816,11 +913,12 @@ class Trainer(object):
       xx_folds[n] = xx_folds[n].reset_index(drop=True)
       y_folds[n]  = y_folds[n].reset_index(drop=True)
       w_folds[n]  = w_folds[n].reset_index(drop=True)
+      h_folds[n]  = h_folds[n].reset_index(drop=True)
 
-    return xx_folds, y_folds, w_folds 
+    return xx_folds, y_folds, w_folds, h_folds
 
 
-  def train(self, xx_folds, y_folds, w_folds, weight):
+  def train(self, xx_folds, y_folds, w_folds, h_folds, weight):
     '''
       Perform the training
     '''
@@ -828,9 +926,13 @@ class Trainer(object):
     xx_train = {}
     y_train  = {}
     w_train  = {}
+    h_train  = {}
+
     xx_val   = {}
     y_val    = {}
     w_val    = {}
+    h_val    = {}
+
     model    = {}
     history  = {}
 
@@ -848,10 +950,12 @@ class Trainer(object):
       xx_train[n] = pd.concat([ xx_folds[i] for i in train_indices])
       y_train[n]  = pd.concat([ y_folds[i]  for i in train_indices])
       w_train[n]  = pd.concat([ w_folds[i]  for i in train_indices])
+      h_train[n]  = pd.concat([ h_folds[i]  for i in train_indices])
      
       xx_val[n]   = xx_folds[test_index] 
       y_val[n]    = y_folds[test_index] 
       w_val[n]    = w_folds[test_index] 
+      h_val[n]    = h_folds[test_index] 
 
 
       # calculate the class weight (not the same as sample weight!
@@ -871,28 +975,43 @@ class Trainer(object):
       xx_train[n] = xx_train[n].to_numpy()
       xx_val[n]   = xx_val[n].to_numpy()
 
+
+      # not one hot encoded + convert to numpy (used for penalty term)
+      y_true_label_train = y_train[n]['is_signal'].to_numpy()
+      y_true_label_val   = y_val[n]['is_signal'].to_numpy()
+
+      # encode + convert to numpy
       y_train[n] = tf.one_hot(y_train[n]['is_signal'].to_numpy(), 6)
       y_train[n] = y_train[n].numpy()
 
       y_val[n] = tf.one_hot(y_val[n]['is_signal'].to_numpy(), 6)
       y_val[n] = y_val[n].numpy()
 
+      # convert to numpy
       w_train[n] = w_train[n].to_numpy()
       w_val[n]   = w_val[n].to_numpy()
 
+      h_train[n] = h_train[n].to_numpy()
+      h_val[n]   = h_val[n].to_numpy()
+
+
       callbacks = self.defineCallbacks(n)
 
-      #define the model every time!! Otherwise you train the same model over and over again lol
+      #clear model and redefine a new one for every fold! 
+      from tensorflow.keras import backend as K
+      K.clear_session()
+      pdb.set_trace();
       model[n] = self.defineModel()
-
       print("I reach this point :D")
-      history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
+
+      history[n] = model[n].fit([xx_train[n], h_train[n], y_true_label_train], y_train[n], validation_data=([xx_val[n], h_val[n], y_true_label_val], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
+
       #history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w) 
  
    
     print(f"class weights: {weight}")
 
-    return model, history, xx_train, y_train, xx_val, y_val
+    return model, history, xx_train, y_train, h_train, xx_val, y_val, h_val
 
 
   def plotLoss(self, history):
@@ -944,7 +1063,7 @@ class Trainer(object):
 
       #create a full array of nans of length max_epochs       
       padded = np.full(max_epochs, np.nan)
-      #fill the first part with the loss (the rest stays nan)
+      #fill the first part with the h_train, loss (the rest stays nan)
       padded[:len(loss_train)] = loss_train
       #append the padded array to the average loss
       average_loss.append(padded)
@@ -1155,7 +1274,7 @@ class Trainer(object):
 
     return score
 
-  def plotScoreTauOnly(self, model, xx_train, y_train, xx_val, y_val, class_label):
+  def plotScoreTauOnly(self, model, xx_train, y_train, h_train, xx_val, y_val, h_val, class_label):
     '''
       Plot the score of all channels class sig
     '''
@@ -1180,8 +1299,9 @@ class Trainer(object):
 
         #select only events where the true class is chan...
         x_chan    = xx_val[n][ true_1d == chan ]
+        h_chan    = h_val[n] [ true_1d == chan ]
         #...and predict their score! (data is already scaled!)
-        y_chan    = model[n].predict(x_chan)[:,sig] 
+        y_chan    = model[n].predict([x_chan, h_chan])[:,sig] 
 
         # Plot data into histo
         hist = plt.hist(y_chan, bins=np.arange(0,1.025,0.025), color=col[chan], alpha=0.5, label=class_label[chan], histtype='stepfilled',density = True,linestyle = linestyles[chan], linewidth = 1.5)
@@ -1713,15 +1833,15 @@ class Trainer(object):
 
 
     print('\n========> preprocessing and defining folds' )
-    main_df, qt, xx_folds, y_folds, w_folds = self.preprocessing(train_notnan, test_notnan)
+    main_df, qt, xx_folds, y_folds, w_folds, h_folds = self.preprocessing(train_notnan, test_notnan)
 
 
     print('\n========> preparing the inputs') 
-    xx_folds, y_folds, w_folds = self.prepareInputs(xx_folds, y_folds, w_folds)
+    xx_folds, y_folds, w_folds, h_folds  = self.prepareInputs(xx_folds, y_folds, w_folds, h_folds)
 
     # do the training
     print('\n========> training...') 
-    model, history, xx_train, y_train, xx_val, y_val = self.train(xx_folds, y_folds, w_folds, weight)
+    model, history, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight)
 
     #save the output dictionaries
     with open(f'{self.outdir}/xx_val.pck', 'wb') as f:
@@ -1740,7 +1860,7 @@ class Trainer(object):
     print('\n========> plotting...' )
     self.plotLoss(history)
     self.plotAccuracy(history)
-    self.plotScoreTauOnly(model, xx_train, y_train, xx_val, y_val,class_label )
+    self.plotScoreTauOnly(model, xx_train, y_train, h_train,  xx_val, y_val, h_val, class_label )
     self.plotScore(model, xx_train, y_train, xx_val, y_val, 0,class_label)
     self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
     self.plotScore(model, xx_train, y_train, xx_val, y_val, 2,class_label)
@@ -1790,15 +1910,15 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 1000 #30 here
+  epochs = 1 #30 here
   #batch_size = 128 #128 here
-  batch_size = 40 #128 here
+  batch_size = 128 #128 here
   scaler_type = 'robust'
   do_early_stopping = True  
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = baseline_selection 
-  nfolds = 5
+  nfolds = 3
   frac_sb = 0.0
   frac_sf = 1.0
 
