@@ -52,7 +52,15 @@ import yaml
 
 
 tf.config.run_functions_eagerly(True)
+tf.debugging.enable_check_numerics()
 #tf.data.experimental.enable_debug_mode()
+#print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+#print(tf.__version__)
+#print("GPUs:", tf.config.list_physical_devices('GPU'))
+#tf.debugging.set_log_device_placement(True)
+
+#tf.config.threading.set_intra_op_parallelism_threads(8)
+#tf.config.threading.set_inter_op_parallelism_threads(8)
 
 with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
@@ -193,7 +201,8 @@ def getRdf(dateTimes, debug = None, skimmed = None, hammer = None):
 
 
 def dist_corr(output, hammer_var, true_label):
-  print("======== Calculate distance correlation penalty ========")
+
+  #print("======== Calculate distance correlation penalty ========")
 
   #output is a list of 6dim arrays, holding the score predictions
 
@@ -202,11 +211,14 @@ def dist_corr(output, hammer_var, true_label):
 
   #true_label is a list of the true_labels
 
+  # Step 0. Move from one hot to single label
+  true_label        = tf.argmax(true_label, axis=1)
+
   # STEP 1. Restrict the metric to signal events only (only have hammer variations for those!) 
-  mask              = tf.squeeze(tf.logical_and(tf.not_equal(true_label, 4), tf.not_equal(true_label, 5)), axis=-1) 
+  mask              = tf.logical_and(tf.not_equal(true_label, 4), tf.not_equal(true_label, 5)) 
   
-  output_filt       = tf.boolean_mask(output    , mask)  
-  hammer_var_filt   = tf.boolean_mask(hammer_var, mask)  
+  output_filt       = tf.cast(tf.boolean_mask(output    , mask), tf.float32) #ensure same data type 
+  hammer_var_filt   = tf.cast(tf.boolean_mask(hammer_var, mask), tf.float32) 
 
   # STEP 2. Restrict the output to the signals scores only (score0 - score3)
   score0to3         = output_filt[:, :4] #keep all events (:) but only first 4 cols
@@ -215,7 +227,9 @@ def dist_corr(output, hammer_var, true_label):
   score_i           = tf.expand_dims(score0to3, axis=1) 
   score_j           = tf.expand_dims(score0to3, axis=0) 
   score_diff        = score_i - score_j
-  score_dist_mat    = tf.norm(score_diff, axis=2)  
+
+  # ADD EPISLON FOR STABLE GRADIENT BACKPROPAGATION! CRASH OTHERWISE
+  score_dist_mat    = tf.sqrt(tf.reduce_sum(tf.square(score_diff), axis=2) + 1e-8) 
 
   score_row_mean    = tf.reduce_mean(score_dist_mat, axis=1, keepdims=True) 
   score_col_mean    = tf.reduce_mean(score_dist_mat, axis=0, keepdims=True) 
@@ -226,7 +240,9 @@ def dist_corr(output, hammer_var, true_label):
   hammer_i          = tf.expand_dims(hammer_var_filt, axis=1) 
   hammer_j          = tf.expand_dims(hammer_var_filt, axis=0) 
   hammer_diff       = hammer_i - hammer_j
-  hammer_dist_mat   = tf.norm(hammer_diff, axis=2)  
+
+  # ADD EPISLON FOR STABLE GRADIENT BACKPROPAGATION! CRASH OTHERWISE
+  hammer_dist_mat   = tf.sqrt(tf.reduce_sum(tf.square(hammer_diff), axis=2) + 1e-8)
  
   hammer_row_mean   = tf.reduce_mean(hammer_dist_mat, axis=1, keepdims=True) 
   hammer_col_mean   = tf.reduce_mean(hammer_dist_mat, axis=0, keepdims=True) 
@@ -236,26 +252,25 @@ def dist_corr(output, hammer_var, true_label):
 
   #tf.print(" ===> score mat:", score_dist_mat, summarize=-1)
   #tf.print(" ===> hammer mat:", hammer_dist_mat, summarize=-1)
+
   # STEP 4. Calculate distance correlation coefficient
-
   size         = tf.cast(tf.shape(score_dist_mat)[0], tf.float32) # get size of matrices (quadratic, same size)
-  dCov2        = tf.reduce_sum(score_dist_mat  * hammer_dist_mat) / (size * size)
-  dVar2_score  = tf.reduce_sum(score_dist_mat  * score_dist_mat ) / (size * size)
-  dVar2_hammer = tf.reduce_sum(hammer_dist_mat * hammer_dist_mat) / (size * size)
+  denominator  = tf.maximum(size * size, 1e-8)
+  dCov2        = tf.reduce_sum(score_dist_mat  * hammer_dist_mat) / denominator 
+  dVar2_score  = tf.reduce_sum(score_dist_mat  * score_dist_mat ) / denominator 
+  dVar2_hammer = tf.reduce_sum(hammer_dist_mat * hammer_dist_mat) / denominator 
 
-  tf.print(" ===> size :", size, summarize=-1)
-  tf.print(" ===> dCov2:", dCov2, summarize=-1)
-  tf.print(" ===> dVar2_score:", dVar2_score, summarize=-1)
-  tf.print(" ===> dVar2_hammer:", dVar2_hammer, summarize=-1)
+  #tf.print(" ===> size :", size, summarize=-1)
+  #tf.print(" ===> dCov2:", dCov2, summarize=-1)
+  #tf.print(" ===> dVar2_score:", dVar2_score, summarize=-1)
+  #tf.print(" ===> dVar2_hammer:", dVar2_hammer, summarize=-1)
 
   eps = 1e-10 #small epsilon to avoid zero div.
   
   dCorr = tf.sqrt(dCov2 + eps) / tf.sqrt(tf.sqrt(dVar2_score + eps) * tf.sqrt(dVar2_hammer + eps))
 
-  tf.print(" ===> dCorr:", dCorr , summarize=-1)
-
   #pdb.set_trace()
-  tf.print(" ===> Distance Correlation at this training step:", dCorr, summarize=-1)
+  tf.print(" ====> Distance Correlation at this training step:", dCorr, summarize=-1)
 
   return dCorr 
 
@@ -497,7 +512,7 @@ class Sample(object):
 
       pd_list = []
       
-      if args.debug: filename = filename[:1]
+      if args.debug: filename = filename[:30]
       for name in filename:
         f = ROOT.TFile(name)
         tree_obj = f.Get(self.tree)
@@ -860,54 +875,27 @@ class Trainer(object):
       Define the NN
     '''
 
-    #params
-    l2_rate = regularizers.l2(0.01)
-    learning_rate = 0.00005
-    lambda_dcorr = 1e-3
+    # params
+    learning_rate = 0.0000005
+    l2_rate = 0.01
 
-    #inputs
-    features   = tf.keras.Input(shape=(len(self.features),), name="features")
-    hammer_var = tf.keras.Input(shape=(6,)            , name="hammer_var") #6 hammer variations for distance correlation
-    true_label = tf.keras.Input(shape=(1,)            , name="true_label") #hammer variations for distance correlation
+    model = tf.keras.Sequential()
+    # features
+    model.add(tf.keras.layers.Input((len(features),)))
+    # body
+    model.add(tf.keras.layers.Dense(64 ,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(128,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(128,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(128,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(64 ,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    # output
+    model.add(tf.keras.layers.Dense(6  ,   activation= 'softmax'))
 
+    # optimizer
+    opt = keras.optimizers.Adam(learning_rate=learning_rate)
 
-    #body
-    body = tf.keras.layers.Dense(64 , activation='swish', kernel_regularizer=regularizers.l2(0.01))(features)
-    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
-    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
-    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
-    body = tf.keras.layers.Dense(128, activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
-    body = tf.keras.layers.Dense(64 , activation='swish', kernel_regularizer=regularizers.l2(0.01))(body)
-    
-    #output
-    output = tf.keras.layers.Dense(6, activation='softmax')(body)
+    # print model
 
-    #check for nans
-    #def nan_check_layer(x):
-    #  tf.debugging.check_numerics(x, "NaN detected in model output")
-    #  return x
-
-    #output_checked = tf.keras.layers.Lambda(nan_check_layer)(output)
-
-
-    #create model
-    model = tf.keras.models.Model(inputs=[features, hammer_var, true_label], outputs=output)
-    #model = tf.keras.models.Model(inputs=[features, hammer_var, true_label], outputs=output_checked)
-
-    #optimizer
-    opt = keras.optimizers. Adam(learning_rate=learning_rate, clipvalue=0.5) 
-
-
-    # add penality term
-    #penalty = tf.keras.layers.Lambda(lambda x: dist_corr(tf.stop_gradient(x[0]), x[1], x[2]))([output, hammer_var, true_label])  
-    #penalty = tf.keras.layers.Lambda(lambda x: dist_corr(x[0], x[1], x[2]))([output, hammer_var, true_label])  
-    #model.add_loss(lambda_dcorr * penalty)
-    #model.add_loss(penalty)
-    #model.add_metric(lambda_dcorr*penalty, name='dist_corr_penalty', aggregation='mean')
-
-    #compile
-    #model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=[], weighted_metrics=['acc'])
-  
     print(model.summary()) #not enough
 
     def print_model_summary(model):
@@ -930,7 +918,7 @@ class Trainer(object):
 
     print_model_summary(model)
 
-    #write model into file
+    # write model into file
     f = open(self.outdir + "/settings.txt", "a")
     with redirect_stdout(f): 
       model.summary()
@@ -1043,6 +1031,13 @@ class Trainer(object):
       total_pop = np.sum(eff_pop)
       class_w   = {i: total_pop / eff_pop[i] for i in range (0,6)} 
 
+      #now, absorb the class weight into the sample weights as well :)
+
+                                          #this gives the class 0, ... 5
+      w_train[n]["total_w"] = [ class_w[  y_train[n]['is_signal'][ev]    ] * w for ev,w in enumerate(w_train[n]["total_w"]) ]
+      w_val  [n]["total_w"] = [ class_w[  y_val  [n]['is_signal'][ev]    ] * w for ev,w in enumerate(w_val  [n]["total_w"]) ]
+     
+
       #convert to numpy for training (and use one-hot for y)
       xx_train[n] = xx_train[n].to_numpy()
       xx_val[n]   = xx_val[n].to_numpy()
@@ -1066,6 +1061,9 @@ class Trainer(object):
       h_train[n] = h_train[n].to_numpy()
       h_val[n]   = h_val[n].to_numpy()
 
+  
+
+      pdb.set_trace()
 
       callbacks = self.defineCallbacks(n)
 
@@ -1073,73 +1071,82 @@ class Trainer(object):
 
       from tensorflow.keras import backend as K
       K.clear_session()
-      pdb.set_trace();
-
       model[n] = self.defineModel()
-      print("Defined model")
+      print(" ========> Received model")
 
-      #history[n] = model[n].fit([xx_train[n], h_train[n], y_true_label_train], y_train[n], validation_data=([xx_val[n], h_val[n], y_true_label_val], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
-
-      #history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w) 
- 
-  
+      #########################################
+      # prepare data for custom train loop    #
+      #########################################
       
       batch_size = self.batch_size
       epochs = self.epochs
       lambda_dcorr = 1e-3 
       optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5)
-      
-      # Prepare dataset
-      train_dataset = tf.data.Dataset.from_tensor_slices((
-          (xx_train[n], h_train[n], y_true_label_train),  # inputs tuple
-          y_train[n],                                     # labels
-          w_train[n].flatten()                            # sample weights
-      ))
-      train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-      
-      val_dataset = tf.data.Dataset.from_tensor_slices((
-          (xx_val[n], h_val[n], y_true_label_val),
-          y_val[n],
-          w_val[n].flatten()
-      )).batch(batch_size)
-      
-      loss_fn = tf.keras.losses.CategoricalCrossentropy()
-      
-      @tf.function
      
-      def train_step(inputs, labels, sample_weights):
+     
+      # define main loss  
+      loss_main   = tf.keras.losses.CategoricalCrossentropy()
+ 
+      #########################################
+      # Implement custom train loop           #
+      #########################################
+       
+      @tf.function
+      def train_step(x, y, w, h):
           with tf.GradientTape() as tape:
-              outputs = model[n](inputs, training=True)
-              print("Calculated outputs")
-              main_loss = loss_fn(labels, outputs, sample_weight=sample_weights)
-              print("Calculated main loss")
-              # Get the penalty loss that was added to model via model.add_loss()
-              penalty_loss = tf.add_n(model[n].losses) if model[n].losses else 0.0
-              print("Calculated penalty")
-              total_loss = main_loss + penalty_loss
-              print("Calculated total_loss")
+
+              # Get score predictions (outputs)
+              outputs = model[n](x, training=True)
+              main_loss = loss_main(y, outputs, sample_weight=w)
+              print(" ====> Get crossentropy loss", main_loss)
+              penalty = lambda_dcorr * dist_corr(outputs, h , y)  
+              print(" ====> Get penalty loss term (including lambda scale)", penalty)
+              total_loss = main_loss #+ penalty
+              print(" ====> Get total loss", total_loss)
+
+              if args.debug:
+
+                print(" Get scores", outputs[:3]) #first 3 events
+                print(" Feeding outputs of shape: "  , outputs.shape)
+                print(" Feeding hammer  of shape: "  , h.shape)
+                print(" Feeding true vals of shape: ", y.shape)
+
+          # calc gradients
           gradients = tape.gradient(total_loss, model[n].trainable_variables)
+          # clip the norm of the gradients if too large
           clipped_gradients = [tf.clip_by_norm(g, 1.0) if g is not None else None for g in gradients]
+          # apply gradients
           optimizer.apply_gradients(zip(clipped_gradients, model[n].trainable_variables))
       
-          return total_loss, main_loss, penalty_loss
+          return total_loss, main_loss, penalty
       
+
+      history[n] = {"total_loss":[], "main_loss":[], "penalty": []}
+       
+      for epoch in range(self.epochs):
+
+          print(f" ========> At epoch {epoch+1}/{epochs}")
+
+          # convert to tf obj and divide into batches 
+          # for every epoch, shuffle events differently into the mini batches, to avoid pattern learning. 
+          # It does not disturb the relatice order between x and y, i checked. It simply shuffles events.
+
+          tf_train    =  tf.data.Dataset.from_tensor_slices((xx_train[n], y_train[n], w_train[n], h_train[n])).shuffle(buffer_size=10000).batch(self.batch_size)
+   
+          # convert to tf obj and divide into batches 
+          tf_val      =  tf.data.Dataset.from_tensor_slices((xx_val[n], y_val[n], w_val[n], h_val[n])).shuffle(buffer_size=10000).batch(self.batch_size)
+
+          for batch, (x, y, w, h) in enumerate(tf_train):
+              print(f" ====> At batch {batch}/{len(tf_train)}")
+              total_loss, main_loss, penalty = train_step(x, y, w, h)
+              #tf.print(f"Step {step} Total Loss:", total_loss, "Penalty:", penalty)
+              history[n]["total_loss"].append(total_loss.numpy())    
+              history[n]["main_loss" ].append(main_loss .numpy())    
+              history[n]["penalty"   ].append(penalty   .numpy())    
+
       
 
- 
-      for epoch in range(epochs):
-          print(f"Epoch {epoch+1}/{epochs}")
-          for step, (inputs, labels, sample_weights) in enumerate(train_dataset):
-              print(f"at step {step}/{len(train_dataset)}")
-              total_loss, main_loss, penalty = train_step(inputs, labels, sample_weights)
-              tf.print(f"Step {step} Total Loss:", total_loss, "Penalty:", penalty)
-          
-    # Optionally: evaluate on val_dataset here or compute val metrics
-
-
- 
-    print(f"class weights: {weight}")
-
+      pdb.set_trace()
     #return model, history, xx_train, y_train, h_train, xx_val, y_val, h_val
     return model, xx_train, y_train, h_train, xx_val, y_val, h_val
 
@@ -2027,21 +2034,19 @@ if __name__ == '__main__':
 
 
   ROOT.gROOT.SetBatch(True)
-  '''
-  #limiting cores/CPU/GPU
-  num_cores = 1 #one operation at a time and only one thread per operation  
-  num_CPU = 1 
-  num_GPU = 0 
-  config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=num_cores, inter_op_parallelism_threads=num_cores, allow_soft_placement = False, device_count = {'CPU' : num_CPU, 'GPU' : num_GPU} )
-  session = tf.compat.v1.Session(config=config) 
-  tf.compat.v1.keras.backend.set_session(session)         
-  '''
+  ##limiting cores/CPU/GPU
+  #num_cores = 8 #one operation at a time and only one thread per operation  
+  #num_CPU = 8 
+  #num_GPU = 0 
+  #config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=num_cores, inter_op_parallelism_threads=num_cores, allow_soft_placement = False, device_count = {'CPU' : num_CPU, 'GPU' : num_GPU} )
+  #session = tf.compat.v1.Session(config=config) 
+  #tf.compat.v1.keras.backend.set_session(session)         
 
   tf.random.set_seed(1000)
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 3 #30 here
+  epochs = 30#30 here
   #batch_size = 128 #128 here
   batch_size = 128 #128 here
   scaler_type = 'robust'
