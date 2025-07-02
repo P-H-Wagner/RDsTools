@@ -234,16 +234,77 @@ def dist_corr(output, hammer_var, true_label):
 
   hammer_dist_mat   = hammer_dist_mat - hammer_row_mean - hammer_col_mean - hammer_total_mean 
 
-  pdb.set_trace()
-  print("output:", output.shape, output.dtype)
-  print("hammer_var:", hammer_var.shape, hammer_var.dtype)
-  print("true_label:", true_label.shape, true_label.dtype)
+  #tf.print(" ===> score mat:", score_dist_mat, summarize=-1)
+  #tf.print(" ===> hammer mat:", hammer_dist_mat, summarize=-1)
+  # STEP 4. Calculate distance correlation coefficient
 
-  tf.print("Output values:", output, summarize=-1)
-  tf.print("Decorrelator values:", hammer_var, summarize=-1)
-  tf.print("True label values:", true_label, summarize=-1)
+  size         = tf.cast(tf.shape(score_dist_mat)[0], tf.float32) # get size of matrices (quadratic, same size)
+  dCov2        = tf.reduce_sum(score_dist_mat  * hammer_dist_mat) / (size * size)
+  dVar2_score  = tf.reduce_sum(score_dist_mat  * score_dist_mat ) / (size * size)
+  dVar2_hammer = tf.reduce_sum(hammer_dist_mat * hammer_dist_mat) / (size * size)
 
-  return tf.reduce_mean(output) * 0.01
+  tf.print(" ===> size :", size, summarize=-1)
+  tf.print(" ===> dCov2:", dCov2, summarize=-1)
+  tf.print(" ===> dVar2_score:", dVar2_score, summarize=-1)
+  tf.print(" ===> dVar2_hammer:", dVar2_hammer, summarize=-1)
+
+  eps = 1e-10 #small epsilon to avoid zero div.
+  
+  dCorr = tf.sqrt(dCov2 + eps) / tf.sqrt(tf.sqrt(dVar2_score + eps) * tf.sqrt(dVar2_hammer + eps))
+
+  tf.print(" ===> dCorr:", dCorr , summarize=-1)
+
+  #pdb.set_trace()
+  tf.print(" ===> Distance Correlation at this training step:", dCorr, summarize=-1)
+
+  return dCorr 
+
+class Losses(tf.keras.callbacks.Callback):
+    def on_train_batch_end(self, batch, logs=None):
+        logs = logs or {}
+        total_loss = logs.get('loss')
+        penalty_loss = logs.get('dist_corr_penalty')
+        # main loss = total loss - penalty (approximate)
+        main_loss = None
+        if penalty_loss is not None and total_loss is not None:
+            main_loss = total_loss - penalty_loss
+        print(f"Batch {batch}: total_loss={total_loss:.4f}, penalty_loss={penalty_loss:.4f}, main_loss={main_loss:.4f}" if main_loss is not None else f"Batch {batch}: total_loss={total_loss:.4f}, penalty_loss={penalty_loss}")
+
+class NaNOutputChecker(tf.keras.callbacks.Callback):
+    def on_train_batch_end(self, batch, logs=None):
+        # `self.model` is your model
+        # Unfortunately, Keras callbacks don’t receive batch inputs directly,
+        # so to check outputs, you need to fetch them manually (or from logs if you compute them)
+        
+        # One way: Run prediction on the current batch input (you need to supply inputs to the callback somehow)
+        # This requires passing batch data to the callback or overriding the training loop.
+        
+        # Alternatively: You can check for NaNs in the loss/logs dictionary
+        if logs is not None:
+            loss = logs.get('loss')
+            if loss is not None and tf.math.is_nan(loss):
+                print(f"NaN loss detected at batch {batch}!")
+
+    def on_test_batch_end(self, batch, logs=None):
+        if logs is not None:
+            loss = logs.get('loss')
+            if loss is not None and tf.math.is_nan(loss):
+                print(f"NaN loss detected at validation batch {batch}!")
+
+
+class WeightsCheckCallback(Callback):
+    def on_train_batch_end(self, batch, logs=None):
+        for i, layer in enumerate(self.model.layers):
+            weights = layer.get_weights()
+            if weights:  # only layers with weights
+                w = weights[0]  # usually the kernel weights
+                # Check for NaNs
+                if tf.math.reduce_any(tf.math.is_nan(w)):
+                    print(f"NaN detected in weights of layer {i} ({layer.name}) at batch {batch+1}")
+                else:
+                    # Print summary statistics
+                    print(f"Epoch {batch+1} - Layer {i} ({layer.name}): weights stats -> mean: {w.mean():.5f}, std: {w.std():.5f}, min: {w.min():.5f}, max: {w.max():.5f}")
+
 
 #--------------------define sideband region (mlow, mhigh) and dump it into pickle ----------------
 
@@ -726,7 +787,7 @@ class Trainer(object):
       train[f"e{i}_up"] =  train[f"e{i}_up"] /  var_av_train[f"average_e{i}_up"]
       test [f"e{i}_up"] =  test[f"e{i}_up"]  /  var_av_test [f"average_e{i}_up"]
 
-    pdb.set_trace()
+    #pdb.set_trace()
     train["total_w"] = train["sf_weights"] * train["central_w"] / central_av_train
     test ["total_w"] = test ["sf_weights"] * test ["central_w"] / central_av_test
     
@@ -802,7 +863,7 @@ class Trainer(object):
     #params
     l2_rate = regularizers.l2(0.01)
     learning_rate = 0.00005
-    lambda_dcorr = 10.0
+    lambda_dcorr = 1e-3
 
     #inputs
     features   = tf.keras.Input(shape=(len(self.features),), name="features")
@@ -821,20 +882,31 @@ class Trainer(object):
     #output
     output = tf.keras.layers.Dense(6, activation='softmax')(body)
 
+    #check for nans
+    #def nan_check_layer(x):
+    #  tf.debugging.check_numerics(x, "NaN detected in model output")
+    #  return x
+
+    #output_checked = tf.keras.layers.Lambda(nan_check_layer)(output)
+
+
     #create model
     model = tf.keras.models.Model(inputs=[features, hammer_var, true_label], outputs=output)
+    #model = tf.keras.models.Model(inputs=[features, hammer_var, true_label], outputs=output_checked)
 
     #optimizer
-    opt = keras.optimizers.Adam(learning_rate=learning_rate) 
+    opt = keras.optimizers. Adam(learning_rate=learning_rate, clipvalue=0.5) 
+
 
     # add penality term
-    #model.add_loss(self.dist_corr(hammer_var, output, true_label))
-    #model.add_loss(self.lambda_dcorr * dist_corr_loss)
-    penalty = tf.keras.layers.Lambda(lambda x: dist_corr(x[0], x[1], x[2]))([output, hammer_var, true_label])  
-    model.add_loss(penalty)
+    #penalty = tf.keras.layers.Lambda(lambda x: dist_corr(tf.stop_gradient(x[0]), x[1], x[2]))([output, hammer_var, true_label])  
+    #penalty = tf.keras.layers.Lambda(lambda x: dist_corr(x[0], x[1], x[2]))([output, hammer_var, true_label])  
+    #model.add_loss(lambda_dcorr * penalty)
+    #model.add_loss(penalty)
+    #model.add_metric(lambda_dcorr*penalty, name='dist_corr_penalty', aggregation='mean')
 
     #compile
-    model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=[], weighted_metrics=['acc'])
+    #model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=[], weighted_metrics=['acc'])
   
     print(model.summary()) #not enough
 
@@ -883,7 +955,7 @@ class Trainer(object):
     filepath = '/'.join([self.outdir, f'fold_{n}' + '_saved-model-{epoch:04d}_val_loss_{val_loss:.4f}_val_acc_{val_acc:.4f}.h5'])
     save_model = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', period=1)
     
-    callbacks = [save_model]
+    callbacks = [save_model, Losses(), WeightsCheckCallback()]
 
     if self.do_early_stopping:
       callbacks.append(es)
@@ -998,20 +1070,78 @@ class Trainer(object):
       callbacks = self.defineCallbacks(n)
 
       #clear model and redefine a new one for every fold! 
+
       from tensorflow.keras import backend as K
       K.clear_session()
       pdb.set_trace();
-      model[n] = self.defineModel()
-      print("I reach this point :D")
 
-      history[n] = model[n].fit([xx_train[n], h_train[n], y_true_label_train], y_train[n], validation_data=([xx_val[n], h_val[n], y_true_label_val], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
+      model[n] = self.defineModel()
+      print("Defined model")
+
+      #history[n] = model[n].fit([xx_train[n], h_train[n], y_true_label_train], y_train[n], validation_data=([xx_val[n], h_val[n], y_true_label_val], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w , sample_weight = w_train[n].flatten() )
 
       #history[n] = model[n].fit(xx_train[n], y_train[n], validation_data=(xx_val[n], y_val[n], w_val[n].flatten()), epochs=self.epochs, callbacks=callbacks, batch_size=self.batch_size, verbose=True,class_weight = class_w) 
  
-   
+  
+      
+      batch_size = self.batch_size
+      epochs = self.epochs
+      lambda_dcorr = 1e-3 
+      optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5)
+      
+      # Prepare dataset
+      train_dataset = tf.data.Dataset.from_tensor_slices((
+          (xx_train[n], h_train[n], y_true_label_train),  # inputs tuple
+          y_train[n],                                     # labels
+          w_train[n].flatten()                            # sample weights
+      ))
+      train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+      
+      val_dataset = tf.data.Dataset.from_tensor_slices((
+          (xx_val[n], h_val[n], y_true_label_val),
+          y_val[n],
+          w_val[n].flatten()
+      )).batch(batch_size)
+      
+      loss_fn = tf.keras.losses.CategoricalCrossentropy()
+      
+      @tf.function
+     
+      def train_step(inputs, labels, sample_weights):
+          with tf.GradientTape() as tape:
+              outputs = model[n](inputs, training=True)
+              print("Calculated outputs")
+              main_loss = loss_fn(labels, outputs, sample_weight=sample_weights)
+              print("Calculated main loss")
+              # Get the penalty loss that was added to model via model.add_loss()
+              penalty_loss = tf.add_n(model[n].losses) if model[n].losses else 0.0
+              print("Calculated penalty")
+              total_loss = main_loss + penalty_loss
+              print("Calculated total_loss")
+          gradients = tape.gradient(total_loss, model[n].trainable_variables)
+          clipped_gradients = [tf.clip_by_norm(g, 1.0) if g is not None else None for g in gradients]
+          optimizer.apply_gradients(zip(clipped_gradients, model[n].trainable_variables))
+      
+          return total_loss, main_loss, penalty_loss
+      
+      
+
+ 
+      for epoch in range(epochs):
+          print(f"Epoch {epoch+1}/{epochs}")
+          for step, (inputs, labels, sample_weights) in enumerate(train_dataset):
+              print(f"at step {step}/{len(train_dataset)}")
+              total_loss, main_loss, penalty = train_step(inputs, labels, sample_weights)
+              tf.print(f"Step {step} Total Loss:", total_loss, "Penalty:", penalty)
+          
+    # Optionally: evaluate on val_dataset here or compute val metrics
+
+
+ 
     print(f"class weights: {weight}")
 
-    return model, history, xx_train, y_train, h_train, xx_val, y_val, h_val
+    #return model, history, xx_train, y_train, h_train, xx_val, y_val, h_val
+    return model, xx_train, y_train, h_train, xx_val, y_val, h_val
 
 
   def plotLoss(self, history):
@@ -1841,7 +1971,8 @@ class Trainer(object):
 
     # do the training
     print('\n========> training...') 
-    model, history, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight)
+    #model, history, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight)
+    model, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight)
 
     #save the output dictionaries
     with open(f'{self.outdir}/xx_val.pck', 'wb') as f:
@@ -1910,7 +2041,7 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 1 #30 here
+  epochs = 3 #30 here
   #batch_size = 128 #128 here
   batch_size = 128 #128 here
   scaler_type = 'robust'
