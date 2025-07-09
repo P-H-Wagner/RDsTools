@@ -1,40 +1,46 @@
+import uproot
 import os 
 import sys
 from os import path
 import sys
-import psutil
+#import psutil
 import pickle
 import numpy as np
 import pandas as pd
 import matplotlib
+import uproot
+import awkward as ak
 matplotlib.use('pdf') #used s.t. it can be assigned to the batch
 
 
+# do this before importing tf :)
+
+# ----- For CPU usage ----
 os.environ["OMP_NUM_THREADS"] = "8"          # OpenMP (used by NumPy, Eigen)
 os.environ["TF_NUM_INTRAOP_THREADS"] = "8"   # TensorFlow internal threading
 os.environ["TF_NUM_INTEROP_THREADS"] = "2"   # Parallel ops
 
+# ----- For GPU usage ----
+#use one gpu :) (make only one visible)
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-
-
+# more libraries
 import matplotlib.pyplot as plt
 from itertools import product
 from time import time 
 from datetime import datetime
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras import regularizers
-import shap
+#import shap
 from contextlib import redirect_stdout
 import pdb
-
-#import seaborn as sns
 from matplotlib.ticker import LogLocator, LogFormatterExponent
-
 
 import tensorflow as tf
 import ROOT
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
+#import root_numpy
 from root_numpy import tree2array
 
 import keras
@@ -60,7 +66,7 @@ import seaborn
 import yaml
 
 
-
+# ----- For CPU usage ----
 # Set thread counts before running anything
 tf.config.threading.set_intra_op_parallelism_threads(8)
 tf.config.threading.set_inter_op_parallelism_threads(2)
@@ -69,12 +75,28 @@ tf.config.threading.set_inter_op_parallelism_threads(2)
 print("Intra-op threads:", tf.config.threading.get_intra_op_parallelism_threads())
 print("Inter-op threads:", tf.config.threading.get_inter_op_parallelism_threads())
 
+# ----- For GPU usage ----
+# For all visible gpu (0), the memory should be allocated on demand,
+# not per se from the beginning
+ 
+gpus = tf.config.list_physical_devices('GPU') #should be the one set we os.environ
 
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print("Error setting memory growth:", e)
+
+print("Using GPUs:", gpus)
+
+#print some info
+from tensorflow.python.platform import build_info as tf_build_info
+print(tf_build_info.build_info)
+
+#to debug the train_step etc. Attention! Extremely slows down the training!!
 #tf.config.run_functions_eagerly(True)
 #tf.debugging.enable_check_numerics()
-
-#tf.config.threading.set_intra_op_parallelism_threads(10)
-#tf.config.threading.set_inter_op_parallelism_threads(10)
 
 
 
@@ -96,7 +118,7 @@ args = parser.parse_args()
 
 trigger = args.trigger
 
-shap.initjs()
+#shap.initjs()
 
 now = datetime.now()
 dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
@@ -119,24 +141,24 @@ if args.prod == "24":
   baseline_selection = base_wout_tv_24
  
   #bdt is evaluated on the skimmed datasets :) 
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_24}/"
-  file_data = [base + f for f in os.listdir(base)]
+  base_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_24}/"
+  file_data = [base_data + f for f in os.listdir(base_data)]
  
   #hammer is evaluated on the skimmed datasets :) 
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{sig_cons_hammer_24}/" 
-  file_sig = [base + f for f in os.listdir(base)]
+  base_sig = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/{sig_cons_hammer_24}/" 
+  file_sig = [base_sig + f for f in os.listdir(base_sig)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_24[0]}/"
-  file_hb = [base + f for f in os.listdir(base)]
+  base_hb = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_24[0]}/"
+  file_hb = [base_hb + f for f in os.listdir(base_hb)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_24[0]}/"
-  file_bs = [base + f for f in os.listdir(base)]
+  base_bs = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_24[0]}/"
+  file_bs = [base_bs + f for f in os.listdir(base_bs)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_24[0]}/"
-  file_b0 = [base + f for f in os.listdir(base)]
+  base_b0 = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_24[0]}/"
+  file_b0 = [base_b0 + f for f in os.listdir(base_b0)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_24[0]}/"
-  file_bplus = [base + f for f in os.listdir(base)]
+  base_bplus = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_24[0]}/"
+  file_bplus = [base_bplus + f for f in os.listdir(base_bplus)]
 
 elif args.prod == "25":
 
@@ -150,24 +172,24 @@ elif args.prod == "25":
     trigger_mc   = " && (event % 2 == 1) " 
 
   #bdt is evaluated on the skimmed datasets :) 
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_25}/"
-  file_data = [base + f for f in os.listdir(base)]
+  base_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_25}/"
+  file_data = [base_data + f for f in os.listdir(base_data)]
   
   #hammer is evaluated on the skimmed datasets :) 
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/{sig_cons_hammer_25}/" 
-  file_sig = [base + f for f in os.listdir(base)]
+  base_sig = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/{sig_cons_hammer_25}/" 
+  file_sig = [base_sig + f for f in os.listdir(base_sig)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_25[0]}/"
-  file_hb = [base + f for f in os.listdir(base)]
+  base_hb = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{hb_cons_25[0]}/"
+  file_hb = [base_hb + f for f in os.listdir(base_hb)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_25[0]}/"
-  file_bs = [base + f for f in os.listdir(base)]
+  base_bs = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bs_cons_25[0]}/"
+  file_bs = [base_bs + f for f in os.listdir(base_bs)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_25[0]}/"
-  file_b0 = [base + f for f in os.listdir(base)]
+  base_b0 = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{b0_cons_25[0]}/"
+  file_b0 = [base_b0 + f for f in os.listdir(base_b0)]
   
-  base = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_25[0]}/"
-  file_bplus = [base + f for f in os.listdir(base)]
+  base_bplus = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{bplus_cons_25[0]}/"
+  file_bplus = [base_bplus + f for f in os.listdir(base_bplus)]
 
 else:
   raise ValueError ("Not a valid production year! Choose 24 or 25")
@@ -393,6 +415,7 @@ kin_var = [
 'cosPhiDs_reco_2',
 #
 'abs(cosPiK1)',
+#'cosPiK1',
 
 'cosMuW_lhcb_alt', 
 'cosMuW_reco_1', 
@@ -454,6 +477,10 @@ hammer = [
 "e6_up",
 ]
 
+more_vars = ["k1_pt","k2_pt","lxy_ds","mu_id_medium","fv_prob","mu_is_global",
+"ds_vtx_cosine_xyz_pv","mu7_ip4","mu9_ip6",
+"k1_charge", "k2_charge", "pi_charge", "mu_charge"
+]
 
 
 if args.prod == "24":
@@ -487,6 +514,8 @@ if args.prod == "25":
 
   #kinematics
   kin_var.append("e_gamma/photon_pt")
+  #kin_var.append("e_gamma")
+  kin_var.append("photon_pt")
   kin_var.append("bs_mass_corr")
   kin_var.append("bs_mass_corr_photon")
   kin_var.append("ds_perp")
@@ -516,42 +545,60 @@ class Sample(object):
       #print("hammer branches")
       branches = kin_var + ['event'] + hammer #event will be removed later!
       #branches = kin_var + ['event'] #event will be removed later!
+      toLoad =  more_vars + ["gen_sig"]
 
     elif self.signal == 4: #hb
       branches = kin_var + ['event'] #event will be removed later!
+      toLoad =  more_vars + ["gen_sig", "gen_match_success"]
 
     else: #data
       branches = kin_var + ['event','sf_weights'] #event will be removed later!
+      toLoad =  more_vars
 
 
-    if isinstance(filename, list):
 
-      pd_list = []
-      
-      if args.debug: filename = filename[:10]
-      for name in filename:
-        f = ROOT.TFile(name)
-        tree_obj = f.Get(self.tree)
-        #if args.debug:
-        #  arr = tree2array(tree_obj,selection = self.selection, branches = branches, stop = 100) #event will be removed later!
-        #else:
-        #  arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
-        arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+    pd_list = []
+    
+    if args.debug: filename = filename[:50]
+    #pdb.set_trace()
+    uproot_sel = self.selection.replace("&&", "&").replace("||", "|")
 
-        pd_list.append(pd.DataFrame(arr))
+    start = time()
+    #print (f"Loading files from: {filename}")
+    #for i,ak_df in enumerate(uproot.iterate(filename + "/*.root:" + self.tree, expressions = branches , cut=uproot_sel, library="ak", step_size="1000 MB",num_workers=8)):
 
-      self.df = pd.concat(pd_list)
+    #    if (i % 10 == 0): print(f"Loading file {i}, it took {round(time() - start,2)} seconds")
+    #    #pdb.set_trace()
+    #    df = ak.to_dataframe(ak_df[branches])
+    #    # Apply selection as awkward array mask (avoid pandas query for speed)
+    #    #mask = eval(selection, {}, arrays)  # this only works if selection is valid python expression
+    #    #filtered = arrays[mask]
+    #    # Convert to pandas only after filtering
+    #    #df = arrays[branches].to_pandas()
+    #    pd_list.append(df)
 
+    for name in filename:
 
-    else: 
-      f = ROOT.TFile(self.filename)
+      f = ROOT.TFile(name)
       tree_obj = f.Get(self.tree)
-      if args.debug:
-        arr = tree2array(tree_obj,selection = self.selection, branches = branches , stop = 100) #event will be removed later!
-      else:
-        arr = tree2array(tree_obj,selection = self.selection, branches = branches ) #event will be removed later!
-      self.df = pd.DataFrame(arr)
+      arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+      pd_list.append(pd.DataFrame(arr))
 
+    #  f    = uproot.open(name)
+    #  tree = f[self.tree]
+    #  arrays = tree.arrays(branches + toLoad, library="np")
+    #  df = pd.DataFrame(arrays)
+    #  uproot_sel = self.selection.replace("&&", "and").replace("||", "or")
+    #  df = df.query(uproot_sel)
+    #  df = df[branches]
+    #  pd_list.append(df)
+
+    #  #f = ROOT.TFile(name)
+    #  #tree_obj = f.Get(self.tree)
+    #  #arr = tree2array(tree_obj,selection = self.selection, branches = branches) #event will be removed later!
+    #  #pd_list.append(pd.DataFrame(arr))
+
+    self.df = pd.concat(pd_list)
 
     pd.options.mode.chained_assignment = None
     self.df['is_signal'] = signal
@@ -647,7 +694,7 @@ class Trainer(object):
     tree_name = 'tree'
   
     # Lets collect everything which is not signal and not combinatorial into hb = -1 (for now)
-    hb_selec = " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) && (gen_match_success)"
+    hb_selec = " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) && (gen_match_success == 1)"
  
     #signals      #ds mu   #ds tau   #dstar mu   #dstar tau   #hb
     mc_ids      = [0       ,1        ,10         ,11          ,-1]
@@ -661,14 +708,20 @@ class Trainer(object):
 
       if mc_id >= 0: 
         mc_sample            = Sample(filename = file_sig,    selection=self.baseline_selection  + trigger_mc + f'&& (gen_sig == {mc_id})' + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample            = Sample(filename = base_sig,     selection=self.baseline_selection  + trigger_mc + f'&& (gen_sig == {mc_id})' + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
 
       else:
-        mc_sample            = Sample(filename = file_hb,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        #mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        #mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        #mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample            = Sample(filename = file_hb,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
 
-        #mc_sample           = pd.concat([mc_sample1,mc_sample2,mc_sample3], sort = False)
+        mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+
+        #mc_sample1          = Sample(filename = base_b0,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample2          = Sample(filename = base_bs,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        #mc_sample3          = Sample(filename = base_bplus,  selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+
+        mc_sample           = pd.concat([mc_sample1,mc_sample2,mc_sample3], sort = False)
       
       mc_train, mc_test = train_test_split(mc_sample,test_size = 0.2,random_state = 1000)
       f = open(self.outdir + "/settings.txt", "a")
@@ -699,6 +752,7 @@ class Trainer(object):
     data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
 
     data_sample_sf = Sample(filename=file_data,   selection=data_selec + trigger_data , tree = 'tree',signal = data_id).df
+    #data_sample_sf = Sample(filename=base_data,   selection=data_selec + trigger_data , tree = 'tree',signal = data_id).df
     data_sample  = pd.concat([data_sample_sf], sort = False)
 
     data_train, data_test = train_test_split(data_sample, test_size=0.2, random_state = 1000)
@@ -1053,7 +1107,7 @@ class Trainer(object):
 
       #now, absorb the class weight into the sample weights as well :)
 
-      pdb.set_trace()
+      #pdb.set_trace()
                                           #this gives the class 0, ... 5
       w_train[n]["total_w"] = [ class_w[  y_train[n]['is_signal'][ev]    ] * w for ev,w in enumerate(w_train[n]["total_w"]) ]
       w_val  [n]["total_w"] = [ class_w[  y_val  [n]['is_signal'][ev]    ] * w for ev,w in enumerate(w_val  [n]["total_w"]) ]
@@ -1121,30 +1175,17 @@ class Trainer(object):
               #main_loss = loss_main(y, outputs, sample_weight=w)
               main_loss = model[n].compiled_loss(y, outputs, regularization_losses=model[n].losses, sample_weight=w)
               #print(" ====> Get crossentropy loss", main_loss)
-              penalty = lambda_penalty * dist_corr(outputs, h , y)  
+              penalty = 0.0 # lambda_penalty * dist_corr(outputs, h , y)  
               #print(" ====> Get penalty loss term (including lambda scale)", penalty)
               total_loss = main_loss + penalty
               #print(" ====> Get total loss", total_loss)
               # Get accuracy and update it
               acc_train.update_state(y, outputs, sample_weight=w)              
 
-              #if args.debug:
-
-              #  print(" Get scores", outputs[:3]) #first 3 events
-              #  print(" Feeding outputs of shape: "  , outputs.shape)
-              #  print(" Feeding hammer  of shape: "  , h.shape)
-              #  print(" Feeding true vals of shape: ", y.shape)
-
           # calc gradients
           gradients = tape.gradient(total_loss, model[n].trainable_variables)
 
-          #grad_norms = [tf.norm(g) if g is not None else None for g in gradients]
-          # clip the norm of the gradients if too large
-          #clipped_gradients = [tf.clip_by_norm(g, 1.0) if g is not None else None for g in gradients]
-          #clipped_grad_norms = [tf.norm(g) if g is not None else None for g in clipped_gradients]
-
           # apply gradients
-          #optimizer.apply_gradients(zip(clipped_gradients, model[n].trainable_variables))
           optimizer.apply_gradients(zip(gradients, model[n].trainable_variables))
       
           return total_loss, main_loss, penalty #, grad_norms, clipped_grad_norms
@@ -1160,7 +1201,7 @@ class Trainer(object):
               #main_loss = loss_main(y, outputs, sample_weight=w)
               main_loss = model[n].compiled_loss(y, outputs, regularization_losses=model[n].losses, sample_weight=w)
               #print(" ====> Get crossentropy loss", main_loss)
-              penalty = lambda_penalty * dist_corr(outputs, h , y)  
+              penalty = 0.0 #lambda_penalty * dist_corr(outputs, h , y)  
               #print(" ====> Get penalty loss term (including lambda scale)", penalty)
               total_loss = main_loss + penalty
               #print(" ====> Get total loss", total_loss)
@@ -1180,18 +1221,27 @@ class Trainer(object):
         "penalty_val"        :[],
         "acc_val"            :[],
         }
+
+
+      #create tf datasets
+      tf_train_dataset    =  tf.data.Dataset.from_tensor_slices((xx_train[n], y_train[n], w_train[n], h_train[n]))
+      tf_val_dataset      =  tf.data.Dataset.from_tensor_slices((xx_val[n], y_val[n], w_val[n], h_val[n]))        
+
        
       for epoch in range(self.epochs):
 
         print(f" ========> At epoch {epoch+1}/{epochs}")
 
-        # convert to tf obj and divide into batches 
+        start = time()
+
+        # divide into batches 
         # for every epoch, shuffle events differently into the mini batches, to avoid pattern learning. 
         # It does not disturb the relatice order between x and y, i checked. It simply shuffles events.
+        tf_train    =  tf_train_dataset.shuffle(buffer_size=1000).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
+        #no need to shuffle validation :)
+        tf_val      =  tf_val_dataset                            .batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
 
-        tf_train    =  tf.data.Dataset.from_tensor_slices((xx_train[n], y_train[n], w_train[n], h_train[n])).shuffle(buffer_size=1000).batch(self.batch_size)
-        tf_val      =  tf.data.Dataset.from_tensor_slices((xx_val[n], y_val[n], w_val[n], h_val[n]))        .shuffle(buffer_size=1000).batch(self.batch_size)
-
+        print("Time to shuffle:", time() - start)
 
         #prepare metrics for train and test
         xentropy_loss_train = tf.keras.metrics.Mean()
@@ -1217,6 +1267,8 @@ class Trainer(object):
           xentropy_loss_train.update_state(xentropy_loss)
           penalty_train      .update_state(penalty      )
 
+        print("Time to train:", time() - start)
+
         for batch, (x, y, w, h) in enumerate(tf_val):
 
           #print(f" ====> At batch {batch}/{len(tf_val)}")
@@ -1226,6 +1278,8 @@ class Trainer(object):
           total_loss_val   .update_state(total_loss   )
           xentropy_loss_val.update_state(xentropy_loss)
           penalty_val      .update_state(penalty      )
+
+        print("Time to evaluate:", time() - start)
 
         #after one epoch, take the average of all metrics (loss, acc) by calling .result()
 
@@ -1245,7 +1299,8 @@ class Trainer(object):
         # loss mean is automatically reset (local object)
         acc_train.reset_states()
         acc_val  .reset_states()
-
+       
+        print("Epoch time:", time() - start)
 
     #pdb.set_trace()
     #return model, history, xx_train, y_train, h_train, xx_val, y_val, h_val
@@ -2081,7 +2136,7 @@ class Trainer(object):
     with open(f'{self.outdir}/y_train.pck', 'wb') as f:
       pickle.dump(y_train,f)
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
     # plotting
     print('\n========> plotting...' )
@@ -2146,11 +2201,11 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 100 
+  epochs = 40 
   #batch_size = 128 #128 here
   batch_size = 128 #128 here
-  learning_rate = 0.005
-  lambda_penalty = 10.0
+  learning_rate = 0.0005
+  lambda_penalty = 1.0
   scaler_type = 'robust'
   do_early_stopping = True  
   do_reduce_lr = False
