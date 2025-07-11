@@ -1,4 +1,4 @@
-# Create GPU env to run with NVIDIA-SMI 495.29.05    Driver Version: 495.29.05    CUDA Version: 11.5 
+# Create Tensorflow GPU env to run with NVIDIA-SMI 495.29.05    Driver Version: 495.29.05    CUDA Version: 11.5 
 
 ```
 conda create -n gpu python=3.9 -y
@@ -18,4 +18,8 @@ export PYTHONNOUSERSITE=1 #to pick numpy from gpu env
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH #to pick cuda from gpu env
 ```
 
+# To create a XGBoost GPU env instead, exchange ```pip install tensorflow==2.10``` with: 
+```
+pip install xgboost==1.6.1 --extra-index-url https://pypi.nvidia.com
+```
  
