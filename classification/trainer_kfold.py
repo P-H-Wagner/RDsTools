@@ -245,7 +245,7 @@ def dist_corr(output, hammer_var, true_label):
   #output is a list of 6dim arrays, holding the score predictions
 
   #hammer_var is a list of n-dims arrays, holding the n-variables we want to decorrrelate from the scores
-  #in our case its the e{i}_up for the truth label
+  #in our case its the e{i}_up, e{i}_down, i = 1, .., 10 for the truth label
 
   #true_label is a list of the true_labels
 
@@ -475,6 +475,20 @@ hammer = [
 "e4_up",
 "e5_up",
 "e6_up",
+#"e7_up",
+#"e8_up",
+#"e9_up",
+#"e10_up",
+"e1_down",
+"e2_down",
+"e3_down",
+"e4_down",
+"e5_down",
+"e6_down",
+#"e7_down",
+#"e8_down",
+#"e9_down",
+#"e10_down"
 ]
 
 more_vars = ["k1_pt","k2_pt","lxy_ds","mu_id_medium","fv_prob","mu_is_global",
@@ -513,15 +527,15 @@ if args.prod == "25":
   kin_var.append("signed_decay_ip3d_mu_ds_sv")
 
   #kinematics
-  kin_var.append("e_gamma/photon_pt")
-  #kin_var.append("e_gamma")
-  kin_var.append("photon_pt")
+  #kin_var.append("e_gamma/photon_pt")
+  kin_var.append("e_gamma")
+  #kin_var.append("photon_pt")
   kin_var.append("bs_mass_corr")
-  kin_var.append("bs_mass_corr_photon")
+  #kin_var.append("bs_mass_corr_photon")
   kin_var.append("ds_perp")
-  kin_var.append("ds_perp_photon")
+  #kin_var.append("ds_perp_photon")
   kin_var.append("ds_mu_perp")
-  kin_var.append("ds_mu_perp_photon")
+  #kin_var.append("ds_mu_perp_photon")
    
   #isolation
   kin_var.append("rel_iso_03_pv")
@@ -608,14 +622,14 @@ class Trainer(object):
 
   'train the data'
 
-  def __init__(self, features, epochs, batch_size, learning_rate, lambda_penalty, scaler_type, do_early_stopping, do_reduce_lr, dirname, baseline_selection, nfolds, frac_sb, frac_sf):
+  def __init__(self, features, epochs, batch_size, learning_rate, lambda_penalty, scaler_type, es_patience, do_reduce_lr, dirname, baseline_selection, nfolds, frac_sb, frac_sf):
     self.features           = features #variables to train on
     self.epochs             = epochs #samples / batch_size =  number of iterations to 1 epoch
     self.batch_size         = batch_size 
     self.learning_rate      = learning_rate 
     self.lambda_penalty     = lambda_penalty 
     self.scaler_type        = scaler_type
-    self.do_early_stopping  = do_early_stopping 
+    self.es_patience        = es_patience 
     self.do_reduce_lr       = do_reduce_lr
     self.dirname            = dirname + '_' + datetime.now().strftime('%d%b%Y_%Hh%Mm%Ss')
     self.baseline_selection = baseline_selection
@@ -653,7 +667,7 @@ class Trainer(object):
     f.write("Nfolds: "                    + str(self.nfolds)              + "\n")
     f.write("Batch size: "                + str(self.batch_size)          + "\n")
     f.write("Scaler type: "               + str(self.scaler_type)         + "\n")
-    f.write("Early stopping: "            + str(self.do_early_stopping)   + "\n")
+    f.write("Early stopping patience: "   + str(self.es_patience)         + "\n")
     f.write("Reduce lr: "                 + str(self.do_reduce_lr)        + "\n")
     f.write("Baseline selection: "        + str(self.baseline_selection)  + "\n")
     f.write("year of data: "              + str(args.prod)                + "\n")
@@ -862,6 +876,9 @@ class Trainer(object):
     #for every event, pick the correct central_av accoding to is_signal
     central_av_train = [averages["central_w_" + keys[sig]] for sig in train["is_signal"]]
     central_av_test  = [averages["central_w_" + keys[sig]] for sig in test ["is_signal"]]
+
+    #REMARK: the entries e7-e7 are nonsense for dsmu and dstau here!
+
     #for every event, pick the correct variational av according to signal
     var_av_train     = {}
     var_av_test      = {}
@@ -874,6 +891,7 @@ class Trainer(object):
       train[f"e{i}_up"] =  train[f"e{i}_up"] /  var_av_train[f"average_e{i}_up"]
       test [f"e{i}_up"] =  test[f"e{i}_up"]  /  var_av_test [f"average_e{i}_up"]
 
+
     #pdb.set_trace()
     train["total_w"] = train["sf_weights"] * train["central_w"] / central_av_train
     test ["total_w"] = test ["sf_weights"] * test ["central_w"] / central_av_test
@@ -881,7 +899,7 @@ class Trainer(object):
 
     # even undo the splitting which is not used for k-folding
     main_df = pd.concat([train,test],sort= False)
-
+    #pdb.set_trace()
     # re-index (this does not shuffle events, only reindex!)
     main_df.index = np.array(range(len(main_df)))
 
@@ -893,7 +911,11 @@ class Trainer(object):
     #w_cols = ['central_w', 'event']
     #w_cols = ['sf_weights', 'central_w', 'event']
     w_cols   = ['total_w', 'event']
-    hammer_var_cols = ['e1_up','e2_up','e3_up','e4_up','e5_up','e6_up', 'event']
+    hammer_var_cols = [
+      'e1_up','e2_up','e3_up','e4_up','e5_up','e6_up',            #'e7_up', 'e8_up', 'e9_up', 'e10_up',
+      'e1_down','e2_down','e3_down','e4_down','e5_down','e6_down',#'e7_down', 'e8_down', 'e9_down', 'e10_down',
+      'event'
+    ]
 
     X       = pd.DataFrame(main_df, columns=list(set(self.features)) + ['event'] )
     Y       = pd.DataFrame(main_df, columns=['is_signal', 'event'])
@@ -956,7 +978,11 @@ class Trainer(object):
     # body
     model.add(tf.keras.layers.Dense(64 ,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
     model.add(tf.keras.layers.Dense(128,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
-    model.add(tf.keras.layers.Dense(128,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(256,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    #odel.add(tf.keras.layers.Dense(256,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    #model.add(tf.keras.layers.Dense(512,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    #model.add(tf.keras.layers.Dense(256,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
+    model.add(tf.keras.layers.Dense(256,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
     model.add(tf.keras.layers.Dense(128,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
     model.add(tf.keras.layers.Dense(64 ,   activation ='swish',   kernel_regularizer=regularizers.l2(l2_rate)))
     # output
@@ -1001,34 +1027,6 @@ class Trainer(object):
     return model
 
 
-  def defineCallbacks(self, n):
-    '''
-      Define the callbacks
-    '''
-    # early stopping
-    monitor = 'val_loss'
-    es = EarlyStopping(monitor=monitor, mode='auto', verbose=1, patience=10)
-    
-    # reduce learning rate when at plateau, fine search the minimum
-    reduce_lr = ReduceLROnPlateau(monitor=monitor, mode='auto', factor=0.2, patience=5, min_lr=0.000001, cooldown=10, verbose=True)
-    
-    # save the model every now and then
-    filepath = '/'.join([self.outdir, f'fold_{n}' + '_saved-model-{epoch:04d}_val_loss_{val_loss:.4f}_val_acc_{val_acc:.4f}.h5'])
-    save_model = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='auto', period=1)
-    
-    callbacks = [save_model, Losses(), WeightsCheckCallback()]
-
-    if self.do_early_stopping:
-      callbacks.append(es)
-
-    if self.do_reduce_lr:
-      callbacks.append(reduce_lr)
-
-    #callbacks.append(CustomCallback())
-
-    return callbacks
-
-
   def prepareInputs(self, xx_folds, y_folds, w_folds, h_folds):
     '''
       Note: the input xx should arlready be scaled
@@ -1051,7 +1049,7 @@ class Trainer(object):
     return xx_folds, y_folds, w_folds, h_folds
 
 
-  def train(self, xx_folds, y_folds, w_folds, h_folds, weight):
+  def train(self, xx_folds, y_folds, w_folds, h_folds, weight, class_label):
     '''
       Perform the training
     '''
@@ -1136,11 +1134,6 @@ class Trainer(object):
       h_train[n] = h_train[n].to_numpy()
       h_val[n]   = h_val[n].to_numpy()
 
-  
-
-      #pdb.set_trace()
-
-      callbacks = self.defineCallbacks(n)
 
       #clear model and redefine a new one for every fold! 
 
@@ -1149,9 +1142,9 @@ class Trainer(object):
       model[n] = self.defineModel()
       print(" ========> Received model")
 
-      #########################################
-      # prepare data for custom train loop    #
-      #########################################
+      ##########################################
+      # prepare data for custom train/val loop #
+      ##########################################
       
       batch_size = self.batch_size
       epochs = self.epochs
@@ -1163,7 +1156,7 @@ class Trainer(object):
       acc_val   = tf.keras.metrics.CategoricalAccuracy()     
  
       #########################################
-      # Implement custom train loop           #
+      # Implement custom train/val loop       #
       #########################################
        
       @tf.function
@@ -1175,7 +1168,7 @@ class Trainer(object):
               #main_loss = loss_main(y, outputs, sample_weight=w)
               main_loss = model[n].compiled_loss(y, outputs, regularization_losses=model[n].losses, sample_weight=w)
               #print(" ====> Get crossentropy loss", main_loss)
-              penalty = 0.0 # lambda_penalty * dist_corr(outputs, h , y)  
+              penalty = lambda_penalty * dist_corr(outputs, h , y)  
               #print(" ====> Get penalty loss term (including lambda scale)", penalty)
               total_loss = main_loss + penalty
               #print(" ====> Get total loss", total_loss)
@@ -1201,7 +1194,7 @@ class Trainer(object):
               #main_loss = loss_main(y, outputs, sample_weight=w)
               main_loss = model[n].compiled_loss(y, outputs, regularization_losses=model[n].losses, sample_weight=w)
               #print(" ====> Get crossentropy loss", main_loss)
-              penalty = 0.0 #lambda_penalty * dist_corr(outputs, h , y)  
+              penalty = lambda_penalty * dist_corr(outputs, h , y)  
               #print(" ====> Get penalty loss term (including lambda scale)", penalty)
               total_loss = main_loss + penalty
               #print(" ====> Get total loss", total_loss)
@@ -1227,8 +1220,10 @@ class Trainer(object):
       tf_train_dataset    =  tf.data.Dataset.from_tensor_slices((xx_train[n], y_train[n], w_train[n], h_train[n]))
       tf_val_dataset      =  tf.data.Dataset.from_tensor_slices((xx_val[n], y_val[n], w_val[n], h_val[n]))        
 
+      #set the counter for early stopping
+      es_counter = 0
        
-      for epoch in range(self.epochs):
+      for i, epoch in enumerate(range(self.epochs)):
 
         print(f" ========> At epoch {epoch+1}/{epochs}")
 
@@ -1283,31 +1278,101 @@ class Trainer(object):
 
         #after one epoch, take the average of all metrics (loss, acc) by calling .result()
 
+        #save validation acc/loss in variables, as we need them later for early stopping and model saving
+        loss_val_now   = total_loss_val.result().numpy()
+        acc_val_now    = acc_val       .result().numpy()
+ 
+
         history[n]["total_loss_train"   ].append( total_loss_train   .result().numpy())
         history[n]["xentropy_loss_train"].append( xentropy_loss_train.result().numpy())
         history[n]["penalty_train"      ].append( penalty_train      .result().numpy())     
         history[n]["acc_train"          ].append( acc_train          .result().numpy())     
 
-        history[n]["total_loss_val"     ].append( total_loss_val   .result().numpy())
+        history[n]["total_loss_val"     ].append( loss_val_now                      )
         history[n]["xentropy_loss_val"  ].append( xentropy_loss_val.result().numpy())
         history[n]["penalty_val"        ].append( penalty_val      .result().numpy())     
-        history[n]["acc_val"            ].append( acc_val          .result().numpy())     
+        history[n]["acc_val"            ].append( acc_val_now                       )     
 
+
+        #implement early stopping
+        if (i == 0): 
+          #first epoch
+          best_loss = loss_val_now
+        elif (loss_val_now >= best_loss):
+          #if validation loss is bigger or equal (i.e. no improvement, increase the counter)
+          es_counter += 1
+          print("Increasing counter! Best loss is: ", best_loss, "while current loss is: ", loss_val_now)
+        else: 
+          # if we found an epoch that decreased the loss, reset counter to 0 and assign new best loss
+          es_counter = 0
+          best_loss = loss_val_now
+
+        #print("Best loss is:", best_loss)
+        #at every epoch, check if the counter exceeds the patience
+        if es_counter > self.es_patience:
+          break; 
+
+        #save the model 
+        filepath = '/'.join([
+          self.outdir, 
+          f'fold_{n}' + f'_saved-model-{epoch:04d}_val_loss_{total_loss_val.result().numpy():.4f}_val_acc_{acc_val.result().numpy():.4f}.h5'
+        ])
+
+        #first epoch assign as best acc
+        if (i == 0): 
+          best_acc = acc_val_now 
+          model[n].save(filepath)
+
+        #if current acc better than best acc
+        if ( acc_val_now > best_acc): 
+          #save model and set new best value:
+          model[n].save(filepath)
+          best_acc = acc_val_now 
 
 
         #reset accuracy for next epoch, to calculate fresh averages
         # loss mean is automatically reset (local object)
         acc_train.reset_states()
         acc_val  .reset_states()
-       
+      
+ 
         print("Epoch time:", time() - start)
 
-    #pdb.set_trace()
+
+
+      #plot each fold immediately
+
+      self.plotMetric(history, "xentropy_loss_train","Training X-Entropy Loss"                                                     , "Loss"   , fold = n)
+      self.plotMetric(history, "total_loss_train"   ,"Training Total Loss"                                                         , "Loss"   , fold = n)
+      self.plotMetric(history, "penalty_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty}" , "Penalty", fold = n)
+      self.plotMetric(history, "acc_train"          ,"Training Accuracy"                                                           , "Acc."   , fold = n)
+      self.plotMetric(history, "xentropy_loss_val","Validation X-Entropy Loss"                                                     , "Loss"   , fold = n)
+      self.plotMetric(history, "total_loss_val"   ,"Validation Total Loss"                                                         , "Loss"   , fold = n)
+      self.plotMetric(history, "penalty_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty}" , "Penalty", fold = n)
+      self.plotMetric(history, "acc_val"          ,"Validation Accuracy"                                                           , "Acc."   , fold = n)
+
+
+      self.plotScore (model, xx_train, y_train, xx_val, y_val, 0,class_label, fold = n)
+      self.plotScore (model, xx_train, y_train, xx_val, y_val, 1,class_label, fold = n)
+      self.plotScore (model, xx_train, y_train, xx_val, y_val, 2,class_label, fold = n)
+      self.plotScore (model, xx_train, y_train, xx_val, y_val, 3,class_label, fold = n)
+      self.plotScore (model, xx_train, y_train, xx_val, y_val, 4,class_label, fold = n)
+      self.plotScore (model, xx_train, y_train, xx_val, y_val, 5,class_label, fold = n)
+      self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 0, fold = n)
+      self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 1, fold = n)
+      self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 2, fold = n)
+      self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3, fold = n)
+      self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4, fold = n)
+      self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5, fold = n)
+
+
+
+
     #return model, history, xx_train, y_train, h_train, xx_val, y_val, h_val
     return history, model, xx_train, y_train, h_train, xx_val, y_val, h_val
 
 
-  def plotMetric(self, history, history_key, title, ylabel):
+  def plotMetric(self, history, history_key, title, ylabel, fold = None):
     '''
       Plot the loss/acc metric for training and validation sets
     '''
@@ -1318,47 +1383,81 @@ class Trainer(object):
     # Training #
     ############
 
-    # TOTAL LOSS
+
+    if fold is None:
+
+      # TOTAL LOSS
+     
+      average = []
+      #max epochs (get max epochs)
+      max_epochs = max(len(history[n][history_key]) for n in range(self.nfolds))
+  
+      for n in range(self.nfolds):
+  
+        toPlot = history[n][history_key]
+        epochs = range(1, len(toPlot)+1)
+        plt.plot(epochs, toPlot, self.colors[n], label=f'Fold {n}')
+  
+        #create a full array of nans of length max_epochs       
+        padded = np.full(max_epochs, np.nan)
+        #fill the first part with (the rest stays nan)
+        padded[:len(toPlot)] = toPlot 
+        #append the padded array to the average 
+        average.append(padded)
+  
+      #take the average and ignore nans
+      average_toPlot = np.nanmean(np.vstack(average), axis=0)
+      plt.plot(range(1, max_epochs + 1), average_toPlot, 'black' , label=f"Fold Average", linestyle= 'dashed')
+  
+  
+      plt.subplots_adjust(left=0.2, right=0.95, top=0.85, bottom=0.20)
+  
+      plt.title(title)
+      plt.xlabel('Epochs')
+      plt.ylabel(ylabel)
+      plt.legend()
+      self.saveFig(plt, history_key.replace(" ", "_"))
+      self.saveFig(plt, history_key.replace(" ", "_"))
+  
+      #log
    
-    average = []
-    #max epochs (get max epochs)
-    max_epochs = max(len(history[n][history_key]) for n in range(self.nfolds))
+      plt.yscale('log')  
+      #plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
+      self.saveFig(plt, history_key.replace(" ", "_") + "_log")
+      self.saveFig(plt, history_key.replace(" ", "_") + "_log")
+      #plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+      plt.clf()
+      plt.close()
 
-    for n in range(self.nfolds):
 
+    else: 
+
+      n = fold
+      # TOTAL LOSS
+  
       toPlot = history[n][history_key]
       epochs = range(1, len(toPlot)+1)
       plt.plot(epochs, toPlot, self.colors[n], label=f'Fold {n}')
+  
+      plt.subplots_adjust(left=0.2, right=0.95, top=0.85, bottom=0.20)
+  
+      plt.title(title)
+      plt.xlabel('Epochs')
+      plt.ylabel(ylabel)
+      plt.legend()
+      self.saveFig(plt, history_key.replace(" ", "_") + f"_fold{n}")
+      self.saveFig(plt, history_key.replace(" ", "_") + f"_fold{n}")
+  
+      #log
+   
+      plt.yscale('log')  
+      #plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
+      self.saveFig(plt, history_key.replace(" ", "_") + "_log" + f"_fold{n}")
+      self.saveFig(plt, history_key.replace(" ", "_") + "_log" + f"_fold{n}")
+      #plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
+      plt.clf()
+      plt.close()
 
-      #create a full array of nans of length max_epochs       
-      padded = np.full(max_epochs, np.nan)
-      #fill the first part with (the rest stays nan)
-      padded[:len(toPlot)] = toPlot 
-      #append the padded array to the average 
-      average.append(padded)
-
-    #take the average and ignore nans
-    average_toPlot = np.nanmean(np.vstack(average), axis=0)
-    plt.plot(range(1, max_epochs + 1), average_toPlot, 'black' , label=f"Fold Average", linestyle= 'dashed')
-
-
-    plt.subplots_adjust(left=0.2, right=0.95, top=0.85, bottom=0.20)
-
-    plt.title(title)
-    plt.xlabel('Epochs')
-    plt.ylabel(ylabel)
-    plt.legend()
-    self.saveFig(plt, history_key.replace(" ", "_"))
-    self.saveFig(plt, history_key.replace(" ", "_"))
-
-    #log
- 
-    plt.yscale('log')  
-    #plt.gca().yaxis.set_major_locator(LogLocator(base=10.0, subs=None, numticks=10))
-    self.saveFig(plt, history_key.replace(" ", "_") + "_log")
-    self.saveFig(plt, history_key.replace(" ", "_") + "_log")
-    #plt.gca().yaxis.set_major_formatter(LogFormatterExponent(base=10.0))
-    plt.clf()
 
     ##validation
     #average_loss = []
@@ -1614,7 +1713,7 @@ class Trainer(object):
     plt.clf()
 
    
-  def plotScore(self, model, xx_train, y_train, xx_val, y_val, sig, class_label):
+  def plotScore(self, model, xx_train, y_train, xx_val, y_val, sig, class_label, fold = None):
     '''
       Plot the score of all channels class sig
     '''
@@ -1625,54 +1724,93 @@ class Trainer(object):
 
     hist_content = {}
 
-    for chan in channels:
 
-      dummy = []
+    if fold is None:
 
-      for n in range(self.nfolds):
-     
+      #plot average
+      for chan in channels:
+  
+        dummy = []
+  
+        for n in range(self.nfolds):
+       
+          print("chan is ", chan, ", n is ", n, ", sig is ", sig) 
+          #class predictions 1D
+          #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+          true_1d = np.argmax(y_val[n], axis=1)
+  
+          #select only events where the true class is chan...
+          x_chan    = xx_val[n][ true_1d == chan ]
+          #...and predict their score! (data is already scaled!)
+          y_chan    = model[n].predict(x_chan)[:,sig] 
+  
+          np.savetxt(f"{self.outdir}/fold_{n}_score_of_class_{chan}_for_class_{sig}.csv",y_chan,delimiter = ",")
+  
+          # Plot data into histo
+          hist = plt.hist(y_chan, bins=np.arange(0,1.025,0.025), color=col[chan], alpha=0.5, label=class_label[chan], histtype='stepfilled',density = True,linestyle = linestyles[chan], linewidth = 1.5)
+    
+          #append the bin content (at index 0) for every fold! 
+          dummy.append(hist[0])
+  
+        #average over the folds to get the average histo
+        hist_content[chan] = sum(dummy)/self.nfolds
+  
+  
+      fig = plt.figure()
+  
+      for chan in channels:
+  
+        #bin edges are at index 1 (the same for all, can take the last one)
+        bin_edges = hist[1]
+        bin_width = np.diff(bin_edges) 
+   
+        # plot the score distributions
+        plt.bar(bin_edges[:-1], hist_content[chan], color=col[chan], width = bin_width, align = 'edge', alpha=0.5, label=class_label[chan], linestyle = linestyles[chan], linewidth = 1.5)
+    
+      #plot all channels into same plot 
+      plt.legend(loc='upper right')
+      plt.title(f'Score for class ' + class_label[sig] + " (Average over folds)")
+      plt.xlabel('score')
+      plt.ylabel('events')
+      #fig.savefig('outputs/score_' + str(sig) + '.pdf')
+      #fig.savefig('outputs/score_' + str(sig) + '.png')
+      self.saveFig(fig, f'score_' + str(sig) )
+      plt.clf()
+      plt.close()
+
+
+    else:
+
+      fig = plt.figure()
+      #plot average
+      for chan in channels:
+  
+        dummy = []
+        n = fold 
+       
         print("chan is ", chan, ", n is ", n, ", sig is ", sig) 
         #class predictions 1D
         #is of shape [1,2,5,4,3,2,4,2,1, ....] 
         true_1d = np.argmax(y_val[n], axis=1)
-
+  
         #select only events where the true class is chan...
         x_chan    = xx_val[n][ true_1d == chan ]
         #...and predict their score! (data is already scaled!)
         y_chan    = model[n].predict(x_chan)[:,sig] 
-
-        np.savetxt(f"{self.outdir}/fold_{n}_score_of_class_{chan}_for_class_{sig}.csv",y_chan,delimiter = ",")
-
+  
         # Plot data into histo
         hist = plt.hist(y_chan, bins=np.arange(0,1.025,0.025), color=col[chan], alpha=0.5, label=class_label[chan], histtype='stepfilled',density = True,linestyle = linestyles[chan], linewidth = 1.5)
-  
-        #append the bin content (at index 0) for every fold! 
-        dummy.append(hist[0])
 
-      #average over the folds to get the average histo
-      hist_content[chan] = sum(dummy)/self.nfolds
+      plt.legend(loc='upper right')
+      plt.title(f'Score for class ' + class_label[sig] + " (Average over folds)")
+      plt.xlabel('score')
+      plt.ylabel('events')
+      #fig.savefig('outputs/score_' + str(sig) + '.pdf')
+      #fig.savefig('outputs/score_' + str(sig) + '.png')
+      self.saveFig(fig, f'score_' + str(sig) + f"_fold_{fold}" )
+      plt.clf()
+      plt.close()
 
-
-    fig = plt.figure()
-
-    for chan in channels:
-
-      #bin edges are at index 1 (the same for all, can take the last one)
-      bin_edges = hist[1]
-      bin_width = np.diff(bin_edges) 
- 
-      # plot the score distributions
-      plt.bar(bin_edges[:-1], hist_content[chan], color=col[chan], width = bin_width, align = 'edge', alpha=0.5, label=class_label[chan], linestyle = linestyles[chan], linewidth = 1.5)
-  
-    #plot all channels into same plot 
-    plt.legend(loc='upper right')
-    plt.title(f'Score for class ' + class_label[sig] + " (Average over folds)")
-    plt.xlabel('score')
-    plt.ylabel('events')
-    #fig.savefig('outputs/score_' + str(sig) + '.pdf')
-    #fig.savefig('outputs/score_' + str(sig) + '.png')
-    self.saveFig(fig, f'score_' + str(sig) )
-    plt.clf()
 
   def plotCorr(self, model, xx_train, y_train, xx_val, y_val, class_label, fold):
 
@@ -1716,6 +1854,7 @@ class Trainer(object):
     plt.tight_layout()
     self.saveFig(plt, f'corr_sig_fold_{fold}')
     plt.clf()
+    plt.close()
 
   def plotScoreOneVsAll(self, model, xx_train, y_train, xx_val, y_val, sig, class_label):
     '''
@@ -1967,6 +2106,7 @@ class Trainer(object):
       plt.legend()
       self.saveFig(plt, f'ROC_{key}_class_{sig}')
       plt.clf()
+      plt.close()
 
       #log scale
       plt.figure()
@@ -1994,10 +2134,10 @@ class Trainer(object):
       plt.legend()
       self.saveFig(plt, f'ROC_{key}_class_{sig}_log')
       plt.clf()
-
+      plt.close()
 
   
-  def plotKSTest(self, model, xx_train, y_train, xx_val, y_val,sig):
+  def plotKSTest(self, model, xx_train, y_train, xx_val, y_val,sig, fold = None):
     '''
       Plot the outcome of the Kolmogorov test
       Used to test the overfitting
@@ -2007,91 +2147,189 @@ class Trainer(object):
     h2 = ROOT.TH1F(f'val_{sig}', f'val_{sig}', 30, 0, 1)
 
 
-    for n in range(self.nfolds):
 
-      ## VALIDATION
+    if fold is None:
+
+      for n in range(self.nfolds):
   
+        ## VALIDATION
+    
+        #class predictions 1D
+        #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+        true_1d_val = np.argmax(y_val[n], axis=1)
+    
+        #select only events where the true class is chan...
+        x_chan_val    = xx_val[n][ true_1d_val == sig ]
+        #...and predict their score! (data is already scaled!)
+        y_chan_val    = model[n].predict(x_chan_val)[:,sig] 
+    
+    
+        ## TRAINING
+    
+        #class predictions 1D
+        #is of shape [1,2,5,4,3,2,4,2,1, ....] 
+        true_1d_train = np.argmax(y_train[n], axis=1)
+    
+        #select only events where the true class is chan...
+        x_chan_train    = xx_train[n][ true_1d_train == sig ]
+        #...and predict their score! (data is already scaled!)
+        y_chan_train    = model[n].predict(x_chan_train)[:,sig] 
+   
+        #import pdb
+        #pdb.set_trace()  
+  
+   
+        np.savetxt(f"{self.outdir}/scoretrain_{sig}.csv",y_chan_train,delimiter = ",")
+        np.savetxt(f"{self.outdir}/scoretest_{sig}.csv",y_chan_val,delimiter = ",")
+    
+        h1_dummy = ROOT.TH1F(f'train_{n}_{sig}', f'train_{n}_{sig}', 30, 0, 1)
+        h2_dummy = ROOT.TH1F(f'val_{n}_{sig}', f'val_{n}_{sig}', 30, 0, 1)
+        for st,sv in zip(y_chan_train, y_chan_val):
+    
+          #remark st and sv are lists of length 6! -> only keep score of the signal we're interested in
+          h1_dummy.Fill(st) 
+          h2_dummy.Fill(sv)
+    
+        h1.Add(h1_dummy)
+        h2.Add(h2_dummy)
+  
+      h1.Scale(1/self.nfolds) 
+      h2.Scale(1/self.nfolds) 
+  
+      c1=ROOT.TCanvas()
+      if h1.Integral()!=0: h1.Scale(1./h1.Integral())
+      if h2.Integral()!=0: h2.Scale(1./h2.Integral())
+      c1.Draw()
+      h1.GetXaxis().SetTitle("score")
+      h1.GetYaxis().SetRangeUser(0, max([h2.GetMaximum(),h1.GetMaximum()])*1.6)
+  
+      h1.SetFillColor(ROOT.kGreen+2)
+      h1.SetLineColor(ROOT.kGreen+2)
+      h1.SetFillStyle(3345)
+      h1.Draw('HIST')
+      
+      h2.SetLineColor(ROOT.kBlack)
+      h2.SetMarkerStyle(8)
+      h2.SetMarkerSize(0.5)
+      h2.SetMarkerColor(ROOT.kBlack)
+      h2.Draw('EP SAME')
+  
+      ks_score = h1.KolmogorovTest(h2)
+      ks_value = ROOT.TPaveText(0.5, 0.76, 0.88, 0.80, 'nbNDC')
+      ks_value.AddText(f'Average KS score of class {sig} = {round(ks_score,3)}')
+      ks_value.SetFillColor(0)
+      ks_value.Draw('EP SAME')
+  
+      leg = ROOT.TLegend(.55,.82,.83,.88)
+      leg.AddEntry(h1 ,'Training' ,'F' )
+      leg.AddEntry(h2 ,'Validation' ,'EP' )
+      leg.Draw("SAME")
+  
+  
+      c1.SaveAs(self.outdir + f'/KS_test_{sig}.pdf')
+      c1.SaveAs(self.outdir + f'/KS_test_{sig}.png')
+      #print('KS score: ',ks_score, len(train_pred),len(test_pred))
+      c1.Close()
+      del c1
+  
+
+    else:
+
+      n = fold
+
       #class predictions 1D
       #is of shape [1,2,5,4,3,2,4,2,1, ....] 
       true_1d_val = np.argmax(y_val[n], axis=1)
-  
+    
       #select only events where the true class is chan...
       x_chan_val    = xx_val[n][ true_1d_val == sig ]
       #...and predict their score! (data is already scaled!)
       y_chan_val    = model[n].predict(x_chan_val)[:,sig] 
-  
-  
+    
+    
       ## TRAINING
-  
+    
       #class predictions 1D
       #is of shape [1,2,5,4,3,2,4,2,1, ....] 
       true_1d_train = np.argmax(y_train[n], axis=1)
-  
+    
       #select only events where the true class is chan...
       x_chan_train    = xx_train[n][ true_1d_train == sig ]
       #...and predict their score! (data is already scaled!)
       y_chan_train    = model[n].predict(x_chan_train)[:,sig] 
- 
+   
       #import pdb
       #pdb.set_trace()  
-
- 
+  
+   
       np.savetxt(f"{self.outdir}/scoretrain_{sig}.csv",y_chan_train,delimiter = ",")
       np.savetxt(f"{self.outdir}/scoretest_{sig}.csv",y_chan_val,delimiter = ",")
-  
+    
       h1_dummy = ROOT.TH1F(f'train_{n}_{sig}', f'train_{n}_{sig}', 30, 0, 1)
       h2_dummy = ROOT.TH1F(f'val_{n}_{sig}', f'val_{n}_{sig}', 30, 0, 1)
       for st,sv in zip(y_chan_train, y_chan_val):
-  
+    
         #remark st and sv are lists of length 6! -> only keep score of the signal we're interested in
         h1_dummy.Fill(st) 
         h2_dummy.Fill(sv)
+ 
+
+      c1=ROOT.TCanvas()
+      if h1_dummy.Integral()!=0: h1_dummy.Scale(1./h1_dummy.Integral())
+      if h2_dummy.Integral()!=0: h2_dummy.Scale(1./h2_dummy.Integral())
+      c1.Draw()
+      h1_dummy.GetXaxis().SetTitle("score")
+      h1_dummy.GetYaxis().SetRangeUser(0, max([h2_dummy.GetMaximum(),h1_dummy.GetMaximum()])*1.6)
   
-      h1.Add(h1_dummy)
-      h2.Add(h2_dummy)
-
-    h1.Scale(1/self.nfolds) 
-    h2.Scale(1/self.nfolds) 
-
-    c1=ROOT.TCanvas()
-    if h1.Integral()!=0: h1.Scale(1./h1.Integral())
-    if h2.Integral()!=0: h2.Scale(1./h2.Integral())
-    c1.Draw()
-    h1.GetXaxis().SetTitle("score")
-    h1.GetYaxis().SetRangeUser(0, max([h2.GetMaximum(),h1.GetMaximum()])*1.6)
-
-    h1.SetFillColor(ROOT.kGreen+2)
-    h1.SetLineColor(ROOT.kGreen+2)
-    h1.SetFillStyle(3345)
-    h1.Draw('HIST')
-    
-    h2.SetLineColor(ROOT.kBlack)
-    h2.SetMarkerStyle(8)
-    h2.SetMarkerSize(0.5)
-    h2.SetMarkerColor(ROOT.kBlack)
-    h2.Draw('EP SAME')
-
-    ks_score = h1.KolmogorovTest(h2)
-    ks_value = ROOT.TPaveText(0.5, 0.76, 0.88, 0.80, 'nbNDC')
-    ks_value.AddText(f'Average KS score of class {sig} = {round(ks_score,3)}')
-    ks_value.SetFillColor(0)
-    ks_value.Draw('EP SAME')
-
-    leg = ROOT.TLegend(.55,.82,.83,.88)
-    leg.AddEntry(h1 ,'Training' ,'F' )
-    leg.AddEntry(h2 ,'Validation' ,'EP' )
-    leg.Draw("SAME")
+      h1_dummy.SetFillColor(ROOT.kGreen+2)
+      h1_dummy.SetLineColor(ROOT.kGreen+2)
+      h1_dummy.SetFillStyle(3345)
+      h1_dummy.Draw('HIST')
+      
+      h2_dummy.SetLineColor(ROOT.kBlack)
+      h2_dummy.SetMarkerStyle(8)
+      h2_dummy.SetMarkerSize(0.5)
+      h2_dummy.SetMarkerColor(ROOT.kBlack)
+      h2_dummy.Draw('EP SAME')
+  
+      ks_score = h1_dummy.KolmogorovTest(h2_dummy)
+      ks_value = ROOT.TPaveText(0.5, 0.76, 0.88, 0.80, 'nbNDC')
+      ks_value.AddText(f'Average KS score of class {sig} = {round(ks_score,3)}')
+      ks_value.SetFillColor(0)
+      ks_value.Draw('EP SAME')
+  
+      leg = ROOT.TLegend(.55,.82,.83,.88)
+      leg.AddEntry(h1_dummy ,'Training' ,'F' )
+      leg.AddEntry(h2_dummy ,'Validation' ,'EP' )
+      leg.Draw("SAME")
+  
+  
+      c1.SaveAs(self.outdir + f'/KS_test_{sig}_fold_{n}.pdf')
+      c1.SaveAs(self.outdir + f'/KS_test_{sig}_fold_{n}.png')
+      #print('KS score: ',ks_score, len(train_pred),len(test_pred))
+      c1.Close()
+      del c1
 
 
-    c1.SaveAs(self.outdir + f'/KS_test_{sig}.pdf')
-    c1.SaveAs(self.outdir + f'/KS_test_{sig}.png')
-    #print('KS score: ',ks_score, len(train_pred),len(test_pred))
+
+
+
+
+
+
 
 
 
   def process(self):
     print( '------------------- MVA Trainer --------------------')
-    
+ 
+    global xx_folds
+    global y_folds
+    global w_folds
+    global h_folds
+    global weight
+    global class_label
+   
     # create output directory
     print('\n========> creating output directory')
     self.createOutDir()
@@ -2116,12 +2354,13 @@ class Trainer(object):
 
 
     print('\n========> preparing the inputs') 
+
     xx_folds, y_folds, w_folds, h_folds  = self.prepareInputs(xx_folds, y_folds, w_folds, h_folds)
 
     # do the training
     print('\n========> training...') 
     #model, history, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight)
-    history, model, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight)
+    history, model, xx_train, y_train, h_train, xx_val, y_val, h_val = self.train(xx_folds, y_folds, w_folds, h_folds, weight, class_label)
 
     #save the output dictionaries
     with open(f'{self.outdir}/xx_val.pck', 'wb') as f:
@@ -2155,28 +2394,29 @@ class Trainer(object):
 
     #self.plotAccuracy(history)
     #self.plotScoreTauOnly(model, xx_train, y_train, h_train,  xx_val, y_val, h_val, class_label )
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 0,class_label)
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 2,class_label)
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 3,class_label)
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 4,class_label)
-    self.plotScore(model, xx_train, y_train, xx_val, y_val, 5,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 0,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 1,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 2,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 3,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 4,class_label)
+    #self.plotScore(model, xx_train, y_train, xx_val, y_val, 5,class_label)
     ##self.plotScoreOneVsAll(model, xx_train, y_train, xx_val, y_val, 1,class_label)
 
+    #pdb.set_trace()
     #####self.plotCM(model, main_test_df, class_label)
-    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
-    self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
-    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 0)
-    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 1)
-    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 2)
-    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3)
-    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
-    self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
+    #self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Train')
+    #self.plotROCbinary(model,xx_train,y_train,xx_val,y_val,'Test')
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 0)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 1)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 2)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 3)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 4)
+    #self.plotKSTest(model, xx_train, y_train, xx_val, y_val, 5)
  
     ##one corr for every fold (not class!)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 0)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 1)
-    self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 2)
+    #self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 0)
+    #self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 1)
+    #self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 2)
     #self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 3)
     #self.plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, 4)
 
@@ -2201,13 +2441,13 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 40 
+  epochs = 500
   #batch_size = 128 #128 here
-  batch_size = 128 #128 here
+  batch_size = 4096 #128 here
   learning_rate = 0.0005
-  lambda_penalty = 1.0
+  lambda_penalty = 50.0
   scaler_type = 'robust'
-  do_early_stopping = True  
+  es_patience = 10
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = baseline_selection 
@@ -2216,19 +2456,19 @@ if __name__ == '__main__':
   frac_sf = 1.0
 
   trainer = Trainer(
-      features = features, 
-      epochs = epochs,
-      batch_size = batch_size,
-      learning_rate = learning_rate,
-      lambda_penalty = lambda_penalty,
-      scaler_type = scaler_type,
-      do_early_stopping = do_early_stopping,
-      do_reduce_lr = do_reduce_lr,
-      dirname = dirname,
+      features           = features, 
+      epochs             = epochs,
+      batch_size         = batch_size,
+      learning_rate      = learning_rate,
+      lambda_penalty     = lambda_penalty,
+      scaler_type        = scaler_type,
+      es_patience        = es_patience,
+      do_reduce_lr       = do_reduce_lr,
+      dirname            = dirname,
       baseline_selection = baseline_selection,
-      nfolds = nfolds,
-      frac_sb = frac_sb,
-      frac_sf = frac_sf
+      nfolds             = nfolds,
+      frac_sb            = frac_sb,
+      frac_sf            = frac_sf
       )
 
   history, model = trainer.process()
