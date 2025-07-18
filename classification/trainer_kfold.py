@@ -238,32 +238,52 @@ def getRdf(dateTimes, debug = None, skimmed = None, hammer = None):
   return (chain,rdf)
 
 
-def dist_corr(output, hammer_var, true_label):
+def dist_corr(output, hammer, true_label, weight, scalar = None, vector = None):
 
   #print("======== Calculate distance correlation penalty ========")
 
-  #output is a list of 6dim arrays, holding the score predictions
+  #output is a list of 6dim arrays, holding the score predictions.
+  #hammer is a list of n-dims arrays, holding the n-variables we want to decorrrelate from the scores
+  #in our case its the e{i}_up, e{i}_down, i = 1, .., 10 for the truth label.
+  #true_label is a list of the true_labels.
 
-  #hammer_var is a list of n-dims arrays, holding the n-variables we want to decorrrelate from the scores
-  #in our case its the e{i}_up, e{i}_down, i = 1, .., 10 for the truth label
-
-  #true_label is a list of the true_labels
+  #pdb.set_trace()
 
   # Step 0. Move from one hot to single label
   true_label        = tf.argmax(true_label, axis=1)
 
   # STEP 1. Restrict the metric to signal events only (only have hammer variations for those!) 
-  mask              = tf.logical_and(tf.not_equal(true_label, 4), tf.not_equal(true_label, 5)) 
-  
-  output_filt       = tf.cast(tf.boolean_mask(output    , mask), tf.float32) #ensure same data type 
-  hammer_var_filt   = tf.cast(tf.boolean_mask(hammer_var, mask), tf.float32) 
+ 
+  if scalar is not None:
+    #dstau and dsmu (class 0 and class 2)
+    mask              = tf.logical_or(tf.equal(true_label, 0), tf.equal(true_label, 2)) 
 
-  # STEP 2. Restrict the output to the signals scores only (score0 - score3)
-  score0to3         = output_filt[:, :4] #keep all events (:) but only first 4 cols
+  elif vector is not None: 
+    #dssttau and dsstmu (class 1 and class 3)
+    #mask              = tf.logical_or(tf.equal(true_label, 1), tf.equal(true_label, 3)) 
+    mask              = tf.equal(true_label, 3) 
+
+  output_filt   = tf.cast(tf.boolean_mask(output, mask), tf.float32) #ensure same data type 
+  hammer_filt   = tf.cast(tf.boolean_mask(hammer, mask), tf.float32) 
+  weight_filt   = tf.cast(tf.boolean_mask(weight, mask), tf.float32)
+
+  # STEP 2. Restrict the output to the corresponding scores and e{i} directions only 
+
+  if scalar is not None:
+    #dstau and dsmu (class 0 and class 2) and e1 - e6
+    hammer_filt = tf.gather(hammer_filt, indices=[0], axis=1)
+    scores      = tf.gather(output_filt, indices=[0, 2], axis=1)
+
+  elif vector is not None: 
+    #dssttau and dsstmu (class 1 and class 3) and e1-e10 (all indices)
+    #hammer_filt = tf.gather(hammer_filt, indices=[0], axis=1)
+    scores      = tf.gather(output_filt, indices=[0,1,2,3], axis=1)
+    #scores       = output_filt
+  #pdb.set_trace()
 
   # STEP 3. Calculate the two distance matrices
-  score_i           = tf.expand_dims(score0to3, axis=1) 
-  score_j           = tf.expand_dims(score0to3, axis=0) 
+  score_i           = tf.expand_dims(scores, axis=1) 
+  score_j           = tf.expand_dims(scores, axis=0) 
   score_diff        = score_i - score_j
 
   # ADD EPISLON FOR STABLE GRADIENT BACKPROPAGATION! CRASH OTHERWISE
@@ -273,10 +293,10 @@ def dist_corr(output, hammer_var, true_label):
   score_col_mean    = tf.reduce_mean(score_dist_mat, axis=0, keepdims=True) 
   score_total_mean  = tf.reduce_mean(score_dist_mat)
 
-  score_dist_mat    = score_dist_mat - score_row_mean - score_col_mean - score_total_mean 
+  score_dist_mat    = score_dist_mat - score_row_mean - score_col_mean + score_total_mean 
 
-  hammer_i          = tf.expand_dims(hammer_var_filt, axis=1) 
-  hammer_j          = tf.expand_dims(hammer_var_filt, axis=0) 
+  hammer_i          = tf.expand_dims(hammer_filt, axis=1) 
+  hammer_j          = tf.expand_dims(hammer_filt, axis=0) 
   hammer_diff       = hammer_i - hammer_j
 
   # ADD EPISLON FOR STABLE GRADIENT BACKPROPAGATION! CRASH OTHERWISE
@@ -286,7 +306,7 @@ def dist_corr(output, hammer_var, true_label):
   hammer_col_mean   = tf.reduce_mean(hammer_dist_mat, axis=0, keepdims=True) 
   hammer_total_mean = tf.reduce_mean(hammer_dist_mat)
 
-  hammer_dist_mat   = hammer_dist_mat - hammer_row_mean - hammer_col_mean - hammer_total_mean 
+  hammer_dist_mat   = hammer_dist_mat - hammer_row_mean - hammer_col_mean + hammer_total_mean 
 
   #tf.print(" ===> score mat:", score_dist_mat, summarize=-1)
   #tf.print(" ===> hammer mat:", hammer_dist_mat, summarize=-1)
@@ -467,24 +487,24 @@ kin_var = [
 'disc_negativity',
 ]
 
-hammer = [
+hammer_var = [
 "central_w",
-"e1_up",
+#"e1_up",
 "e2_up",
 "e3_up",
-"e4_up",
+#"e4_up",
 "e5_up",
 "e6_up",
-#"e7_up",
-#"e8_up",
+"e7_up",
+"e8_up",
 #"e9_up",
 #"e10_up",
-"e1_down",
-"e2_down",
-"e3_down",
-"e4_down",
-"e5_down",
-"e6_down",
+#"e1_down",
+#"e2_down",
+#"e3_down",
+#"e4_down",
+#"e5_down",
+#"e6_down",
 #"e7_down",
 #"e8_down",
 #"e9_down",
@@ -521,25 +541,25 @@ if args.prod == "25":
 
 
   #displacement
-  kin_var.append("lxy_bs_sig")
-  kin_var.append("ds_vtx_cosine_xy_pv")
-  kin_var.append("ds_vtx_cosine_xy")
-  kin_var.append("signed_decay_ip3d_mu_ds_sv")
+  #kin_var.append("lxy_bs_sig")
+  #kin_var.append("ds_vtx_cosine_xy_pv")
+  #kin_var.append("ds_vtx_cosine_xy")
+  #kin_var.append("signed_decay_ip3d_mu_ds_sv")
 
-  #kinematics
-  #kin_var.append("e_gamma/photon_pt")
-  kin_var.append("e_gamma")
-  #kin_var.append("photon_pt")
-  kin_var.append("bs_mass_corr")
-  #kin_var.append("bs_mass_corr_photon")
-  kin_var.append("ds_perp")
-  #kin_var.append("ds_perp_photon")
-  kin_var.append("ds_mu_perp")
-  #kin_var.append("ds_mu_perp_photon")
+  ##kinematics
+  ##kin_var.append("e_gamma/photon_pt")
+  #kin_var.append("e_gamma")
+  ##kin_var.append("photon_pt")
+  #kin_var.append("bs_mass_corr")
+  ##kin_var.append("bs_mass_corr_photon")
+  #kin_var.append("ds_perp")
+  ##kin_var.append("ds_perp_photon")
+  #kin_var.append("ds_mu_perp")
+  ##kin_var.append("ds_mu_perp_photon")
    
   #isolation
-  kin_var.append("rel_iso_03_pv")
-
+  #kin_var.append("rel_iso_03_pv")
+  print("blub")
 
 class Sample(object):
   '''
@@ -557,16 +577,16 @@ class Sample(object):
     if self.signal in [0,1,2,3]:
       #signals
       #print("hammer branches")
-      branches = kin_var + ['event'] + hammer #event will be removed later!
+      branches = kin_var + ['event'] + hammer_var + ["cosPhiDs_coll"] #event will be removed later!
       #branches = kin_var + ['event'] #event will be removed later!
       toLoad =  more_vars + ["gen_sig"]
 
     elif self.signal == 4: #hb
-      branches = kin_var + ['event'] #event will be removed later!
+      branches = kin_var + ['event'] + ["cosPhiDs_coll"] #event will be removed later!
       toLoad =  more_vars + ["gen_sig", "gen_match_success"]
 
     else: #data
-      branches = kin_var + ['event','sf_weights'] #event will be removed later!
+      branches = kin_var + ['event','sf_weights'] + ["cosPhiDs_coll"] #event will be removed later!
       toLoad =  more_vars
 
 
@@ -622,12 +642,13 @@ class Trainer(object):
 
   'train the data'
 
-  def __init__(self, features, epochs, batch_size, learning_rate, lambda_penalty, scaler_type, es_patience, do_reduce_lr, dirname, baseline_selection, nfolds, frac_sb, frac_sf):
+  def __init__(self, features, epochs, batch_size, learning_rate, lambda_penalty_scalar, lambda_penalty_vector, scaler_type, es_patience, do_reduce_lr, dirname, baseline_selection, nfolds, frac_sb, frac_sf):
     self.features           = features #variables to train on
     self.epochs             = epochs #samples / batch_size =  number of iterations to 1 epoch
     self.batch_size         = batch_size 
     self.learning_rate      = learning_rate 
-    self.lambda_penalty     = lambda_penalty 
+    self.lambda_penalty_scalar     = lambda_penalty_scalar 
+    self.lambda_penalty_vector     = lambda_penalty_vector 
     self.scaler_type        = scaler_type
     self.es_patience        = es_patience 
     self.do_reduce_lr       = do_reduce_lr
@@ -670,6 +691,8 @@ class Trainer(object):
     f.write("Early stopping patience: "   + str(self.es_patience)         + "\n")
     f.write("Reduce lr: "                 + str(self.do_reduce_lr)        + "\n")
     f.write("Baseline selection: "        + str(self.baseline_selection)  + "\n")
+    f.write("penalty scalar: "            + str(self.lambda_penalty_scalar)      + "\n")
+    f.write("penalty vector: "            + str(self.lambda_penalty_vector)      + "\n")
     f.write("year of data: "              + str(args.prod)                + "\n")
     f.write("trigger: "                   + str(args.trigger)             + "\n")
     f.write("Signal region up to:"        + str(nSignalRegion) + " sigma" + "\n")
@@ -864,11 +887,16 @@ class Trainer(object):
     # create new column which holds the multiplication of all weights
 
     #trick
+
     averages["central_w_hb"]     = 1.0
     averages["central_w_comb"]   = 1.0
-    for i in range(1,7):
-      averages[f"e{i}_up_hb"]    = 1.0
-      averages[f"e{i}_up_comb"]  = 1.0
+
+    #strip only the directions e1up, ... from hammer
+    hammer_dir = [h for h in hammer_var if h != "central_w"]
+
+    for e in hammer_dir:
+      averages[f"{e}_hb"]    = 1.0
+      averages[f"{e}_comb"]  = 1.0
 
 
     keys = {0: 'dstau', 1: 'dsstartau', 2:'dsmu' , 3: 'dsstarmu', 4:'hb', 5:'comb'}
@@ -882,14 +910,15 @@ class Trainer(object):
     #for every event, pick the correct variational av according to signal
     var_av_train     = {}
     var_av_test      = {}
-    for i in range(1,7):
 
-      var_av_train[f"average_e{i}_up"] = [averages[f"e{i}_up_" + keys[sig]] for sig in train["is_signal"]]
-      var_av_test [f"average_e{i}_up"] = [averages[f"e{i}_up_" + keys[sig]] for sig in test ["is_signal"]]
+    for e in hammer_dir:
+
+      var_av_train[f"average_{e}"] = [averages[f"{e}_" + keys[sig]] for sig in train["is_signal"]]
+      var_av_test [f"average_{e}"] = [averages[f"{e}_" + keys[sig]] for sig in test ["is_signal"]]
 
       #normalize weights
-      train[f"e{i}_up"] =  train[f"e{i}_up"] /  var_av_train[f"average_e{i}_up"]
-      test [f"e{i}_up"] =  test[f"e{i}_up"]  /  var_av_test [f"average_e{i}_up"]
+      train[e] =  train[e] /  var_av_train[f"average_{e}"]
+      test [e] =  test [e] /  var_av_test [f"average_{e}"]
 
 
     #pdb.set_trace()
@@ -911,11 +940,8 @@ class Trainer(object):
     #w_cols = ['central_w', 'event']
     #w_cols = ['sf_weights', 'central_w', 'event']
     w_cols   = ['total_w', 'event']
-    hammer_var_cols = [
-      'e1_up','e2_up','e3_up','e4_up','e5_up','e6_up',            #'e7_up', 'e8_up', 'e9_up', 'e10_up',
-      'e1_down','e2_down','e3_down','e4_down','e5_down','e6_down',#'e7_down', 'e8_down', 'e9_down', 'e10_down',
-      'event'
-    ]
+    #hammer_var_cols = hammer_dir + ["event"]
+    hammer_var_cols = ["cosPhiDs_coll", "event"]
 
     X       = pd.DataFrame(main_df, columns=list(set(self.features)) + ['event'] )
     Y       = pd.DataFrame(main_df, columns=['is_signal', 'event'])
@@ -1148,7 +1174,8 @@ class Trainer(object):
       
       batch_size = self.batch_size
       epochs = self.epochs
-      lambda_penalty = self.lambda_penalty 
+      lambda_penalty_scalar = self.lambda_penalty_scalar 
+      lambda_penalty_vector = self.lambda_penalty_vector 
       optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
      
       #define accuracy
@@ -1168,9 +1195,12 @@ class Trainer(object):
               #main_loss = loss_main(y, outputs, sample_weight=w)
               main_loss = model[n].compiled_loss(y, outputs, regularization_losses=model[n].losses, sample_weight=w)
               #print(" ====> Get crossentropy loss", main_loss)
-              penalty = lambda_penalty * dist_corr(outputs, h , y)  
-              #print(" ====> Get penalty loss term (including lambda scale)", penalty)
-              total_loss = main_loss + penalty
+              penalty_scalar = 0.0 #dist_corr(outputs, h , y, scalar = True)  
+              penalty_vector = dist_corr(outputs, h , y, w, vector = True)  
+              total_loss = main_loss      +  \
+                           lambda_penalty_scalar * penalty_scalar +  \
+                           lambda_penalty_vector * penalty_vector
+              #total_loss = lambda_penalty_vector * penalty_vector
               #print(" ====> Get total loss", total_loss)
               # Get accuracy and update it
               acc_train.update_state(y, outputs, sample_weight=w)              
@@ -1181,7 +1211,7 @@ class Trainer(object):
           # apply gradients
           optimizer.apply_gradients(zip(gradients, model[n].trainable_variables))
       
-          return total_loss, main_loss, penalty #, grad_norms, clipped_grad_norms
+          return total_loss, main_loss, penalty_scalar, penalty_vector, gradients #, grad_norms, clipped_grad_norms
      
 
 
@@ -1194,25 +1224,30 @@ class Trainer(object):
               #main_loss = loss_main(y, outputs, sample_weight=w)
               main_loss = model[n].compiled_loss(y, outputs, regularization_losses=model[n].losses, sample_weight=w)
               #print(" ====> Get crossentropy loss", main_loss)
-              penalty = lambda_penalty * dist_corr(outputs, h , y)  
-              #print(" ====> Get penalty loss term (including lambda scale)", penalty)
-              total_loss = main_loss + penalty
+              penalty_scalar = 0.0 #dist_corr(outputs, h , y, scalar = True)  
+              penalty_vector = dist_corr(outputs, h , y, w, vector = True)  
+              total_loss = main_loss      +   \
+                           lambda_penalty_scalar * penalty_scalar +  \
+                           lambda_penalty_vector * penalty_vector
+              #total_loss = lambda_penalty_vector * penalty_vector
               #print(" ====> Get total loss", total_loss)
               # Get accuracy and update it
               acc_val.update_state(y, outputs, sample_weight=w)              
       
-          return total_loss, main_loss, penalty
+          return total_loss, main_loss, penalty_scalar, penalty_vector
 
 
       history[n] = {
-        "xentropy_loss_train":[], 
-        "total_loss_train"   :[], 
-        "penalty_train"      :[],
-        "acc_train"          :[],
-        "xentropy_loss_val"  :[],
-        "total_loss_val"     :[],
-        "penalty_val"        :[],
-        "acc_val"            :[],
+        "xentropy_loss_train" :[], 
+        "total_loss_train"    :[], 
+        "penalty_scalar_train":[],
+        "penalty_vector_train":[],
+        "acc_train"           :[],
+        "xentropy_loss_val"   :[],
+        "total_loss_val"      :[],
+        "penalty_scalar_val"  :[],
+        "penalty_vector_val"  :[],
+        "acc_val"             :[],
         }
 
 
@@ -1240,39 +1275,45 @@ class Trainer(object):
 
         #prepare metrics for train and test
         xentropy_loss_train = tf.keras.metrics.Mean()
-        penalty_train       = tf.keras.metrics.Mean()
+        penalty_scalar_train       = tf.keras.metrics.Mean()
+        penalty_vector_train       = tf.keras.metrics.Mean()
         total_loss_train    = tf.keras.metrics.Mean()
 
         xentropy_loss_val   = tf.keras.metrics.Mean()
-        penalty_val         = tf.keras.metrics.Mean()
+        penalty_scalar_val         = tf.keras.metrics.Mean()
+        penalty_vector_val         = tf.keras.metrics.Mean()
         total_loss_val      = tf.keras.metrics.Mean()
 
         for batch, (x, y, w, h) in enumerate(tf_train):
 
           #print(f" ====> At batch {batch}/{len(tf_train)}")
           #total_loss, xentropy_loss, penalty, grad_norms, clipped_grad_norms = train_step(x, y, w, h)
-          total_loss, xentropy_loss, penalty = train_step(x, y, w, h)
+          total_loss, xentropy_loss, penalty_scalar, penalty_vector, gradients = train_step(x, y, w, h)
 
-          #print("Gradient norms before clipping:", grad_norms)
+          #print("Gradient norms before clipping:", gradients)
           #print("Gradient norms after clipping:", clipped_grad_norms)
 
           #tf.print(f"Step {step} Total Loss:", total_loss, "Penalty:", penalty)
 
           total_loss_train   .update_state(total_loss   )
           xentropy_loss_train.update_state(xentropy_loss)
-          penalty_train      .update_state(penalty      )
+          penalty_scalar_train      .update_state(penalty_scalar      )
+          penalty_vector_train      .update_state(penalty_vector      )
 
         print("Time to train:", time() - start)
+        print("Penalty:", penalty_vector)
+
 
         for batch, (x, y, w, h) in enumerate(tf_val):
 
           #print(f" ====> At batch {batch}/{len(tf_val)}")
-          total_loss, xentropy_loss, penalty = val_step(x, y, w, h)
+          total_loss, xentropy_loss, penalty, penalty = val_step(x, y, w, h)
           #tf.print(f"Step {step} Total Loss:", total_loss, "Penalty:", penalty)
 
           total_loss_val   .update_state(total_loss   )
           xentropy_loss_val.update_state(xentropy_loss)
-          penalty_val      .update_state(penalty      )
+          penalty_scalar_val      .update_state(penalty_scalar      )
+          penalty_vector_val      .update_state(penalty_vector      )
 
         print("Time to evaluate:", time() - start)
 
@@ -1285,12 +1326,14 @@ class Trainer(object):
 
         history[n]["total_loss_train"   ].append( total_loss_train   .result().numpy())
         history[n]["xentropy_loss_train"].append( xentropy_loss_train.result().numpy())
-        history[n]["penalty_train"      ].append( penalty_train      .result().numpy())     
+        history[n]["penalty_scalar_train"      ].append( penalty_scalar_train      .result().numpy())     
+        history[n]["penalty_vector_train"      ].append( penalty_vector_train      .result().numpy())     
         history[n]["acc_train"          ].append( acc_train          .result().numpy())     
 
         history[n]["total_loss_val"     ].append( loss_val_now                      )
         history[n]["xentropy_loss_val"  ].append( xentropy_loss_val.result().numpy())
-        history[n]["penalty_val"        ].append( penalty_val      .result().numpy())     
+        history[n]["penalty_scalar_val"        ].append( penalty_scalar_val      .result().numpy())     
+        history[n]["penalty_vector_val"        ].append( penalty_vector_val      .result().numpy())     
         history[n]["acc_val"            ].append( acc_val_now                       )     
 
 
@@ -1344,11 +1387,13 @@ class Trainer(object):
 
       self.plotMetric(history, "xentropy_loss_train","Training X-Entropy Loss"                                                     , "Loss"   , fold = n)
       self.plotMetric(history, "total_loss_train"   ,"Training Total Loss"                                                         , "Loss"   , fold = n)
-      self.plotMetric(history, "penalty_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty}" , "Penalty", fold = n)
+      self.plotMetric(history, "penalty_scalar_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_scalar}" , "Penalty", fold = n)
+      self.plotMetric(history, "penalty_vector_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_vector}" , "Penalty", fold = n)
       self.plotMetric(history, "acc_train"          ,"Training Accuracy"                                                           , "Acc."   , fold = n)
       self.plotMetric(history, "xentropy_loss_val","Validation X-Entropy Loss"                                                     , "Loss"   , fold = n)
       self.plotMetric(history, "total_loss_val"   ,"Validation Total Loss"                                                         , "Loss"   , fold = n)
-      self.plotMetric(history, "penalty_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty}" , "Penalty", fold = n)
+      self.plotMetric(history, "penalty_scalar_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_scalar}" , "Penalty", fold = n)
+      self.plotMetric(history, "penalty_vector_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_vector}" , "Penalty", fold = n)
       self.plotMetric(history, "acc_val"          ,"Validation Accuracy"                                                           , "Acc."   , fold = n)
 
 
@@ -2382,12 +2427,14 @@ class Trainer(object):
                              #dict key             # fig title                                                                   # y axis 
     self.plotMetric(history, "xentropy_loss_train","Training X-Entropy Loss"                                                     , "Loss"   )
     self.plotMetric(history, "total_loss_train"   ,"Training Total Loss"                                                         , "Loss"   )
-    self.plotMetric(history, "penalty_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty}" , "Penalty")
+    self.plotMetric(history, "penalty_scalar_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_scalar}" , "Penalty")
+    self.plotMetric(history, "penalty_vector_train"      ,r"Training Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_vector}" , "Penalty")
     self.plotMetric(history, "acc_train"          ,"Training Accuracy"                                                           , "Acc.")
 
     self.plotMetric(history, "xentropy_loss_val","Validation X-Entropy Loss"                                                     , "Loss"   )
     self.plotMetric(history, "total_loss_val"   ,"Validation Total Loss"                                                         , "Loss"   )
-    self.plotMetric(history, "penalty_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty}" , "Penalty")
+    self.plotMetric(history, "penalty_scalar_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_scalar}" , "Penalty")
+    self.plotMetric(history, "penalty_vector_val"      ,r"Validation Distance Correlation with $\lambda = $" + f"{self.lambda_penalty_vector}" , "Penalty")
     self.plotMetric(history, "acc_val"          ,"Validation Accuracy"                                                           , "Acc.")
 
 
@@ -2441,17 +2488,18 @@ if __name__ == '__main__':
   np.random.seed(1000)
   
   features = kin_var 
-  epochs = 500
+  epochs = 1000
   #batch_size = 128 #128 here
   batch_size = 4096 #128 here
   learning_rate = 0.0005
-  lambda_penalty = 50.0
+  lambda_penalty_scalar = 10.0
+  lambda_penalty_vector = 100.0
   scaler_type = 'robust'
-  es_patience = 10
+  es_patience = 4000
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = baseline_selection 
-  nfolds = 3
+  nfolds = 10 
   frac_sb = 0.0
   frac_sf = 1.0
 
@@ -2460,7 +2508,8 @@ if __name__ == '__main__':
       epochs             = epochs,
       batch_size         = batch_size,
       learning_rate      = learning_rate,
-      lambda_penalty     = lambda_penalty,
+      lambda_penalty_scalar     = lambda_penalty_scalar,
+      lambda_penalty_vector     = lambda_penalty_vector,
       scaler_type        = scaler_type,
       es_patience        = es_patience,
       do_reduce_lr       = do_reduce_lr,
