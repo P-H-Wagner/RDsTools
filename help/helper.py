@@ -64,11 +64,44 @@ b0_cons_25     = ["17_03_2025_08_37_03"]
 bplus_cons_25  = ["17_03_2025_08_36_31"]
 
                   #part 1            #part 2            #part 3            #part 4            #part 5
-data_cons_25   = ["20250227_155416", "20250227_161007", "20250227_161505", "20250227_161842", "20250227_161914"]
-bdt_data_25    = "29_05_2025_16_27_10" # this is in the Analysis Note 
+data_cons_25     = ["20250227_155416", "20250227_161007", "20250227_161505", "20250227_161842", "20250227_161914"]
 
-# NN model
-code_25 = "28May2025_16h33m29s"
+#bdt models, one separate for each trigger
+bdt_model_25_mu7 = "21_07_2025_16_09_20" # this is in the Analysis Note 
+bdt_model_25_mu9 = "21_07_2025_17_14_06" # trained on mu9
+
+#data file evaluated on the different trigger bdts
+bdt_data_25     =  "21_07_2025_17_56_45"
+
+#signflip fit for relative normalization used in analysis note: 22_07_2025_07_52_30
+
+#stacked plots before bdt weights used in analysis note: 22_07_2025_10_11_46 
+#stacked plots after bdt weights used in analysis note: 22_07_2025_08_54_02 (same as below) 
+
+#closure plots after bdt weights for high mass region in analysis note: 23_07_2025_09_16_32 
+#closure plots after bdt weights for sidebands in analysis note: 23_07_2025_08_47_54 
+
+
+#ds peak on dsmu signal mc plot used in analysis note: 06_06_2025_12_05_54
+#shapes plot of different reconstructions: used in analysis note: 22_07_2025_07_52_30  (including BDT weights)
+#more shapes to put in appendix if needed: used in analysis note: 22_07_2025_08_54_02  (including BDT weights)
+#hb inclusive cocktail list is taken from this folder: inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1 in the /gen repo
+
+# NN model used in analysis note
+#code_25     = "13Jun2025_18h24m10s"
+#code_25     = "10Jul2025_10h51m07s" # with penalty
+#code_25     = "19Jun2025_15h21m59s"
+#code_25_mu9 = "20Jun2025_11h08m24s" #inclues mu9 in the training
+
+#code_25     = "07_07_2025_08_04_17" #heavily overrained
+#code_25     = "11_07_2025_19_33_27" #kfolding 
+#code_25 = "12Jul2025_18h37m10s" #new, more complex NN
+#code_25 = "14_07_2025_11_26_20"
+#code_25 = "14Jul2025_19h46m38s"
+#code_25 = "14Jul2025_22h23m52s"
+#code_25 = "15Jul2025_10h00m59s"
+#code_25 = "13Jun2025_18h24m10s"
+code_25 = "23Jul2025_16h29m19s"
 
 sig_cons_pastNN_25     = "sig_"    +code_25
 hb_cons_pastNN_25      = "hb_"     +code_25
@@ -86,11 +119,18 @@ f'(mu_pt > 8)',
 '(lxy_ds < 1)',
 '(mu_id_medium == 1)',
 '(rel_iso_03_pv < 0.3)',
-'(fv_prob > 0.1)'
+'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
 ])
 
 #hammered signals
-sig_cons_hammer_25 = "signal_default_03_06_2025_17_06_15"
+sig_cons_hammer_25 = "signal_default_10_06_2025_08_05_53"
+
+isoflip = ' && '.join([ #remove the charge and ds+mu mass cuts! 
+'(rel_iso_03_pv > 0.3)',
+'(ds_vtx_cosine_xyz_pv < 0.8)',
+])
 
 ################
 # Hammer tools #
@@ -136,16 +176,21 @@ systematics_vector = [
 dsmu_isgw2_to_cln = "dsmu_isgw2_CLN_04_06_2025_11_29_41"
 #dsmu with HQET2 (CLN) to ISGW2
 dsmu_to_isgw2     = "dsmu_ISGW2_04_06_2025_11_34_00"
-# plots for circular test used in the analysis note: /work/pahwagne/RDsTools/hammercpp/tests/04_06_2025_16_25_50
-circularTestPlots = "04_06_2025_16_25_50"
+# plots for circular test used in the analysis note: /work/pahwagne/RDsTools/hammercpp/tests/22_07_2025_08_25_22
+circularTestPlots = "22_07_2025_08_25_22"
 
 # unfiltered gen-level weighted files used to calculate the average weight for BCL/BGL
 dsmu_to_bcl       = "dsmu_BCLVar_04_06_2025_14_40_48"
+dsmu_isgw2_to_bcl = "dsmu_isgw2_BCLVar_26_06_2025_12_00_43"
 dsstarmu_to_bgl   = "dsstarmu_BGLVar_04_06_2025_15_03_24"
 dstau_to_bcl      = "dstau_BCLVar_04_06_2025_14_58_02"
 dsstartau_to_bgl  = "dsstartau_BGLVar_04_06_2025_15_25_47"
 # yaml file used in the analysis note: /work/pahwagne/RDsTools/hammercpp/development_branch/weights/04_06_2025_16_55_31
 averageWeightsYaml = "04_06_2025_16_55_31"
+# plots which show central and variational weight effect used in analysis note: 
+# /work/pahwagne/RDsTools/hammercpp/development_branch/weights/plots/10_06_2025_13_04_57/
+
+
 
 # Mass constants
 
@@ -193,6 +238,7 @@ if __name__ == "__main__":
     "dsmu_isgw2_to_cln": dsmu_isgw2_to_cln,
     "dsmu_to_isgw2": dsmu_to_isgw2,
     "dsmu_to_bcl": dsmu_to_bcl, 
+    "dsmu_isgw2_to_bcl": dsmu_isgw2_to_bcl, 
     "dsstarmu_to_bgl": dsstarmu_to_bgl,
     "dstau_to_bcl": dstau_to_bcl,
     "dsstartau_to_bgl": dsstartau_to_bgl,
