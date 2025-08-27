@@ -47,13 +47,11 @@ for f in files:
 
 def createCanvas(name):
 
-  width  = 1200 
-  height = 800
 
-  c = ROOT.TCanvas(name,name, width, height)
 
   # divide canvas for different signals
   if ((name == "dsmu") or (name == "dstau")):
+    c = ROOT.TCanvas(name,name, 20000, 30000)
     #bcl has 6
     ncols = 2
     nrows = 3
@@ -61,6 +59,7 @@ def createCanvas(name):
     c.Divide(ncols, nrows)
 
   if ((name == "dsstmu") or (name == "dssttau")):
+    c = ROOT.TCanvas(name,name, 20000, 60000)
     #bgl has 10
     ncols = 2
     nrows = 5
@@ -106,6 +105,7 @@ for f in files:
     if (("dsStarMu"  in key) and ("Up" not in key) and ("Down" not in key)): central_10 = key
     if (("dsStarTau" in key) and ("Up" not in key) and ("Down" not in key)): central_11 = key
 
+
   titles = []
   for i in range(6):
 
@@ -125,9 +125,9 @@ for f in files:
     c_0.cd(i+1)
     h = rf.Get(central_0)
     h.SetName(f"dsMu_central_bin{i+1}")
-    h.SetFillStyle(0)
+    #h.SetFillStyle(0)
     h.SetLineWidth(1)
-    h.Draw("HIST")
+    h.Draw("E")
     h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
     c_0.Update() 
  
@@ -147,9 +147,9 @@ for f in files:
     c_1.cd(i+1)
     h = rf.Get(central_1)
     h.SetName(f"dsMu_central_bin{i+1}")
-    h.SetFillStyle(0)
+    #h.SetFillStyle(0)
     h.SetLineWidth(1)
-    h.Draw("HIST")
+    h.Draw("E")
     h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
     c_1.Update() 
 
@@ -170,9 +170,9 @@ for f in files:
     c_10.cd(i+1)
     h = rf.Get(central_10)
     h.SetName(f"dsMu_central_bin{i+1}")
-    h.SetFillStyle(0)
+    #h.SetFillStyle(0)
     h.SetLineWidth(1)
-    h.Draw("HIST")
+    h.Draw("E")
     h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
     c_10.Update()   
 
@@ -192,16 +192,17 @@ for f in files:
     c_11.cd(i+1)
     h = rf.Get(central_11)
     h.SetName(f"dsMu_central_bin{i+1}")
-    h.SetFillStyle(0)
+    #h.SetFillStyle(0)
     h.SetLineWidth(1)
-    h.Draw("HIST")
+    h.Draw("E")
     h.GetYaxis().SetRangeUser(1e-3, h.GetBinContent(h.GetMaximumBin())*1.2)
     c_11.Update()   
 
 
   legends = []
   for k in keys:
-   
+
+    #ROOT.gPad.SetLogy()   
     key = k.GetName() 
 
     if ("Up" not in key) and ("Down" not in key)          : continue;
@@ -223,9 +224,9 @@ for f in files:
       #pdb.set_trace() 
       h = rf.Get(key)
       h.SetLineWidth(1)
-      h.SetLineStyle(2)
+      #h.SetLineStyle(2)
       h.SetLineColor(ROOT.kRed)
-      h.Draw("HIST SAME")
+      h.Draw("E SAME")
       c_0.Update() 
 
       legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
@@ -252,9 +253,9 @@ for f in files:
       #pdb.set_trace() 
       h = rf.Get(key)
       h.SetLineWidth(1)
-      h.SetLineStyle(2)
+      #h.SetLineStyle(2)
       h.SetLineColor(ROOT.kRed)
-      h.Draw("HIST SAME")
+      h.Draw("E SAME")
       c_1.Update() 
 
       legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
@@ -279,9 +280,9 @@ for f in files:
 
       h = rf.Get(key)
       h.SetLineWidth(1)
-      h.SetLineStyle(2)
+      #h.SetLineStyle(2)
       h.SetLineColor(ROOT.kRed)
-      h.Draw("HIST SAME")
+      h.Draw("E SAME")
       c_10.Update() 
 
       legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
@@ -307,9 +308,9 @@ for f in files:
       #pdb.set_trace() 
       h = rf.Get(key)
       h.SetLineWidth(1)
-      h.SetLineStyle(2)
+      #h.SetLineStyle(2)
       h.SetLineColor(ROOT.kRed)
-      h.Draw("HIST SAME")
+      h.Draw("E SAME")
       c_11.Update() 
 
       legend = ROOT.TLegend(0.5,0.8,0.9,0.9)
