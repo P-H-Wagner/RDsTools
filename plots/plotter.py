@@ -5,6 +5,7 @@ import sys
 import yaml
 from datetime import datetime
 import matplotlib.pyplot as plt
+import pdb
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
@@ -17,6 +18,8 @@ from blinding import *
 
 import numpy as np
 from cms_style import CMS_lumi
+
+#ROOT.ROOT.EnableImplicitMT(8)
 
 def boolean_string(s):
     if s not in {"false", "true"}:
@@ -31,6 +34,7 @@ parser.add_argument("--nn",          required = True,     help = "Specify 'befor
 parser.add_argument("--hammer",      required = True,     help = "Specify 'true' or 'false' to apply hammer weights") 
 parser.add_argument("--hammer_sys",  required = True,     help = "Specify 'true' or 'false' to save weight variation shapes") 
 parser.add_argument("--prod",        required = True,     help = "Specify '24' or '25' to specify the data production") 
+parser.add_argument("--trigger",     required = True,     help = "Specify mu7 or mu9 for the trigger") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
 parser.add_argument("--debug",       action='store_true', help = "If given, run plotter with 50k events only") 
 parser.add_argument("--control",                          help = "If given, run control plots, either 'highmass', 'sb'") 
@@ -65,6 +69,10 @@ if args.prod not in ["24", "25"]:
   raise ValueError ("Error: Not a valid key for --prod, please use '24' or '25'")
 else: prod = args.prod
 
+if args.trigger not in ["mu7", "mu9"]:
+  raise ValueError ("Error: Not a valid key for --trigger, please use 'mu7' or 'mu9'")
+else: trigger = args.trigger
+
 if args.bdt not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --bdt , please use 'true' or 'false' (all lowercase!)")
 else: sf_weights = (args.bdt == "true")
@@ -80,7 +88,7 @@ else         : debug = None
 
 
 
-print(f"====> Running {args.fit} fit with {args.hb} Hb background, {args.nn} neural network")
+print(f"====> Running {args.fit} fit with {args.hb} Hb background, {args.nn} neural network on trigger {trigger}")
 if pastNN: models.update(pastNN_models)
 
 if hammer_sys:
@@ -94,7 +102,6 @@ with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/average_
 if prod == "25":
 
   baseline      = base_wout_tv_25
-  baseline += " && (mu7_ip4) "
 
   bdt_data   = bdt_data_25
   sig_cons   = sig_cons_25
@@ -104,15 +111,17 @@ if prod == "25":
   bplus_cons = bplus_cons_25
   data_cons  = data_cons_25
 
-  sig_cons_pastNN     =  sig_cons_pastNN_25    
-  hb_cons_pastNN      =  hb_cons_pastNN_25     
-  bs_cons_pastNN      =  bs_cons_pastNN_25     
-  b0_cons_pastNN      =  b0_cons_pastNN_25     
-  bplus_cons_pastNN   =  bplus_cons_pastNN_25  
-  data_cons_pastNN    =  data_cons_pastNN_25   
+  if trigger == "mu7": 
+    cons_pastNN_25 = cons_pastNN_25_mu7 
+  else:                
+    cons_pastNN_25 = cons_pastNN_25_mu9
 
-
-
+  sig_cons_pastNN     =  cons_pastNN_25["sig"]    
+  hb_cons_pastNN      =  cons_pastNN_25["hb"]     
+  bs_cons_pastNN      =  cons_pastNN_25["bs"]     
+  b0_cons_pastNN      =  cons_pastNN_25["b0"]     
+  bplus_cons_pastNN   =  cons_pastNN_25["bplus"]  
+  data_cons_pastNN    =  cons_pastNN_25["data"]   
 
 else:
 
@@ -188,23 +197,23 @@ with open( toSave_plots + f"/info.txt", "a") as f:
 
 
 # set the to be splitter variable and binning
-#split   = "cosMuW_reco_weighted"
-#split   = "q2_coll"
+#split   = "cosMuW_lhcb_alt"
+split   = "q2_coll"
 #split   = "q2_lhcb_alt"
-split   = "class"
+#split   = "class"
 #split   = "phiPi_m"
 #split   = "e_star_reco_weighted"
 #split = "score1"
 #split = "score2"
 #binning = [[0,0.05],[0.05,0.18],[0.18,0.3],[0.3,1]] #score 1
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
-#binning = [[0,4],[4,8],[8,12]]
-#binning = [[-1,-0.8],[-0.8, -0.4], [-0.4, 0], [0,0.4],[0.4,0.8],[0.8,1]] #cosmuw
+binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[9,10],[10,12]]
+#binning = [[-1,-0.5],[-0.5, -0.0], [0,0.5],[0.5,1]] #cosmuw
 #binning = [[1.94, 1.95],[1.95, 1.96], [1.96, 1.98], [1.98,2.0]] #mass]
 #binning = [[0,0.5], [0.5,1.0],[1.0, 1.5], [1.5, 2.0],[2.0, 3.0]] # estar
 #binning = [[0,7],[7,12]]
 #binning = [[-100000,1000000]]
-binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
+#binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
 #binning = [[-99,99]]
@@ -257,8 +266,8 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
 
 
   if sf_weights:
-    print("picking sf weighted files")
     files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data}/*" #test
+    print("picking sf weighted files: ", files)
     chain.Add(files)
     if debug:
       reduced_chain = chain.CloneTree(debug); 
@@ -270,7 +279,7 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
 
   for dateTime in dateTimes:
 
-    if bph_part:
+    if bph_part is not None:
       print("Restrict plotting to bph part: ", bph_part)
       # if bph_part given, restrict to it.
       if dateTime != dateTimes[bph_part-1]: 
@@ -278,7 +287,8 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
         continue
 
     if skimmed:
-      files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/*" #data skimmed with selection 'skimmed'
+      print("picking skimmed flatNano")
+      files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/*" #skimmed files
       #files =  f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dateTime}/skimmed_bkg_{dateTime}.root"  # data skimmed with kkpimu > Bs for closure
       print(f"Appending {files}")
 
@@ -309,15 +319,24 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
 class selections:
 
   def __init__(self, selec):
-    self.hb =        selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
-    self.bs =        selec + " && (300 <= gen_sig) && (gen_sig < 400) "
-    self.b0 =        selec + " && (200 <= gen_sig) && (gen_sig < 300) "
-    self.bplus =     selec + " && (100 <= gen_sig) && (gen_sig < 200) "
-    self.dsMu =      selec + " && (gen_sig == 0)" 
-    self.dsTau =     selec + " && (gen_sig == 1)"
-    self.dsStarMu =  selec + " && (gen_sig == 10)" 
-    self.dsStarTau = selec + " && (gen_sig == 11)"
-    self.bare =      selec
+
+    if trigger == "mu7":
+      data_selec   = " && (mu7_ip4 == 1)"
+      mc_selec     = " && (mu7_ip4 == 1) && (static_cast<int>(event) % 20 < 10) " #on mc we use event nr (all triggers are on for mc!)
+    else:
+      data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
+      mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
+
+
+    self.hb =        selec + mc_selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1 ) "
+    self.bs =        selec + mc_selec + " && (300 <= gen_sig) && (gen_sig < 400) "
+    self.b0 =        selec + mc_selec + " && (200 <= gen_sig) && (gen_sig < 300) "
+    self.bplus =     selec + mc_selec + " && (100 <= gen_sig) && (gen_sig < 200) "
+    self.dsMu =      selec + mc_selec + " && (gen_sig == 0)" 
+    self.dsTau =     selec + mc_selec + " && (gen_sig == 1)"
+    self.dsStarMu =  selec + mc_selec + " && (gen_sig == 10)" 
+    self.dsStarTau = selec + mc_selec + " && (gen_sig == 11)"
+    self.bare =      selec + data_selec
 
 #######################################
 # Define signal regions and sidebands #
@@ -361,8 +380,11 @@ if pastNN:
   #save the NN name
   import re
   pattern = r"\d{2}[A-Za-z]{3}\d{4}_\d{2}h\d{2}m\d{2}s"
-  match = re.search(pattern,sig_cons_pastNN)
-  nnModel = match.group(0)
+  try:
+    match = re.search(pattern,sig_cons_pastNN)
+    nnModel = match.group(0)
+  except: 
+    nnModel = sig_cons_pastNN.split("_")[1]
 
 
   if constrained:
@@ -375,9 +397,9 @@ if pastNN:
     chainSig,   rdfSig       = getRdf(sig_cons_pastNN                 , debug = debug)
     chainHb,    rdfHb        = getRdf(hb_cons_pastNN                  , debug = debug)
     _,          rdfHbHammer  = getRdf(hb_cons_pastNN                  , debug = debug)
-    chainBs,    rdfBs        = getRdf(bs_cons_pastNN                  , debug = debug)
-    chainB0,    rdfB0        = getRdf(b0_cons_pastNN                  , debug = debug)
-    chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN               , debug = debug)
+    #chainBs,    rdfBs        = getRdf(bs_cons_pastNN                  , debug = debug)
+    #chainB0,    rdfB0        = getRdf(b0_cons_pastNN                  , debug = debug)
+    #chainBplus, rdfBplus     = getRdf(bplus_cons_pastNN               , debug = debug)
     chainData,  rdfData      = getRdf(data_cons_pastNN                , debug = debug)
 
     print("rdf data has events: ", rdfData.Count().GetValue() )
@@ -391,9 +413,9 @@ if pastNN:
     chainSigSB, rdfSigSB     = getRdf(sig_sample                       , rdfSys = hammer_central)#, debug = 10)
     chainSig,   rdfSig       = getRdf(sig_sample                       , rdfSys = hammer_central)#, debug = 10)
     chainHb,    rdfHb        = getRdf(hb_unc_pastNN                    )#, debug = 10)
-    chainBs,    rdfBs        = getRdf(bs_unc_pastNN                    )#, debug = 10)
-    chainB0,    rdfB0        = getRdf(b0_unc_pastNN                    )#, debug = 10)
-    chainBplus, rdfBplus     = getRdf(bplus_unc_pastNN                 )#, debug = 10)
+    #chainBs,    rdfBs        = getRdf(bs_unc_pastNN                    )#, debug = 10)
+    #chainB0,    rdfB0        = getRdf(b0_unc_pastNN                    )#, debug = 10)
+    #chainBplus, rdfBplus     = getRdf(bplus_unc_pastNN                 )#, debug = 10)
     chainData,  rdfData      = getRdf(data_unc_pastNN                  )#, debug = 10)
 
 
@@ -404,10 +426,10 @@ else:
     chainSigSB, rdfSigSB     = getRdf(sig_cons                        , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
     chainSig,   rdfSig       = getRdf(sig_cons                        , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
     chainHb,    rdfHb        = getRdf(hb_cons                         , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
-    chainBs,    rdfBs        = getRdf(bs_cons                         , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
-    chainB0,    rdfB0        = getRdf(b0_cons                         , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
-    chainBplus, rdfBplus     = getRdf(bplus_cons                      , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
-    chainData, rdfData      = getRdf(data_cons    ,sf_weights = sf_weights , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
+    #chainBs,    rdfBs        = getRdf(bs_cons                         , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
+    #chainB0,    rdfB0        = getRdf(b0_cons                         , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
+    #chainBplus, rdfBplus     = getRdf(bplus_cons                      , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
+    chainData, rdfData       = getRdf(data_cons    ,sf_weights = sf_weights , debug = debug, skimmed = skimmed )# , skimmed = baseline_name)#, debug = 1)
     #print("---------------> rdf has events: ", rdfData.Count().GetValue() )
 
   else:
@@ -415,9 +437,9 @@ else:
     chainSigSB, rdfSigSB     = getRdf(sig_unc      ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
     chainSig,   rdfSig       = getRdf(sig_unc      ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
     chainHb,    rdfHb        = getRdf(hb_unc       ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
-    chainBs,    rdfBs        = getRdf(bs_unc       ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
-    chainB0,    rdfB0        = getRdf(b0_unc       ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
-    chainBplus, rdfBplus     = getRdf(bplus_unc    ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
+    #chainBs,    rdfBs        = getRdf(bs_unc       ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
+    #chainB0,    rdfB0        = getRdf(b0_unc       ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
+    #chainBplus, rdfBplus     = getRdf(bplus_unc    ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
     chainData,  rdfData      = getRdf(data_unc     ,debug = 200000) #    , skimmed = baseline_name)#, debug = 10)
   
 #########################################
@@ -1137,7 +1159,7 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
   else:
     leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
   leg.AddEntry(histos["data"]       ,'Data','LEP')
-  leg.AddEntry(histos["comb"]                           ,'Comb. Bkg.'  ,'F' )
+  leg.AddEntry(histos["comb"]                           ,'Comb. + Fakes'  ,'F' )
   leg.AddEntry(hErr                            ,'Stat. Uncer.'  ,'F' )
   
   #plot mainpad
@@ -1518,7 +1540,7 @@ def shapesPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scale
   else:
     leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'L' )
   #leg.AddEntry(histos["data"]       ,'Data','LEP')
-  leg.AddEntry(histos["comb"]                           ,'Comb. Bkg.'  ,'L' )
+  leg.AddEntry(histos["comb"]                           ,'Comb. + Fakes'  ,'L' )
   
   #plot mainpad
   key1 = next(iter(histos)) # get first key (will be drawn first)
@@ -1732,7 +1754,7 @@ def normPlot(histos, var, scale_kk, fakemass = None , A = None ,B = None ,C = No
     leg.AddEntry(histos["bplus"]    ,'B_{+}#rightarrow D_{s} + #mu ' ,'F' )
   else:
     leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
-  leg.AddEntry(hComb                           ,'Comb. Bkg.'  ,'L' )
+  leg.AddEntry(hComb                           ,'Comb. + Fakes'  ,'L' )
   
   #plot mainpad
   key1 = next(iter(histos)) # get first key (will be drawn first)
@@ -2257,6 +2279,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     selec_S_Mu_in_Hb       = createHistos(selec.dsMu        + signalRegion,    rdfHb         , gen = False,                                                                               region = i)
     selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False,                                                                               region = i)
 
+    print("I have: ", selec_S_Data["phiPi_m"].Integral(), " data events")
 
     # scale the tau histos to get a blind option for data fits
     selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
