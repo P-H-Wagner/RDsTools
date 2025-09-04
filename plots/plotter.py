@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, fitAnotherVar
 from helper import * 
-from histModels import models, pastNN_models, pastNN_2Dmodels, special_models
+from histModels import models, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll
 from blinding import *
 
 import numpy as np
@@ -207,7 +207,10 @@ split   = "q2_coll"
 #split = "score2"
 #binning = [[0,0.05],[0.05,0.18],[0.18,0.3],[0.3,1]] #score 1
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
-binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[9,10],[10,12]]
+binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
+#binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,10],[10,12]]
+#binning = [[0,4],[4,5],[5,6],[6,7],[7,12]]
+#binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[9,12]]
 #binning = [[-1,-0.5],[-0.5, -0.0], [0,0.5],[0.5,1]] #cosmuw
 #binning = [[1.94, 1.95],[1.95, 1.96], [1.96, 1.98], [1.98,2.0]] #mass]
 #binning = [[0,0.5], [0.5,1.0],[1.0, 1.5], [1.5, 2.0],[2.0, 3.0]] # estar
@@ -217,6 +220,29 @@ binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[9,10],[10,12]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
 #binning = [[-99,99]]
+
+################
+## 2D binning ##
+################
+
+#in this case the splitter is irrelevant
+
+#binning = [
+#"(class == 0) && ((q2_coll < 7) || (q2_coll > 9) )",
+#"(class == 1) && ((q2_coll < 7) || (q2_coll > 9) )",
+#"(class == 2) && ((q2_coll < 7) || (q2_coll > 9) )",
+#"(class == 3) && ((q2_coll < 7) || (q2_coll > 9) )",
+#"(class == 4) && ((q2_coll < 7) || (q2_coll > 9) )",
+#"(class == 5) && ((q2_coll < 7) || (q2_coll > 9) )",
+#
+#"(class == 0) && ((q2_coll > 7) && (q2_coll < 9) )",
+#"(class == 1) && ((q2_coll > 7) && (q2_coll < 9) )",
+#"(class == 2) && ((q2_coll > 7) && (q2_coll < 9) )",
+#"(class == 3) && ((q2_coll > 7) && (q2_coll < 9) )",
+#"(class == 4) && ((q2_coll > 7) && (q2_coll < 9) )",
+#"(class == 5) && ((q2_coll > 7) && (q2_coll < 9) )",
+#
+#]
 
 ##############################
 # Load chain into RDataFrame #
@@ -700,6 +726,8 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
 
   print("we are here in bin", region)
 
+  variableBinWidth = False
+
   histos = {}
   for var,model in models.items(): 
 
@@ -708,14 +736,22 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
       ################################
       # Special binnings             #
       ################################
-      if var == "score1" and split == "class" and region != None:
+      if var == "score1" and (split == "class") and region != None:
         
         #adapt the binning
         print(f"Adapt binning for {var} and region {region}")
   
         model = special_models[var + f"_bin{region}" ]
 
+      if var == "score1" and (split == "q2_coll") and region != None:
+        
+        #adapt the binning
+        print(f"Adapt binning for {var} and region {region}")
   
+        model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+        variableBinWidth = True
+
+
       ##############################################
       # Fill only variables, if explicitly given!  #
       ##############################################
@@ -849,6 +885,15 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False, var
       histos[var].SetLineColor(color)
       histos[var].SetLineWidth(linewidth)
 
+      if variableBinWidth:
+        #in this case, the binning edges are variable and thus we have to divide the bin content by the bin width!
+
+        for i in range(1, histos[var].GetNbinsX()+1):   # ROOT bins are 1-indexed
+            width = histos[var].GetBinWidth(i)
+            content = histos[var].GetBinContent(i)
+            histos[var].SetBinContent(i, content/width)
+
+
   return histos
 
 def create2DHistos(selection,rdf, linewidth = 2, gen = True, massPlot = False):
@@ -960,14 +1005,17 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
 
   # take as model
   bins  = histos["dsMu"].GetNbinsX()
-  start = histos["dsMu"].GetXaxis().GetBinLowEdge(1)   # first bin
-  stop  = histos["dsMu"].GetXaxis().GetBinUpEdge(bins) # last bin
+  # save flag indicating variable bin width
+  variableBinWidth = False
+  if var in ["score1"]: variableBinWidth = True
 
 
   # stacked histo
   hs = ROOT.THStack(var,"")
   # error histo
-  hErr = ROOT.TH1D(var,"",bins,start,stop)
+  hErr = ROOT.TH1D(histos["dsMu"])  
+  hErr.Reset("ICES") 
+
   hErr.SetName("err")
   hErr.GetXaxis().SetTitleOffset(1.3)
   hErr.GetYaxis().SetTitleSize(1*hErr.GetYaxis().GetTitleSize())
@@ -980,7 +1028,8 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
   hComb.SetLineColor(ROOT.kGray)
   # special error fillstyle 
   hErr.SetFillColor(ROOT.kBlack)
-  hErr.SetFillStyle(3244)
+  hErr.SetFillStyle(3144)
+  hErr.SetMarkerStyle(0)
 
   #scale hb to other mc
 
@@ -1164,13 +1213,24 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
   
   #plot mainpad
   if log:
-    ROOT.gPad.SetLogy()
-    histos["data"].GetYaxis().SetTitle('Events')
-    histos["data"].GetYaxis().SetRangeUser(1e-3, hs.GetMaximum()*1000)
-    histos["data"].SetMinimum(1.001) # avoid idsplaying tons of comb bkg
-  else:
+    #ROOT.gPad.SetLogy()
+    #histos["data"].GetYaxis().SetTitle('Events')
+    #histos["data"].GetYaxis().SetRangeUser(1e-3, hs.GetMaximum()*1000)
+    #histos["data"].SetMinimum(1.001) # avoid idsplaying tons of comb bkg
+
+    ROOT.gPad.SetLogx()
+
+    yAxisTitle = "events"
+    if variableBinWidth: yAxisTitle += " / bin width"
+    histos["data"].GetYaxis().SetTitle(yAxisTitle)
     histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetBinContent(histos["data"].GetMaximumBin())*1.5)
-    histos["data"].GetYaxis().SetTitle('Events')
+
+  else:
+
+    yAxisTitle = "events"
+    if variableBinWidth: yAxisTitle += " / bin width"
+    histos["data"].GetYaxis().SetTitle(yAxisTitle)
+    histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetBinContent(histos["data"].GetMaximumBin())*1.5)
 
   #print("finally here , data : ", histos["data"].Integral() )
  
@@ -1181,12 +1241,11 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
   #        print(f"Bin {i} (x={bin_center}): {bin_content}")
 
 
-
   #draw data with uncertainty
   histos["data"].Draw("EP")
   #draw stacked histo
   hs.Draw("HIST SAME")
- 
+
   #if constrained:
   #  #draw the two comb contributoins #new!!
   #  hComb_kk.Draw("HIST SAME")
@@ -1202,8 +1261,10 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
   leg.Draw("SAME")
   ROOT.gPad.RedrawAxis()
   
-  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = '6.4 fb^{-1}')
-  
+  if trigger == "mu7": CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = '6.4 fb^{-1}')
+  if trigger == "mu9": CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Preliminary', lumi_13TeV = '20.7 fb^{-1}')
+ 
+ 
   #plot ratiopad
   ratio_pad.cd()
   ratio = histos["data"].Clone()
@@ -1255,7 +1316,10 @@ def stackedPlot(histos2, var, hb_scale, scale_kk = None, scale_pimu = None, scal
   line.SetLineColor(ROOT.kBlack)
   line.SetLineWidth(1)
   ratio_stats.GetYaxis().CenterTitle()
-  
+
+  if log:
+    ROOT.gPad.SetLogx()
+
   ratio_stats.Draw('E2')
   norm_stack.Draw('hist same')
   ratio_stats.Draw('E2 same')
@@ -1785,7 +1849,9 @@ def normPlot(histos, var, scale_kk, fakemass = None , A = None ,B = None ,C = No
   leg.Draw("SAME")
   #ROOT.gPad.RedrawAxis()
   
-  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '        Preliminary', lumi_13TeV = '6.4 fb^{-1}')
+  if trigger == "mu7": CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '        Preliminary', lumi_13TeV = '6.4 fb^{-1}')
+  if trigger == "mu9": CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '        Preliminary', lumi_13TeV = '20.7 fb^{-1}')
+
   #saving
   c1.Modified()
   c1.Update()
@@ -2203,7 +2269,15 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   for i,region in enumerate(regions):
 
     # now we restrict to the splitter region we want to plot
-    baseline_region   = baseline + f" && ({splitter} > {region[0]}) && ({splitter} < {region[1]})" 
+
+    if isinstance(region, list): 
+      #if region is of type list, i.e. [0,2], define selection as:
+      baseline_region   = baseline + f" && ({splitter} > {region[0]}) && ({splitter} < {region[1]})" 
+    else:
+      #else it is a string, (used for 2D), f.e. region = "(q2_coll < 6) && (class == 0)"
+      baseline_region   = baseline + f" && {region}" 
+    
+
 
     # Define selections which hold all important selections next to baseline  
     selection        = baseline_region + right_sign + low_mass #for all other variables
@@ -2285,7 +2359,6 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }
     selec_S_DsStarTau_blind = { key: selec_S_DsStarTau[key].Clone()               for key in selec_S_DsStarTau.keys() }
 
-    hb_scale_S = selec_S_DsMu_woHammer["phiPi_m"].Integral() * hb_ratio_massfit
 
     for key in selec_S_DsTau_blind.keys()    : selec_S_DsTau_blind[key]    .Scale(blind_scalar)    
     for key in selec_S_DsStarTau_blind.keys(): selec_S_DsStarTau_blind[key].Scale(blind_vector)    
@@ -2478,7 +2551,10 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
       ######################################
   
       if  (var!= "" ):
-    
+   
+
+        hb_scale_S = selec_S_DsMu_woHammer[var].Integral() * hb_ratio_massfit
+
  
         histos = {"dsTau"    :  selec_S_DsTau[var]    .Clone(),
                  "dsStarTau" :  selec_S_DsStarTau[var].Clone(), 
@@ -2504,8 +2580,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
         print("first check here, data blind: ", histos_blind["data"].Integral() , "data unblinded:", histos["data"].Integral() )
  
         if hammer_sys: 
-          histos       = addSystematics(histos      , var, selec_S_DsTau, selec_S_DsMu, selec_S_DsStarTau, selec_S_DsStarMu )
-          histos_blind = addSystematics(histos_blind, var, selec_S_DsTau, selec_S_DsMu, selec_S_DsStarTau, selec_S_DsStarMu )
+          #histos       = addSystematics(histos      , var, selec_S_DsTau      , selec_S_DsMu, selec_S_DsStarTau      , selec_S_DsStarMu )
+          histos_blind = addSystematics(histos_blind, var, selec_S_DsTau_blind, selec_S_DsMu, selec_S_DsStarTau_blind, selec_S_DsStarMu )
 
         if constrained:
  
@@ -2523,10 +2599,11 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
           A = abc[0]
           B = abc[1]
           C = abc[2]
-          histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
+          #histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
+          #histosScaledLog    , _ = stackedPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False , log = True)
           histosScaled_blind , _ = stackedPlot(histos_blind, var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk_blind, scale_pimu = scale_pimu_blind, scale_rest = scale_rest_blind, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = True  )
  
-          histosScaled_shapes = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
+          #histosScaled_shapes = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
           histosScaled_shapes_log = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False , log = True)
         
  
@@ -2537,17 +2614,17 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
           histos_blind["combL"] = selec_S_DataL[var].Clone() 
           histos_blind["combR"] = selec_S_DataR[var].Clone() 
   
-          histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False)
+          #histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False)
           histosScaled_blind , _ = stackedPlot(histos_blind, var, hb_scale_S, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = True )
   
  
-        writeShapes(histosScaled,       myFile,       binned = True, channel = i)
+        #writeShapes(histosScaled,       myFile,       binned = True, channel = i)
         writeShapes(histosScaled_blind, myFile_blind, binned = True, channel = i)
 
-        card       = writeBinnedDatacard(histosScaled      , var, i, splitter              )
+        #card       = writeBinnedDatacard(histosScaled      , var, i, splitter              )
         card_blind = writeBinnedDatacard(histosScaled_blind, var, i, splitter, blind = True)
 
-        cards[var].append(card)
+        #cards[var].append(card)
         cards_blind[var].append(card_blind)
 
 
@@ -2609,7 +2686,6 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
           max_cut = cut[np.argmax(fom)]
 
 
-          import pdb; pdb.set_trace();
           plt.figure()
           plt.plot(cut,fom)
           plt.scatter(cut,fom)
