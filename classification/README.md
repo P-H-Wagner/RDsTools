@@ -23,3 +23,11 @@ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH #to pick cuda from gpu
 pip install xgboost==1.6.1 --extra-index-url https://pypi.nvidia.com
 ```
  
+# To create a PyTorch GPU env instead, exchange ```pip install tensorflow==2.10``` with: 
+```
+pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2 --extra-index-url https://download.pytorch.org/whl/cu118
+```
+And add the POT library to implement the penalty term
+```
+conda install -c conda-forge pot
+```
