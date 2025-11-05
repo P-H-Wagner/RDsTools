@@ -28,28 +28,28 @@ print("Bonjour!")
 #load model
 model     = xgb.Booster()
 model_mu9 = xgb.Booster()
-#model     .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_data_25}/HOOK_MODEL.json')
-#model_mu9 .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_data_25_mu9}/HOOK_MODEL.json')
-model     .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_data_25}/bdt_model_double.json')
-model_mu9 .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_data_25_mu9}/bdt_model_double.json')
+model     .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_model_25_mu7}/HOOK_MODEL.json')
+model_mu9 .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_model_25_mu9}/HOOK_MODEL.json')
+#model     .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_data_25_mu7}/bdt_model_double.json')
+#model_mu9 .load_model(f'/work/pahwagne/RDsTools/classification/{bdt_data_25_mu9}/bdt_model_double.json')
 
 # Load datasets into chain
 
 chain = ROOT.TChain("tree")
-#chain.Add("HOOK_FILE_IN")
-chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_51.root")
-chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_45.root")
-chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_46.root")
-chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_44.root")
-chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_38.root")
-chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_49.root")
+chain.Add("HOOK_FILE_IN")
+#chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_51.root")
+#chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_45.root")
+#chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_46.root")
+#chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_44.root")
+#chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_38.root")
+#chain.Add("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/20250227_155416/skimmed_base_wout_tv_25_20250227_155416_chunk_49.root")
 
 rdf = ROOT.RDataFrame(chain)
 rdf = rdf.AsNumpy()
 df  = pd.DataFrame(rdf)
 
 # open also binned weights
-with open(f"/work/pahwagne/RDsTools/classification/{bdt_data_25}/bdt_tools_double.json", "r") as f:
+with open(f"/work/pahwagne/RDsTools/classification/{bdt_model_25_mu7}/HOOK_TOOLS.json", "r") as f:
     data = json.load(f)
 
     binned_weights = np.array(data["binned_weights"])
@@ -61,7 +61,7 @@ bdt_bins       = np.array(bdt_bins      )
 features       = np.array(features      )
 
 # open also binned weights
-with open(f"/work/pahwagne/RDsTools/classification/{bdt_data_25_mu9}/bdt_tools_double.json", "r") as f:
+with open(f"/work/pahwagne/RDsTools/classification/{bdt_model_25_mu9}/HOOK_TOOLS.json", "r") as f:
     data_mu9 = json.load(f)
 
     binned_weights_mu9  = np.array(data_mu9["binned_weights"])
@@ -93,20 +93,6 @@ weights_mu9 = [bins_mu9[i] * binned_weights_mu9[i] for i in range(len(bins))]
 
 # now we want to pick mask_mu9 for events which are triggered by mu9, otherwise mu7
 sf_weights  = [ w.where(trig_mu7, w_mu9) for w,w_mu9 in zip(weights, weights_mu9)]
-
-import pdb
-pdb.set_trace();
-
-sf_weights = []
-for i in range(len(masks)):
-  # now scale all masks by the weight
- 
-              #mu7 part
-  #to_append = [(((df['bdt_prob'] > bdt_bins[i]) & (df['bdt_prob'] <= bdt_bins[i+1]) & trig_mu7) * binned_weights[i] ) + 
-
-  sf_weights.append(binned_weights[i] * masks[i])
-
-
 
 sf_weights = sum(sf_weights)
                                                                                                              
