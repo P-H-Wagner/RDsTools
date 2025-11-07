@@ -33,7 +33,7 @@ import sys
 
 # the input can be a single file (t3 production) or a list of files (crab)
 inp =  "HOOK_PATH"  #f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/HOOK_DATE_TIME/HOOK_FILE_IN"
-out =  f"/scratch/pahwagne/HOOK_DATE_TIME/HOOK_FILE_OUT"
+out =  f"/scratch/pahwagne/HOOK_LOG_PATH/HOOK_FILE_OUT"
 
 #load it into root file to get all branch names
 rootFile = ROOT.TFile.Open(inp)
@@ -100,12 +100,12 @@ for i,name in enumerate(names):
   nf[name] = nf[name][emptyFlag]
  
   # keep important indices for sorting
-  if (name == "mu_charge"): iMuCharge = i    
-  if (name == "pi_charge"): iPiCharge = i    
-  if (name == "k1_charge"): iK1Charge = i    
-  if (name == "k2_charge"): iK2Charge = i    
-  if (name == "dsMu_m"   ): iDsMuMass = i    
-  if (name == "dsMu_pt"  )  : iDsMuPt   = i    
+  if (name == "mu_charge"): iMuCharge   = i    
+  if (name == "pi_charge"): iPiCharge   = i    
+  if (name == "k1_charge"): iK1Charge   = i    
+  if (name == "k2_charge"): iK2Charge   = i    
+  if (name == "dsMu_m"   ): iDsMuMass   = i    
+  if (name == "dsMu_pt"  ): iDsMuPt     = i    
 
 nEntries = len(nf[names[-1]])
 print(f"flattening {nEntries} events!")
