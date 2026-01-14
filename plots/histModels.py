@@ -1,5 +1,7 @@
 import ROOT
 import yaml
+import numpy as np
+from array import array
 
 ##############################################################################
 ## Define the structure of your histograms which are plotted in plotNTuples ##
@@ -8,16 +10,28 @@ import yaml
 
 
 models = {}
+modelsSR = {}
 pastNN_models = {}
 pastNN_2Dmodels = {}
-## 
-models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   30,   1.91, 2.028), r"D_{s} mass (GeV)"                           ,    0)
- 
-#models["gen_mu_pt" ]                 = (ROOT.RDF.TH1DModel("gen_mu_pt"                       , '',   21,      0,    30), r"p_{T} (GeV)"                         ,    0)
-#models["mu_pt" ]                     = (ROOT.RDF.TH1DModel("mu_pt"                             , '',   21,      0,    30), r" #mu(p_{T}) (GeV)"                         ,    0)
-#models["pi_pt" ]                     = (ROOT.RDF.TH1DModel("pi_pt"                             , '',   21,      0,    30), r" #pi(p_{T}) (GeV)"                         ,    0)
-#models["kk_pt" ]                     = (ROOT.RDF.TH1DModel("kk_pt"                             , '',   21,      0,    30), r" #kk(p_{T}) (GeV)"                         ,    0)
-#
+
+##masses 
+models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   30,   1.91, 2.028), r"m(KK#pi) (GeV)"                           ,    0)
+models["kk_m"    ]                   = (ROOT.RDF.TH1DModel("kk_m"                              , '',   30,   1.0,  1.040), r"m(KK) (GeV)"                           ,    0)
+models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   25,      2,   8), r" m(KK#pi#mu) (GeV)"                       ,    0)
+#models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      2,   5.366), r"m(KK#pi#mu)(GeV)"                       ,    0)
+
+#kinematics
+models["mu_pt" ]                     = (ROOT.RDF.TH1DModel("mu_pt"                             , '',   21,      8,    25), r" #mu(p_{T}) (GeV)"                         ,    0)
+models["pi_pt" ]                     = (ROOT.RDF.TH1DModel("pi_pt"                             , '',   21,      1,    12), r" #pi(p_{T}) (GeV)"                         ,    0)
+models["k1_pt" ]                     = (ROOT.RDF.TH1DModel("k1_pt"                             , '',   21,      1,    12), r" #K1(p_{T}) (GeV)"                         ,    0)
+models["k2_pt" ]                     = (ROOT.RDF.TH1DModel("k2_pt"                             , '',   21,      1,    12), r" #K2(p_{T}) (GeV)"                         ,    0)
+
+models["mu_eta" ]                     = (ROOT.RDF.TH1DModel("mu_eta"                             , '',   21,      0,    5), r" #eta(#mu)"                         ,    0)
+models["pi_eta" ]                     = (ROOT.RDF.TH1DModel("pi_eta"                             , '',   21,      0,    5), r" #eta(#pi)"                         ,    0)
+models["k1_eta" ]                     = (ROOT.RDF.TH1DModel("k1_eta"                             , '',   21,      0,    5), r" #eta(#K1)"                         ,    0)
+models["k2_eta" ]                     = (ROOT.RDF.TH1DModel("k2_eta"                             , '',   21,      0,    5), r" #eta(#K2)"                         ,    0)
+
+
 ## Gens
 #models["gen_q2" ]                    = (ROOT.RDF.TH1DModel("gen_q2"                            , '',   21,      0,    12), r"q^{2} (GeV^{2})"                            ,    0)
 #models["gen_m2_miss" ]               = (ROOT.RDF.TH1DModel("gen_m2_miss"                       , '',   21,      0,     6), r"m^{2}_{miss} (GeV^{2})"                     ,    0)
@@ -33,113 +47,112 @@ models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"            
 #models["gen_dxy_mu_sig" ]            = (ROOT.RDF.TH1DModel("gen_dxy_mu_sig"                    , '',   21,    -50,    50), r"cos(#chi)"                                  ,    0)
 #models["gen_cosPiK1" ]               = (ROOT.RDF.TH1DModel("cosPiK1"                           , '',   21,     -1,     1), r"cos(#theta_{4})"                            ,    0)
 #
-## Basics
-#
-#models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      2,   8), r"D_{s}+#mu mass (GeV)"                       ,    0)
 ##models["dsMu_pt" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      0,  70), r"p_{T}(D_{s}+#mu) (GeV)"                       ,    0)
 ###
 #models["q2_coll" ]                   = (ROOT.RDF.TH1DModel("q2_coll"                           , '',   21,       0,    12), r"q^{2}_{coll} (GeV^{2})"                          ,    0)
-#models["q2_coll" ]                   = (ROOT.RDF.TH1DModel("q2_coll"                           , '',   21,       -12,    12), r"q^{2}_{coll} (GeV^{2})"                          ,    0)
-####models["gen_q2" ]                   = (ROOT.RDF.TH1DModel("gen_q2"                           , '',   21,       0,    12), r"q^{2} (GeV^{2})"                            ,    0)
-####models["q2_lhcb" ]                   = (ROOT.RDF.TH1DModel("q2_lhcb"                           , '',   21,      0,    12), r"q^{2} (GeV^{2})"                            ,    0)
+#models["q2_coll" ]                   = (ROOT.RDF.TH1DModel("q2_coll"                           , '',   21,       -14,    2), r"q^{2}_{coll} (GeV^{2})"                          ,    0)
 #models["q2_lhcb_alt" ]               = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                       , '',   21,      0,    12), r"q^{2}_{xyz} (GeV^{2})"                            ,    0)
 #models["q2_lhcb_alt" ]               = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                       , '',   21,      -12,    12), r"q^{2}_{xyz} (GeV^{2})"                            ,    0)
-##models["q2_reco_1" ]                 = (ROOT.RDF.TH1DModel("q2_reco_1"                         , '',   21,      0,    12), r"q^{2}_{math,1} (GeV^{2})"                         ,    0)
-##models["q2_reco_2" ]                 = (ROOT.RDF.TH1DModel("q2_reco_2"                         , '',   21,      0,    12), r"q^{2}_{math,2} (GeV^{2})"                         ,    0)
-###models["q2_reco_weighted" ]          = (ROOT.RDF.TH1DModel("q2_reco_weighted"                  , '',   21,      0,    12), r"q^{2} (GeV^{2})"                            ,    0)
+#models["q2_reco_1" ]                 = (ROOT.RDF.TH1DModel("q2_reco_1"                         , '',   21,      0,    12), r"q^{2}_{math,1} (GeV^{2})"                         ,    0)
+#models["q2_reco_2" ]                 = (ROOT.RDF.TH1DModel("q2_reco_2"                         , '',   21,      0,    12), r"q^{2}_{math,2} (GeV^{2})"                         ,    0)
 #######
-##models["m2_miss_coll" ]              = (ROOT.RDF.TH1DModel("m2_miss_coll"                      , '',   21,      0,     6), r"m^{2}_{miss} (GeV^{2})"                     ,    0)
-#####models["m2_miss_lhcb" ]              = (ROOT.RDF.TH1DModel("m2_miss_lhcb"                      , '',   21,      0,     6), r"m^{2}_{miss} (GeV^{2})"                     ,    0)
-##models["m2_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("m2_miss_lhcb_alt"                  , '',   21,      0,     6), r"m^{2}_{miss} (GeV^{2})"                     ,    0)
-##models["m2_miss_reco_1" ]          = (ROOT.RDF.TH1DModel("m2_miss_reco_1"                  , '',   21,      0,     6), r"m^{2}_{miss} (GeV^{2})"                     ,    0)
-##models["m2_miss_reco_2" ]          = (ROOT.RDF.TH1DModel("m2_miss_reco_2"                  , '',   21,      0,     6), r"m^{2}_{miss} (GeV^{2})"                     ,    0)
+models["m2_miss_coll" ]              = (ROOT.RDF.TH1DModel("m2_miss_coll"                      , '',   21,      0,     6), r"m^{2}_{miss,coll} (GeV^{2})"                     ,    0)
+models["m2_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("m2_miss_lhcb_alt"                  , '',   21,      0,     6), r"m^{2}_{miss,xyz} (GeV^{2})"                     ,    0)
+models["m2_miss_reco_1" ]            = (ROOT.RDF.TH1DModel("m2_miss_reco_1"                    , '',   21,      0,     6), r"m^{2}_{miss,math,1} (GeV^{2})"                     ,    0)
+models["m2_miss_reco_2" ]            = (ROOT.RDF.TH1DModel("m2_miss_reco_2"                    , '',   21,      0,     6), r"m^{2}_{miss,math,2} (GeV^{2})"                     ,    0)
 ######
-##models["pt_miss_coll" ]              = (ROOT.RDF.TH1DModel("pt_miss_coll"                      , '',   21,      0,    30), r"p_{T}^{miss} (GeV)"                         ,    0)
-####models["pt_miss_lhcb" ]              = (ROOT.RDF.TH1DModel("pt_miss_lhcb"                      , '',   21,      0,    30), r"p_{T}^{miss} (GeV)"                         ,    0)
-##models["pt_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("pt_miss_lhcb_alt"                  , '',   21,      0,    30), r"p_{T}^{miss} (GeV)"                         ,    0)
-###models["pt_miss_reco_1" ]          = (ROOT.RDF.TH1DModel("pt_miss_reco_1"                  , '',   21,      0,    30), r"p_{T}^{miss} (GeV)"                         ,    0)
-###models["pt_miss_reco_2" ]          = (ROOT.RDF.TH1DModel("pt_miss_reco_2"                  , '',   21,      0,    30), r"p_{T}^{miss} (GeV)"                         ,    0)
-###models["pt_miss_reco_weighted" ]          = (ROOT.RDF.TH1DModel("pt_miss_lhcb_alt"                  , '',   21,      0,    30), r"p_{T}^{miss} (GeV)"                         ,    0)
+models["pt_miss_coll" ]              = (ROOT.RDF.TH1DModel("pt_miss_coll"                      , '',   21,      0,    30), r"p_{T}^{miss}_{coll} (GeV)"                  ,    0)
+models["pt_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("pt_miss_lhcb_alt"                  , '',   21,      0,    30), r"p_{T}^{miss}_{xyz} (GeV)"                   ,    0)
+models["pt_miss_reco_1" ]            = (ROOT.RDF.TH1DModel("pt_miss_reco_1"                    , '',   21,      0,    30), r"p_{T}^{miss}_{math,1} (GeV)"                ,    0)
+models["pt_miss_reco_2" ]            = (ROOT.RDF.TH1DModel("pt_miss_reco_2"                    , '',   21,      0,    30), r"p_{T}^{miss}_{math,2} (GeV)"                ,    0)
 ######
-#models["bs_pt_coll" ]                = (ROOT.RDF.TH1DModel("bs_coll_pt"                        , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
-#######models["bs_pt_lhcb" ]                = (ROOT.RDF.TH1DModel("bs_pt_lhcb"                        , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
-#models["bs_pt_lhcb_alt" ]            = (ROOT.RDF.TH1DModel("bs_pt_lhcb_alt"                    , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
-##models["bs_pt_reco_1" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_1"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
-##models["bs_pt_reco_2" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_2"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
-#####models["bs_pt_reco_weighted" ]       = (ROOT.RDF.TH1DModel("bs_pt_reco_weighted"               , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
+models["bs_pt_coll" ]                = (ROOT.RDF.TH1DModel("bs_coll_pt"                        , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
+models["bs_pt_lhcb_alt" ]            = (ROOT.RDF.TH1DModel("bs_pt_lhcb_alt"                    , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
+models["bs_pt_reco_1" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_1"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
+models["bs_pt_reco_2" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_2"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
+
 ######
-##models["e_star_coll" ]               = (ROOT.RDF.TH1DModel("e_star_coll"                       , '',   21,      0,     3), r"E*_{#mu} (GeV)"                             ,    0)
-#######models["e_star_lhcb" ]               = (ROOT.RDF.TH1DModel("e_star_lhcb"                       , '',   21,      0,     3), r"E*_{#mu} (GeV)"                             ,    0)
-##models["e_star_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("e_star_lhcb_alt"                   , '',   21,      0,     3), r"E*_{#mu} (GeV)"                             ,    0)
-##models["e_star_reco_1" ]             = (ROOT.RDF.TH1DModel("e_star_reco_1"                     , '',   21,      0,     3), r"E*_{#mu} (GeV)"                             ,    0)
-##models["e_star_reco_2" ]             = (ROOT.RDF.TH1DModel("e_star_reco_2"                     , '',   21,      0,     3), r"E*_{#mu} (GeV)"                             ,    0)
-##models["e_star_reco_weighted" ]      = (ROOT.RDF.TH1DModel("e_star_reco_weighted"              , '',   21,      0,     3), r"E*_{#mu} (GeV)"                             ,    0)
+models["e_star_coll" ]               = (ROOT.RDF.TH1DModel("e_star_coll"                       , '',   31,      0,     3), r"E*_{coll} (GeV)"                             ,    0)
+models["e_star_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("e_star_lhcb_alt"                   , '',   31,      0,     3), r"E*_{xyz} (GeV)"                             ,    0)
+models["e_star_reco_1" ]             = (ROOT.RDF.TH1DModel("e_star_reco_1"                     , '',   31,      0,     3), r"E*_{math,1} (GeV)"                             ,    0)
+models["e_star_reco_2" ]             = (ROOT.RDF.TH1DModel("e_star_reco_2"                     , '',   31,      0,     3), r"E*_{math,2} (GeV)"                             ,    0)
 ######
-##models["e_gamma" ]                   = (ROOT.RDF.TH1DModel("e_gamma"                           , '',   21,      0,     4), r"E_{#gamma} (GeV)"                           ,    0)
-####models["mu_rel_iso_03" ]             = (ROOT.RDF.TH1DModel("mu_rel_iso_03"                     , '',   21,      0,   0.3), r"Iso^{rel}_{#mu}"                            ,    0)
-######models["disc_is_negative" ]          = (ROOT.RDF.TH1DModel("disc_is_negative"                  , '',   21,     -1,     2), r"Disc < 0"                                   ,    0)
-####models["disc_negativity" ]           = (ROOT.RDF.TH1DModel("disc_negativity"                   , '',   21,      0,     6), r"Disc < 0"                                   ,    0)
+models["e_gamma" ]                   = (ROOT.RDF.TH1DModel("e_gamma"                           , '',   21,      0,     4), r"E^{#gamma}_{coll} (GeV)"                           ,    0)
+#models["mu_rel_iso_03" ]             = (ROOT.RDF.TH1DModel("mu_rel_iso_03"                     , '',   21,      0,   0.3), r"Iso^{rel}_{#mu}"                            ,    0)
+#models["disc_is_negative" ]          = (ROOT.RDF.TH1DModel("disc_is_negative"                  , '',   2,     -0.5,     1.5), r"Disc < 0"                                   ,    0)
+models["disc_negativity" ]           = (ROOT.RDF.TH1DModel("disc_negativity"                   , '',   21,      0,     6), r"Disc_{#le 0}"                                   ,    0)
 #####
-#models["kk_deltaR" ]                 = (ROOT.RDF.TH1DModel("kk_deltaR"                         , '',   21,      0,   0.3), r"#Delta R(K,K)"                            ,    0)
-#models["phiPi_deltaR" ]              = (ROOT.RDF.TH1DModel("phiPi_deltaR"                      , '',   21,      0,     1), r"#Delta R(#phi,#pi)"                         ,    0)
-#models["dsMu_deltaR" ]               = (ROOT.RDF.TH1DModel("dsMu_deltaR"                       , '',   21,      0,   1.3), r"#Delta R(D_{s},#mu)"                        ,    0)
+models["kk_deltaR" ]                 = (ROOT.RDF.TH1DModel("kk_deltaR"                         , '',   21,      0,   0.3), r"#Delta R(K,K)"                            ,    0)
+models["phiPi_deltaR" ]              = (ROOT.RDF.TH1DModel("phiPi_deltaR"                      , '',   21,      0,     1), r"#Delta R(KK,#pi)"                         ,    0)
+models["dsMu_deltaR" ]               = (ROOT.RDF.TH1DModel("dsMu_deltaR"                       , '',   21,      0,   0.8), r"#Delta R(KK#pi,#mu)"                        ,    0)
 #####
-###### kinematics
-#####
-##models["bs_boost_coll" ]             = (ROOT.RDF.TH1DModel("bs_boost_coll"                     , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
-#####models["bs_boost_lhcb" ]             = (ROOT.RDF.TH1DModel("bs_boost_lhcb"                     , '',   21,      0,     1), r"Boost(B_{s})     "                         ,    0)
-####models["bs_boost_lhcb_alt" ]         = (ROOT.RDF.TH1DModel("bs_boost_lhcb_alt"                 , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
-#####models["bs_boost_reco_1" ]           = (ROOT.RDF.TH1DModel("bs_boost_reco_1"                   , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
-#####models["bs_boost_reco_2" ]           = (ROOT.RDF.TH1DModel("bs_boost_reco_2"                   , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
-####models["bs_boost_reco_weighted" ]    = (ROOT.RDF.TH1DModel("bs_boost_reco_weighted"            , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
+models["bs_boost_coll" ]             = (ROOT.RDF.TH1DModel("bs_boost_coll"                     , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
+models["bs_boost_lhcb_alt" ]         = (ROOT.RDF.TH1DModel("bs_boost_lhcb_alt"                 , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
+models["bs_boost_reco_1" ]           = (ROOT.RDF.TH1DModel("bs_boost_reco_1"                   , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
+models["bs_boost_reco_2" ]           = (ROOT.RDF.TH1DModel("bs_boost_reco_2"                   , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
 ####
 ####
 ##### Angles
-##models["cosMuW_coll" ]               = (ROOT.RDF.TH1DModel("cosMuWColl"                        , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{coll}"                           ,    0)
-#####models["cosMuW_lhcb" ]               = (ROOT.RDF.TH1DModel("cosMuWLhcb"                        , '',   21,     -1,     1), r"cos(#theta_{1})"                            ,    0)
-##models["cosMuW_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("cosMuWLhcbAlt"                     , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{xyz}"                            ,    0)
-##models["cosMuW_reco_1" ]             = (ROOT.RDF.TH1DModel("cosMuWReco1"                       , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{math,1}"                         ,    0)
-##models["cosMuW_reco_2" ]             = (ROOT.RDF.TH1DModel("cosMuWReco2"                       , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{math,2}"                         ,    0)
+#models["cosMuW_coll" ]               = (ROOT.RDF.TH1DModel("cosMuWColl"                        , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{coll}"                           ,    0)
+####models["cosMuW_lhcb" ]               = (ROOT.RDF.TH1DModel("cosMuWLhcb"                        , '',   21,     -1,     1), r"cos(#theta_{1})"                            ,    0)
+#models["cosMuW_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("cosMuWLhcbAlt"                     , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{xyz}"                            ,    0)
+#models["cosMuW_reco_1" ]             = (ROOT.RDF.TH1DModel("cosMuWReco1"                       , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{math,1}"                         ,    0)
+#models["cosMuW_reco_2" ]             = (ROOT.RDF.TH1DModel("cosMuWReco2"                       , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{math,2}"                         ,    0)
 #####models["cosMuW_reco_weighted" ]      = (ROOT.RDF.TH1DModel("cosMuW_reco_weighted"              , '',   21,     -1,     1), r"cos(#theta_{1})"                            ,    0)
 #####
-##models["cosPhiDs_coll" ]             = (ROOT.RDF.TH1DModel("cosPhiDsColl"                      , '',   21,     -1,     1), r"cos(#theta_{2})"                            ,    0)
+models["cosPhiDs_coll" ]             = (ROOT.RDF.TH1DModel("cosPhiDsColl"                      , '',   21,     -1,     1), r"cos(#theta^{\Phi, D_{s}}_{hel})_{coll}"                            ,    0)
 ###models["cosPhiDs_lhcb" ]             = (ROOT.RDF.TH1DModel("cosPhiDsLhcb"                      , '',   21,     -1,     1), r"cos(#theta_{2})"                            ,    0)
-##models["cosPhiDs_lhcb_alt" ]         = (ROOT.RDF.TH1DModel("cosPhiDsLhcbAlt"                   , '',   21,     -1,     1), r"cos(#theta_{2})"                            ,    0)
-##models["cosPhiDs_reco_1" ]           = (ROOT.RDF.TH1DModel("cosPhiDsReco1"                     , '',   21,     -1,     1), r"cos(#theta_{2})"                            ,    0)
-##models["cosPhiDs_reco_2" ]           = (ROOT.RDF.TH1DModel("cosPhiDsReco2"                     , '',   21,     -1,     1), r"cos(#theta_{2})"                            ,    0)
+models["cosPhiDs_lhcb_alt" ]         = (ROOT.RDF.TH1DModel("cosPhiDsLhcbAlt"                   , '',   21,     -1,     1), r"cos(#theta^{\Phi, D_{s}}_{hel})_{xyz}"                            ,    0)
+models["cosPhiDs_reco_1" ]           = (ROOT.RDF.TH1DModel("cosPhiDsReco1"                     , '',   21,     -1,     1), r"cos(#theta^{\Phi, D_{s}}_{hel})_{math,1}"                            ,    0)
+models["cosPhiDs_reco_2" ]           = (ROOT.RDF.TH1DModel("cosPhiDsReco2"                     , '',   21,     -1,     1), r"cos(#theta^{\Phi, D_{s}}_{hel})_{math,2}"                            ,    0)
 #####
-##models["cosPlaneBs_coll" ]           = (ROOT.RDF.TH1DModel("cosPlaneBsColl"                    , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
+#models["cosPlaneBs_coll" ]           = (ROOT.RDF.TH1DModel("cosPlaneBsColl"                    , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
 ###models["cosPlaneBs_lhcb" ]           = (ROOT.RDF.TH1DModel("cosPlaneBsLhcb"                    , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
-##models["cosPlaneBs_lhcb_alt" ]       = (ROOT.RDF.TH1DModel("cosPlaneBsLhcbAlt"                 , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
-##models["cosPlaneBs_reco_1" ]         = (ROOT.RDF.TH1DModel("cosPlaneBsReco1"                   , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
-##models["cosPlaneBs_reco_2" ]         = (ROOT.RDF.TH1DModel("cosPlaneBsReco2"                   , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
+#models["cosPlaneBs_lhcb_alt" ]       = (ROOT.RDF.TH1DModel("cosPlaneBsLhcbAlt"                 , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
+#models["cosPlaneBs_reco_1" ]         = (ROOT.RDF.TH1DModel("cosPlaneBsReco1"                   , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
+#models["cosPlaneBs_reco_2" ]         = (ROOT.RDF.TH1DModel("cosPlaneBsReco2"                   , '',   21,     -1,     1), r"cos(#chi)"                                  ,    0)
 #####
-##models["lxy_ds_sig" ]                = (ROOT.RDF.TH1DModel("lxy_ds_sig"                        , '',   21,      0,    10), r"L^{sig}_{xy}(D_{s})"                        ,    0)
+models["lxy_ds_sig" ]                = (ROOT.RDF.TH1DModel("lxy_ds_sig"                        , '',   21,      0,    10), r"L^{sig}_{xy}(D_{s})"                        ,    0)
 ##models["lxy_ds"     ]                = (ROOT.RDF.TH1DModel("lxy_ds"                            , '',   21,      0,     2), r"L_{xy}(D_{s})"                        ,    0)
 ###models["dxy_mu_sig" ]                = (ROOT.RDF.TH1DModel("dxy_mu_sig"                        , '',   31,    -40,    40), r"D^{sig}_{xy}"                               ,    0)
-##models["cosPiK1" ]                   = (ROOT.RDF.TH1DModel("cosPiK1"                           , '',   21,     -1,     1), r"cos(#theta_{4})"                            ,    0)
+#models["cosPiK1" ]                   = (ROOT.RDF.TH1DModel("cosPiK1"                           , '',   21,     -1,     1), r"cos(#theta_{4})"                            ,    0)
 ####
 #####Vertices
 ####
-##models["pv_prob" ]                   = (ROOT.RDF.TH1DModel("pv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(PV)"                                   ,    0)
-##models["sv_prob" ]                   = (ROOT.RDF.TH1DModel("sv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(B_{s} Vtx.)"                           ,    0)
-##models["tv_prob" ]                   = (ROOT.RDF.TH1DModel("tv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(D_{s} Vtx.)"                           ,    0)
-##models["fv_prob" ]                   = (ROOT.RDF.TH1DModel("fv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(#Phi Vtx.)"                            ,    0)
+#models["pv_prob" ]                   = (ROOT.RDF.TH1DModel("pv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(PV)"                                   ,    0)
+#models["sv_prob" ]                   = (ROOT.RDF.TH1DModel("sv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(B_{s} Vtx.)"                           ,    0)
+#models["tv_prob" ]                   = (ROOT.RDF.TH1DModel("tv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(D_{s} Vtx.)"                           ,    0)
+#models["fv_prob" ]                   = (ROOT.RDF.TH1DModel("fv_prob"                           , '',   30,    0.0,  1.0), r"Prob.(#Phi Vtx.)"                            ,    0)
+
+models["sv_chi2" ]                   = (ROOT.RDF.TH1DModel("sv_chi2"                           , '',   30,    0.0,  10.0), r"#chi^{2}_{Vtx} (V_{B^{0}_{s}}) )"                           ,    0)
+models["tv_chi2" ]                   = (ROOT.RDF.TH1DModel("tv_chi2"                           , '',   30,    0.0,  10.0), r"#chi^{2}_{Vtx} (V_{D_{s}}) )"                           ,    0)
+models["fv_chi2" ]                   = (ROOT.RDF.TH1DModel("fv_chi2"                           , '',   30,    0.0,  10.0), r"#chi^{2}_{Vtx} (V_{#Phi}) )"                            ,    0)
+
+
 #
 #
-##models["rel_iso_03" ]                      = (ROOT.RDF.TH1DModel("rel_iso_03"                              , '',   30,    0.0,  1.0), r"Iso^{rel}_#mu"                      ,    0)
-##models["rel_iso_03_pv" ]                   = (ROOT.RDF.TH1DModel("rel_iso_03_pv"                           , '',   30,    0.0,  1.0), r"Iso^{rel}_#mu(PV)"                  ,    0)
+#models["rel_iso_03" ]                      = (ROOT.RDF.TH1DModel("rel_iso_03"                              , '',   30,    0.0,  1.0), r"Iso^{rel}_#mu"                      ,    0)
+models["rel_iso_03_pv" ]                   = (ROOT.RDF.TH1DModel("rel_iso_03_pv"                           , '',   30,    0.0,  0.3), r"Iso^{rel}_{#mu}(PV)"                  ,    0)
 ##models["rel_iso_03_sv" ]                   = (ROOT.RDF.TH1DModel("rel_iso_03_sv"                           , '',   30,    0.0,  1.0), r"Iso^{rel}_#mu(SV)"                  ,    0)
 ##models["rel_iso_03_tv" ]                   = (ROOT.RDF.TH1DModel("rel_iso_03_tv"                           , '',   30,    0.0,  1.0), r"Iso^{rel}_#mu(TV)"                  ,    0)
 ##models["rel_iso_03_ds_sv" ]                = (ROOT.RDF.TH1DModel("rel_iso_03_ds_sv"                        , '',   30,    0.0,  1.0), r"Iso^{rel}_Ds(SV)"                   ,    0)
 ##
-##models["dsPhoton_m" ]                      = (ROOT.RDF.TH1DModel("dsPhoton_m"                              , '',   30,    2.0,  2.3), r"m(Ds + #gamma)"                     ,    0)
-##models["photon_pt" ]                      = (ROOT.RDF.TH1DModel("photon_pt"                              , '',   30,    0.0,  1), r"p_{T}(#gamma) (GeV)"                     ,    0)
+#models["dsPhoton_m" ]                      = (ROOT.RDF.TH1DModel("dsPhoton_m"                              , '',   30,    2.0,  2.3), r"m(Ds + #gamma)"                     ,    0)
+models["photon_pt" ]                      = (ROOT.RDF.TH1DModel("photon_pt"                              , '',   30,    0.0,  1.5), r"p_{T}(#gamma) (GeV)"                     ,    0)
 ##models["ds_vtx_cosine_xy" ]                = (ROOT.RDF.TH1DModel("ds_vtx_cosine_xy"                        , '',   30,    -1.0, 1.0), r"Ds Vtx Cos"                         ,    0)
 ##models["ds_vtx_cosine_xy_pv" ]             = (ROOT.RDF.TH1DModel("ds_vtx_cosine_xy_pv"                     , '',   30,    -1.0, 1.0), r"Ds Vtx Cos PV"                      ,    0)
 ##models["rel_iso_03_pv" ]             = (ROOT.RDF.TH1DModel("rel_iso_03_pv"                     , '',   30,    0.0, 1.0), r"Ds Vtx Cos PV"                      ,    0)
-##models["signed_decay_ip3d_mu_ds_sig_sv" ]             = (ROOT.RDF.TH1DModel("signed_decay_ip3d_mu_ds_sv"                     , '',   30,    -0.5, 0.5), r"IP3D"                      ,    0)
+models["signed_decay_ip3d_mu_ds_sig_sv" ]             = (ROOT.RDF.TH1DModel("signed_decay_ip3d_mu_ds_sv"                     , '',   30,    -0.5, 0.5), r"IP3D"                      ,    0)
+#models["dxy_mu_sig_pv" ]             = (ROOT.RDF.TH1DModel("dxy_mu_sig_pv"                     , '',   30,    -25, 25), r"d^{sig}_{xy}(#mu) wrt. PV"                      ,    0)
 ##models["rel_iso_03_pv" ]             = (ROOT.RDF.TH1DModel("rel_iso_03_pv"                     , '',   30,    0.0, 0.2), r"Iso"                      ,    0)
+models["ds_perp" ]                      = (ROOT.RDF.TH1DModel("ds_perp"                              , '',   30,    1.91, 2.028), r"m_{#perp}(KK #pi) (GeV)"                     ,    0)
+models["ds_mu_perp" ]                   = (ROOT.RDF.TH1DModel("ds_mu_perp"                           , '',   30,    2,  8      ), r"m_{#perp}(KK #pi #mu) (GeV)"                 ,    0)
+models["ds_perp_photon" ]               = (ROOT.RDF.TH1DModel("ds_perp_photon"                       , '',   30,    1.91, 2.028), r"m_{#perp}(KK #pi #gamma) (GeV)"              ,    0)
+models["ds_mu_perp_photon" ]            = (ROOT.RDF.TH1DModel("ds_mu_perp_photon"                    , '',   30,    2,  8      ), r"m_{#perp}(KK #pi #mu #gamma) (GeV)"          ,    0)
+
+models["bs_mass_corr" ]            = (ROOT.RDF.TH1DModel("bs_mass_corr"                    , '',   30,    0.0,  12), r"m_{corr}(KK #pi #mu ) (GeV)"          ,    0)
+models["bs_mass_corr_photon" ]     = (ROOT.RDF.TH1DModel("bs_mass_corr_photon"             , '',   30,    0.0,  12), r"m_{corr}(KK #pi #mu #gamma) (GeV)"          ,    0)
+
 #
 #
 
@@ -190,14 +203,14 @@ models["phiPi_pt" ]               = (ROOT.RDF.TH1DModel("phiPi_pt"              
 
 
 
-pastNN_models["class" ]                    = (ROOT.RDF.TH1DModel("class"                            , '',   6,       0,    5.9999), r"Class"                            ,    0)
+#pastNN_models["class" ]                    = (ROOT.RDF.TH1DModel("class"                            , '',   6,       0,    5.9999), r"Class"                            ,    0)
 
 #pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    1), r"Score 0"                            ,    0)
-pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    1), r"Score 1"                            ,    0)
+#pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    0.8), r"Score 1"                            ,    0)
 #pastNN_models["score2" ]                   = (ROOT.RDF.TH1DModel("score2"                           , '',   31,       0,    1), r"Score 2"                            ,    0)
 #pastNN_models["score3" ]                   = (ROOT.RDF.TH1DModel("score3"                           , '',   31,       0,    1), r"Score 3"                            ,    0)
 #pastNN_models["score4" ]                   = (ROOT.RDF.TH1DModel("score4"                           , '',   31,       0,    1), r"Score 4"                            ,    0)
-#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   31,       0,    1), r"Score 5"                            ,    0)
+#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   50,       0,    0.1), r"Score 5"                            ,    0)
 #pastNN_models["score5" ]                = (ROOT.RDF.TH1DModel("score5_WP_lower"                           , '',   100,      0,    0.1), r"Score 5"                            ,    0)
 #pastNN_models["score0" ]                = (ROOT.RDF.TH1DModel("score0_WP_upper"                           , '',   200,      0,    0.2), r"Score 0"                            ,    0)
 #
@@ -232,13 +245,49 @@ special_models["score1_bin3" ]                   = (ROOT.RDF.TH1DModel("score1_b
 special_models["score1_bin4" ]                   = (ROOT.RDF.TH1DModel("score1_bin4"                           , '',   31,       0  ,    0.45), r"Score 1"                            ,    0)
 special_models["score1_bin5" ]                   = (ROOT.RDF.TH1DModel("score1_bin5"                           , '',   31,       0  ,    1   ), r"Score 1"                            ,    0)
 
+special_models_q2_coll = {}
 
+#edges = list(np.linspace(0,0.015,20)) + [1.0]
+edges = list(np.linspace(0,0.04,20)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin0" ]                   = (ROOT.RDF.TH1DModel("score1_bin0"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#edges = list(np.linspace(0,0.08,20)) + [1.0]
+edges = list(np.linspace(0,0.11,20)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin1" ]                   = (ROOT.RDF.TH1DModel("score1_bin1"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#edges = list(np.linspace(0,0.18,20)) + [1.0]
+edges = list(np.linspace(0,0.21,20)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin2" ]                   = (ROOT.RDF.TH1DModel("score1_bin2"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#edges = list(np.linspace(0,0.3,20)) + [1.0]
+edges = list(np.linspace(0,0.35,20)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin3" ]                   = (ROOT.RDF.TH1DModel("score1_bin3"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#edges = list(np.linspace(0,0.4,20)) + [1.0]
+edges = list(np.linspace(0,0.5,20)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin4" ]                   = (ROOT.RDF.TH1DModel("score1_bin4"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#edges = list(np.linspace(0,0.5,20)) + [1.0]
+edges = list(np.linspace(0,0.6,20)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin5" ]                   = (ROOT.RDF.TH1DModel("score1_bin5"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#edges = list(np.linspace(0,0.55,12)) + [1.0]
+edges = list(np.linspace(0,0.7,12)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin6" ]                   = (ROOT.RDF.TH1DModel("score1_bin6"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#edges = list(np.linspace(0,0.55,12)) + [1.0]
+edges = list(np.linspace(0,0.7,12)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin7" ]                   = (ROOT.RDF.TH1DModel("score1_bin7"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#special_models_q2_coll["score1_bin8" ]                   = (ROOT.RDF.TH1DModel("score1_bin8"                           , '',   31,       0  ,    0.8 ), r"Score 1"                            ,    0)
 
 
 
