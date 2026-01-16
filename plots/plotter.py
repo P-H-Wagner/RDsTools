@@ -1230,17 +1230,18 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
   leg.AddEntry(hErr                            ,'Stat. Uncer.'  ,'F' )
   
   #plot mainpad
-  if log:
+  if logy:
     ROOT.gPad.SetLogy()
     histos["data"].GetYaxis().SetTitle('Events')
     histos["data"].GetYaxis().SetRangeUser(1e-3, hs.GetMaximum()*1000)
     histos["data"].SetMinimum(100.001) # avoid idsplaying tons of comb bkg
 
-    #ROOT.gPad.SetLogx()
+  elif logx:
+    ROOT.gPad.SetLogx()
 
-    #yAxisTitle = "events"
-    #histos["data"].GetYaxis().SetTitle(yAxisTitle)
-    #histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetBinContent(histos["data"].GetMaximumBin())*1.5)
+    yAxisTitle = "events"
+    histos["data"].GetYaxis().SetTitle(yAxisTitle)
+    histos["data"].GetYaxis().SetRangeUser(1e-3, histos["data"].GetBinContent(histos["data"].GetMaximumBin())*1.5)
 
   else:
 
@@ -1344,8 +1345,12 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
   line.SetLineWidth(1)
   ratio_stats.GetYaxis().CenterTitle()
 
-  if log:
+  if logy:
     ROOT.gPad.SetLogy()
+
+  if logx:
+    ROOT.gPad.SetLogx()
+
 
   ratio_stats.Draw('E2')
   norm_stack.Draw('hist same')
@@ -1389,7 +1394,8 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
 
   if not os.path.exists(toSave): 
     os.makedirs(toSave)
-    os.makedirs(toSave + "/log")  
+    os.makedirs(toSave + "/logx")  
+    os.makedirs(toSave + "/logy")  
 
   # save nn info
   with open( toSave + f"/info.txt", "a") as f:
@@ -1408,9 +1414,15 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
         f.write( f" number of {key} entries in bin {i}: {histos[key].GetBinContent(i)} \n")
 
 
-  if log:
-    c1.SaveAs( toSave + f"/log/{var}_{name}.pdf")
-    c1.SaveAs( toSave + f"/log/{var}_{name}.png")
+  if logx:
+    c1.SaveAs( toSave + f"/logx/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/logx/{var}_{name}.png")
+
+  elif logy:
+    c1.SaveAs( toSave + f"/logy/{var}_{name}.pdf")
+    c1.SaveAs( toSave + f"/logy/{var}_{name}.png")
+
+
   else:
     c1.SaveAs( toSave + f"/{var}_{name}.pdf")
     c1.SaveAs( toSave + f"/{var}_{name}.png")
@@ -2673,7 +2685,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
           #histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, fakemass = fakemass, abc = abc, scale_bkg = scale_bkg, scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
           #histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
           histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          histosScaledLog    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False, log = True )
+          histosScaledLogx    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False, logx = True )
+          histosScaledLogy    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False, logy = True )
           #histosScaled_blind , _ = stackedPlot(histos_blind, var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk_blind, scale_pimu = scale_pimu_blind, scale_rest = scale_rest_blind, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = True  )
  
           #histosScaled_shapes    = shapesPlot(histos,        var, hb_scale_S, fakemass = fakemass, abc = abc, scale_bkg = scale_bkg, scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
