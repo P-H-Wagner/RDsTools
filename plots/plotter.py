@@ -6,7 +6,7 @@ import yaml
 from datetime import datetime
 import matplotlib.pyplot as plt
 import pdb
-ROOT.ROOT.EnableImplicitMT() 
+#ROOT.ROOT.EnableImplicitMT() 
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
@@ -38,7 +38,7 @@ parser.add_argument("--prod",        required = True,     help = "Specify '24' o
 parser.add_argument("--trigger",     required = True,     help = "Specify mu7 or mu9 for the trigger") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
 parser.add_argument("--debug",       action='store_true', help = "If given, run plotter with 50k events only") 
-parser.add_argument("--control",                          help = "If given, run control plots, either 'highmass', 'sb' or 'complete' or 'custom' ") 
+parser.add_argument("--control",                          help = "If given, run control plots, either 'highmass', 'leftsb', 'rightsb' or 'complete' or 'custom' ") 
 parser.add_argument("--cut",                              help = "Cut on the discriminator score 5. ") 
 parser.add_argument("--findcut",     action='store_true', help = "If given, we run thecut scan") 
 args = parser.parse_args()
@@ -84,7 +84,7 @@ else         : score_cut = ""#"&& (dsMu_deltaR < 0.3) && (abs(cosPiK1) > 0.6) &&
 
 print(score_cut)
 
-if args.debug: debug = 200000
+if args.debug: debug = 50000
 else         : debug = None
 
 
@@ -131,18 +131,9 @@ else:
   hb_cons_pastNN      =  hb_cons_pastNN_24     
   data_cons_pastNN    =  data_cons_pastNN_24   
 
-skimmed = False
-
-if args.control:
-  if args.control == "highmass":
-    skimmed = True
-  elif args.control == "sb":
-    skimmed = True
-  elif args.control == "complete":
-    skimmed = True
-  elif args.control == "custom":
-    skimmed = True
-  else: 
+skimmed = True 
+print(args.control)
+if args.control and args.control not in ["highmass","leftsb","rightsb", "complete", "custom"]:
     raise ValueError ("Error: Not a valid key for --control, please use 'highmass', 'sb' or 'complete' or 'custom' ")
 
 control = args.control
@@ -196,6 +187,9 @@ else:
   data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
   mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
 
+#also freeze sigma here!
+sigma = 0.009
+
 
 
 # set the to be splitter variable and binning
@@ -204,13 +198,14 @@ split   = "q2_coll"
 #split   = "q2_lhcb_alt"
 #split   = "class"
 #split   = "phiPi_m"
-split   = "kk_m"
+#split   = "kk_m"
 #split   = "e_star_reco_weighted"
 #split = "score1"
 #split = "score2"
 #binning = [[0,0.03],[0.03,0.06],[0.06,0.1],[0.1,0.2],[0.2,0.4],[0.4,0.6],[0.6,1.0]] #score 3
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
+binning = [[0,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,12]]
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,10],[10,12]]
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,12]]
@@ -224,30 +219,50 @@ split   = "kk_m"
 #binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
-binning = [[-99,99]]
+#binning = [[-99,99]]
 
 ################
-## 2D binning ##
+## 3D binning ##
 ################
 
-#in this case the splitter is irrelevant
+binning_str = []
+#
+sr_string = " && ((phiPi_m >= 1.94134) && (phiPi_m <= 1.99534 ) )"
+sb_string = " && ((phiPi_m < 1.94 ) || (phiPi_m > 1.995  ) )"
+#
 
-#binning = [
-#"(class == 0) && ((q2_coll < 7) || (q2_coll > 9) )",
-#"(class == 1) && ((q2_coll < 7) || (q2_coll > 9) )",
-#"(class == 2) && ((q2_coll < 7) || (q2_coll > 9) )",
-#"(class == 3) && ((q2_coll < 7) || (q2_coll > 9) )",
-#"(class == 4) && ((q2_coll < 7) || (q2_coll > 9) )",
-#"(class == 5) && ((q2_coll < 7) || (q2_coll > 9) )",
+#custom strings
+mass_r1 = f" (  (phiPi_m <  {dsMass_ - 5*sigma}) || ( phiPi_m > {dsMass_ + 5*sigma} ))"  
+mass_r2 = f" ( ((phiPi_m >= {dsMass_ - 5*sigma}) && ( phiPi_m < {dsMass_ - 3*sigma} )) || ((phiPi_m <= {dsMass_ + 5*sigma}) && ( phiPi_m > {dsMass_ + 3*sigma} )) )" 
+mass_r3 = f" ( ((phiPi_m >= {dsMass_ - 3*sigma}) && ( phiPi_m < {dsMass_ - 2*sigma} )) || ((phiPi_m <= {dsMass_ + 3*sigma}) && ( phiPi_m > {dsMass_ + 2*sigma} )) )" 
+mass_r4 = f" ( ((phiPi_m >= {dsMass_ - 2*sigma}) && ( phiPi_m < {dsMass_ - 1*sigma} )) || ((phiPi_m <= {dsMass_ + 2*sigma}) && ( phiPi_m > {dsMass_ + 1*sigma} )) )" 
+mass_r5 = f" ( ((phiPi_m >= {dsMass_ - 1*sigma}) && ( phiPi_m < {dsMass_ - 0*sigma} )) || ((phiPi_m <= {dsMass_ + 1*sigma}) && ( phiPi_m > {dsMass_ + 0*sigma} )) )" 
 #
-#"(class == 0) && ((q2_coll > 7) && (q2_coll < 9) )",
-#"(class == 1) && ((q2_coll > 7) && (q2_coll < 9) )",
-#"(class == 2) && ((q2_coll > 7) && (q2_coll < 9) )",
-#"(class == 3) && ((q2_coll > 7) && (q2_coll < 9) )",
-#"(class == 4) && ((q2_coll > 7) && (q2_coll < 9) )",
-#"(class == 5) && ((q2_coll > 7) && (q2_coll < 9) )",
+mass_binning = [mass_r1, mass_r2, mass_r3, mass_r4, mass_r5]
+
+for i,mass_b in enumerate(mass_binning):
+
+  if i == 0:
+    #first mass bin, no slice in q2
+    binning_str.append(mass_b)
+
+  else: 
+    for b in binning:
+      binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} ) && " + mass_b)
+
+#for b in binning:
+#  
+#  # b is a list
+#  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
+#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
+
+  
 #
-#]
+##overwrite
+binning = binning_str
+
+#print("====> Using 3D regions: ")
+#print(binning_str)
 
 ##############################
 # Load chain into RDataFrame #
@@ -744,12 +759,12 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   
         model = special_models[var + f"_bin{region}" ]
 
-      if var == "score1" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
-        
-        #adapt the binning
-        print(f"Adapt binning for {var} and region {region}")
+      #if var == "score1" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
+      #  
+      #  #adapt the binning
+      #  print(f"Adapt binning for {var} and region {region}")
   
-        model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+      #  model = special_models_q2_coll[var + f"_bin{region}" ]                                     
 
 
       ##############################################
@@ -991,8 +1006,8 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
 
   #supress data plotting in SR. region is a string of type: q2_coll_ch0
   dataBlind = False
-  if region[-1] in ["5","6","7"]:
-    dataBlind = True 
+  #if region[-1] in ["5","6","7"]:
+  #  dataBlind = True 
 
 
 
@@ -1072,9 +1087,9 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
     hComb_pimu = histos["data_sf_pimu"].Clone()
     hComb_pimu.Scale(scale_pimu)
 
-    hComb_pimu.SetLineColor(ROOT.kMagenta -3)
-    hComb_pimu.SetFillStyle(3244)
-    hComb_pimu.SetFillColor(ROOT.kMagenta -3)
+    hComb_pimu.SetLineColor(ROOT.kGray + 1)
+    #hComb_pimu.SetFillStyle(3244)
+    hComb_pimu.SetFillColor(ROOT.kGray + 1)
 
     hComb.Add(hComb_pimu)
 
@@ -1173,7 +1188,7 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
 
   hErr.Add(hComb)
   hs.Add(hComb_pimu)
-  hs.Add(hComb_kk)
+  #hs.Add(hComb_kk)
   #hs.Add(h_Comb) 
 
   if newHb:
@@ -1234,8 +1249,8 @@ def stackedPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk =
     leg.AddEntry(histos["hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
   leg.AddEntry(histos["data"]       ,'Data','LEP')
   #leg.AddEntry(histos["comb"]                           ,'Comb. + Fakes'  ,'F' )
-  leg.AddEntry(hComb_pimu                           ,'pimu'  ,'F' )
-  leg.AddEntry(hComb_kk                             ,'kk'  ,'F' )
+  leg.AddEntry(hComb_pimu                           ,'Comb. + Fakes'  ,'F' )
+  #leg.AddEntry(hComb_kk                             ,'kk'  ,'F' )
   leg.AddEntry(hErr                            ,'Stat. Uncer.'  ,'F' )
   
   #plot mainpad
@@ -2254,7 +2269,7 @@ def writeBinnedDatacard(histos, var, region, splitter, digits = 5, blind = False
   return card_dir
 
 
-def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlotsSidebands = None, controlPlotsComplete = None, controlPlotsCustom = None  ):
+def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlotsLeftSideband = None, controlPlotsRightSideband = None, controlPlotsComplete = None, controlPlotsCustom = None  ):
   
 
   # splitter is the varible you want to use to define regions. F.e. q^2
@@ -2299,8 +2314,6 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   #else:
   #  sigma,   h            = getSigma(rdfSigSB, "phiPi_m", selection_sigma, dt)
 
-  #also freeze sigma here!
-  sigma = 0.009
 
   # define signal region and sidebands :)
   mlow,   mhigh,   mlow2,   mhigh2,   mlow3,   mhigh3,   signalRegion,   anti_signalRegion,   leftSB,   rightSB   = getRegions(sigma)
@@ -2323,21 +2336,20 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     #hb_scale_massfit  = getHbScale(selec_massfit.hb , selec_massfit.dsMu )
 
     ## Signal and Hb 
-    selec_M_DsMu            = createHistos(selec_massfit.dsMu       ,    rdfSig       , variables = ["phiPi_m"] , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dsmu"     )
-    selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu       ,    rdfSig       , variables = ["phiPi_m"] , gen = False)
-    selec_M_DsTau           = createHistos(selec_massfit.dsTau      ,    rdfSig       , variables = ["phiPi_m"] , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dstau"    )
-    selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu   ,    rdfSig       , variables = ["phiPi_m"] , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dsstarmu" )
-    selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau  ,    rdfSig       , variables = ["phiPi_m"] , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dsstartau")
-    selec_M_Hb              = createHistos(selec_massfit.hb         ,    rdfHb        , variables = ["phiPi_m"] , gen = False)
-    selec_M_Mu_in_Hb        = createHistos(selec_massfit.dsMu       ,    rdfHb        , variables = ["phiPi_m"] , gen = False)
-    selec_M_Data            = createHistos(selec_massfit.bare       ,    rdfData      , variables = ["phiPi_m"] , gen = False)
+    selec_M_DsMu            = createHistos(selec_massfit.dsMu       ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dsmu"     )
+    selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu       ,    rdfSig       , gen = False)
+    selec_M_DsTau           = createHistos(selec_massfit.dsTau      ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dstau"    )
+    selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu   ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dsstarmu" )
+    selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau  ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = hammer_sys,sig = "dsstartau")
+    selec_M_Hb              = createHistos(selec_massfit.hb         ,    rdfHb        , gen = False)
+    selec_M_Mu_in_Hb        = createHistos(selec_massfit.dsMu       ,    rdfHb        , gen = False)
+    selec_M_Data            = createHistos(selec_massfit.bare       ,    rdfData      , gen = False)
 
     selec_M_DsTau_blind     = { key: selec_M_DsTau[key].Clone()      for key in selec_M_DsTau.keys()     }
     selec_M_DsStarTau_blind = { key: selec_M_DsStarTau[key].Clone()  for key in selec_M_DsStarTau.keys() }
 
     #selec_M_DsTau["phiPi_m"].Scale(0.3)
     #selec_M_DsStarTau["phiPi_m"].Scale(0.3)
-
 
     #since the dsmu signal in Hb is not hammered, we calc. the scale for unhammered dsmu and hb. The effects should cancel! 
     hb_ratio_massfit = selec_M_Hb["phiPi_m"].Integral() / selec_M_Mu_in_Hb["phiPi_m"].Integral()
@@ -2349,18 +2361,13 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     # Data 
 
     print(f" =============>  applying sf weights for the mass fit???? {sf_weights}") 
-    selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    ,    rdfData       , variables = ["phiPi_m"] , gen = False, sf_weights = sf_weights , data = True, massfit = True)
-    selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl ,    rdfData       , variables = ["phiPi_m"] , gen = False, sf_weights = sf_weights , data = True, massfit = True)
-    #selec_M_Data_sf_both = createHistos(  baseline + data_selec + wrong_sign    ,    rdfData       , variables = ["phiPi_m"] , gen = False, sf_weights = sf_weights , data = True, massfit = True)
-
-    #print(f" I have kk flip events:     {selec_M_Data_sf_kk  ['phiPi_m'].GetEntries()} ")
-    #print(f" I have muflip flip events: {selec_M_Data_sf_pimu['phiPi_m'].GetEntries()} ")
-    #print(f" I have both flip events:   {selec_M_Data_sf_both['phiPi_m'].GetEntries()} ")
-
+    selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    ,    rdfData       , gen = False, sf_weights = sf_weights , data = True, massfit = True)
+    selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl ,    rdfData       , gen = False, sf_weights = sf_weights , data = True, massfit = True)
 
  
     # get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
-
+    import pdb
+    #pdb.set_trace()
     hRest       = prepareSignFlip(  selec_M_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
                                    [selec_M_DsMu            ["phiPi_m"].Clone()  , 
                                     selec_M_DsStarMu        ["phiPi_m"].Clone()  , 
@@ -2380,16 +2387,14 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
  
     kk_prefit   = selec_M_Data_sf_kk  ["phiPi_m"].Clone().Integral()
     pimu_prefit = selec_M_Data_sf_pimu["phiPi_m"].Clone().Integral() 
-    #bkg_prefit  = selec_M_Data_sf_both["phiPi_m"].Clone().Integral() 
     bkg_prefit  = kk_prefit + pimu_prefit
     rest_prefit = hRest                          .Clone().Integral() 
 
     print("=============> Fit mass again to get signflip ratios")
    
     if args.findcut: 
-      #bkg_postfit, rest_postfit       , abc = getSignflipRatioTest(selec_M_Data_sf_both["phiPi_m"].Clone(), hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, findcut = args.findcut, cut = args.cut)
+
       bkg_postfit, rest_postfit       , abc = getSignflipRatioTest(selec_M_Data_sf_both["phiPi_m"].Clone(),  hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028, findcut = args.findcut, cut = args.cut)
-      #kk_blind_postfit, pimu_blind_postfit, rest_blind_postfit , abc = getSignflipRatio(selec_M_Data_sf_kk["phiPi_m"].Clone(),selec_M_Data_sf_pimu["phiPi_m"].Clone(), hRest_blind,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, findcut = args.findcut, cut = args.cut)
 
     else:
 
@@ -2400,18 +2405,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
                                       selec_M_DsStarTau       ["phiPi_m"].Clone()] ) 
  
 
-      #kk_postfit,       pimu_postfit,       rest_postfit       , abc = getSignflipRatio(selec_M_Data_sf_kk["phiPi_m"].Clone()  ,selec_M_Data_sf_pimu["phiPi_m"].Clone()  , hRest      ,selec_M_Data["phiPi_m"].Clone()  , mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, findcut = args.findcut, cut = args.cut)
 
-      hRest       = prepareSignFlip(  selec_M_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
-                                     [selec_M_DsMu            ["phiPi_m"].Clone()  , 
-                                      selec_M_DsStarMu        ["phiPi_m"].Clone()  , 
-                                      selec_M_DsTau           ["phiPi_m"].Clone()  , 
-                                      selec_M_DsStarTau       ["phiPi_m"].Clone()] ) 
- 
-
-
-
-      #bkg_postfit, rest_postfit       , abc             = getSignflipRatioTest(selec_M_Data_sf_both["phiPi_m"].Clone(),                                     hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028)
       kk_postfit, pimu_postfit, rest_postfit       , abc = getSignflipRatio(selec_M_Data_sf_kk["phiPi_m"].Clone(),  selec_M_Data_sf_pimu["phiPi_m"].Clone(), hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028)
 
 
@@ -2455,11 +2449,20 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     low_mass     = "" # remove since we are now in the high mass region
     signalRegion = "" # remove to keep as much background as possible 
  
-  if controlPlotsSidebands:
+  if controlPlotsRightSideband:
     # if we want to do control plots, we want to plot in the sideband region 
     # the splitter must be phiPi mass and the regions leftSB and rightSB      
     splitter     = "phiPi_m"
-    regions      = [[mlow3,mlow2], [mhigh2,mhigh3]]
+    regions      = [[mhigh2,mhigh3]]
+    print("Doing control plots, change regions to:", regions)
+    signalRegion = "" # remove since we are now in the sidebands 
+    low_mass     = "" # remove to keep as much background as possible  
+
+  if controlPlotsLeftSideband:
+    # if we want to do control plots, we want to plot in the sideband region 
+    # the splitter must be phiPi mass and the regions leftSB and rightSB      
+    splitter     = "phiPi_m"
+    regions      = [[mlow3,mlow2]]
     print("Doing control plots, change regions to:", regions)
     signalRegion = "" # remove since we are now in the sidebands 
     low_mass     = "" # remove to keep as much background as possible  
@@ -2477,19 +2480,14 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
       #if region is of type list, i.e. [0,2], define selection as:
       baseline_region   = baseline + f" && ({splitter} > {region[0]}) && ({splitter} < {region[1]})" 
     else:
-      #else it is a string, (used for 2D), f.e. region = "(q2_coll < 6) && (class == 0)"
+      #else it is a string, (used for 3D), f.e. region = "(q2_coll < 6) && (class == 0)"
       baseline_region   = baseline + f" && {region}" 
     
 
     # Define selections which hold all important selections next to baseline  
     selection        = baseline_region + right_sign + low_mass #for all other variables
-    selection_H      = baseline_region + right_sign            #for the dsMu mass 
-
-    selection      += score_cut  
-    selection_H    += score_cut  
-  
+    selection        += score_cut  
     selec            = selections(selection)
-    selec_H          = selections(selection_H)
   
     ################################################
     # now start with splitter plots                #
@@ -2507,33 +2505,6 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
       A, B, C, S              = getABCS( rdfData, selec.bare,   "phiPi_m", sigma,   h,  dt,  binsFake = massBins, nSig = nSignalRegion, nSb = nSidebands, width = sbWidth)
     fakemass = np.genfromtxt('mass_bincontent.csv', delimiter=',')
   
-    hb_tot        = rdfHb.Filter(selec.hb   + signalRegion).Count().GetValue()
-    #hb_tot_C      = rdfHb.Filter(selec.hb                 ).Count().GetValue()
-    hb_tot_H      = rdfHb.Filter(selec_H.hb               ).Count().GetValue()
-
-    bs_in_hb      = 0.0  
-    #bs_in_hb_C    = 0.0  
-    bs_in_hb_H    = 0.0  
-    b0_in_hb      = 0.0  
-    #b0_in_hb_C    = 0.0  
-    b0_in_hb_H    = 0.0  
-    bplus_in_hb   = 0.0  
-    #bplus_in_hb_C = 0.0  
-    bplus_in_hb_H = 0.0  
-
-    if hb_tot > 0:
-      bs_in_hb        = rdfHb.Filter(selec   .bs + signalRegion)   .Count().GetValue() / hb_tot
-      #bs_in_hb_C      = rdfHb.Filter(selec   .bs)                  .Count().GetValue() / hb_tot_C
-      bs_in_hb_H      = rdfHb.Filter(selec_H .bs)                  .Count().GetValue() / hb_tot_H
-
-      b0_in_hb        = rdfHb.Filter(selec   .b0 + signalRegion)   .Count().GetValue() / hb_tot
-      #b0_in_hb_C      = rdfHb.Filter(selec   .b0)                  .Count().GetValue() / hb_tot_C
-      b0_in_hb_H      = rdfHb.Filter(selec_H .b0)                  .Count().GetValue() / hb_tot_H
-
-      bplus_in_hb     = rdfHb.Filter(selec   .bplus + signalRegion).Count().GetValue() / hb_tot
-      #bplus_in_hb_C   = rdfHb.Filter(selec   .bplus)               .Count().GetValue() / hb_tot_C
-      bplus_in_hb_H   = rdfHb.Filter(selec_H .bplus)               .Count().GetValue() / hb_tot_H
-
 
     ###################################################
     # Histograms in signal region (for most variables #
@@ -2541,26 +2512,15 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   
     print("===> filling signal region ...")
 
-    #debug
-    #plt.figure()
-    #test = rdfData.Filter(selec.bare + signalRegion).AsNumpy()
-    #plt.hist(test["sf_weights"], bins=50, range=[0,50])
-    #plt.savefig(f"sf_weights_ch{i}.pdf")
-    #plt.clf()
-
-
-    #hb_scale_S = getHbScale(selec.hb + signalRegion, selec.dsMu + signalRegion)
-
-    #for all variables except mass plot only signal region (indicated with 'S')
     print("hammer_central, hammer_sys are:", hammer_central, hammer_sys)
-    selec_S_DsMu           = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsmu"     , region = i)
-    selec_S_DsMu_woHammer  = createHistos(selec.dsMu        + signalRegion,    rdfSig        , gen = False,                                                                               region = i) 
-    selec_S_DsTau          = createHistos(selec.dsTau       + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dstau"    , region = i)
-    selec_S_DsStarMu       = createHistos(selec.dsStarMu    + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstarmu" , region = i)
-    selec_S_DsStarTau      = createHistos(selec.dsStarTau   + signalRegion,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstartau", region = i)
-    selec_S_Hb             = createHistos(selec.hb          + signalRegion,    rdfHb         , gen = False,                                                                               region = i)
-    selec_S_Mu_in_Hb       = createHistos(selec.dsMu        + signalRegion,    rdfHb         , gen = False,                                                                               region = i)
-    selec_S_Data           = createHistos(selec.bare        + signalRegion,    rdfData       , gen = False,                                                                               region = i, data = True)
+    selec_S_DsMu           = createHistos(selec.dsMu        ,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsmu"     , region = i)
+    selec_S_DsMu_woHammer  = createHistos(selec.dsMu        ,    rdfSig        , gen = False,                                                                               region = i) 
+    selec_S_DsTau          = createHistos(selec.dsTau       ,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dstau"    , region = i)
+    selec_S_DsStarMu       = createHistos(selec.dsStarMu    ,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstarmu" , region = i)
+    selec_S_DsStarTau      = createHistos(selec.dsStarTau   ,    rdfSig        , gen = False,  hammer_central = hammer_central, hammer_sys = hammer_sys, sig = "dsstartau", region = i)
+    selec_S_Hb             = createHistos(selec.hb          ,    rdfHb         , gen = False,                                                                               region = i)
+    selec_S_Mu_in_Hb       = createHistos(selec.dsMu        ,    rdfHb         , gen = False,                                                                               region = i)
+    selec_S_Data           = createHistos(selec.bare        ,    rdfData       , gen = False,                                                                               region = i, data = True)
 
     #selec_S_DsTau["q2_coll"].Scale(0.3)
     #selec_S_DsStarTau["q2_coll"].Scale(0.3)
@@ -2574,35 +2534,21 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     hb_scale_S = selec_S_DsMu_woHammer["phiPi_m"].Integral() * hb_ratio_massfit
 
-
-
     for key in selec_S_DsTau_blind.keys()    : selec_S_DsTau_blind[key]    .Scale(blind_scalar)    
     for key in selec_S_DsStarTau_blind.keys(): selec_S_DsStarTau_blind[key].Scale(blind_vector)    
+
+
  
-    if newHb:
-      selec_S_Bs           = createHistos(selec.bs          + signalRegion,    rdfBs         , gen = False, region = i)
-      selec_S_B0           = createHistos(selec.b0          + signalRegion,    rdfB0         , gen = False, region = i)
-      selec_S_Bplus        = createHistos(selec.bplus       + signalRegion,    rdfBplus      , gen = False, region = i)
-  
     if constrained: 
-
-      selec_S_Data_sf_kk   = createHistos(baseline_region + data_selec + score_cut + kk_wrong_incl   + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights, region = i , data = True)
-      selec_S_Data_sf_pimu = createHistos(baseline_region + data_selec + score_cut + pimu_wrong      + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights, region = i , data = True)
-      #selec_S_Data_sf_both = createHistos(baseline_region + data_selec + score_cut + wrong_sign      + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights, region = i , data = True)
-      #selec_S_Data_sf_one  = createHistos(baseline_region + data_selec + score_cut + wrong_sign + low_mass + signalRegion,  rdfData       , gen = False, sf_weights = sf_weights, region = i , data = True)
-
-      #selec_S_DataL      = createHistos(selec.bare        + leftSB  + score_cut,         rdfData       , gen = False, region = i)
-      #selec_S_DataR      = createHistos(selec.bare        + rightSB + score_cut,         rdfData       , gen = False, region = i)
+      selec_S_Data_sf_kk   = createHistos(baseline_region + data_selec + score_cut + kk_wrong_incl   + low_mass ,  rdfData       , gen = False, sf_weights = sf_weights, region = i , data = True)
+      selec_S_Data_sf_pimu = createHistos(baseline_region + data_selec + score_cut + pimu_wrong      + low_mass ,  rdfData       , gen = False, sf_weights = sf_weights, region = i , data = True)
    
     print("===> signal region done...")
   
-    print("===> filling total region ...")
     ###################################################
     # Histograms in complete region (for Ds mass)     #
     ###################################################
     
-    print("===> high mass region done...")
-
     if constrained: name = "constrained"
     else: name = "unconstrained"
   
@@ -2627,15 +2573,12 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
         print("This is a gen variable... skip!")
         continue
    
-      ######################################
-      ## Plot variables except phiPi mass ##
-      ######################################
+      ####################
+      ## Plot variables ##
+      ####################
   
       if  (var!= "" ):
    
-
-
- 
         histos = {"dsTau"    :  selec_S_DsTau[var]    .Clone(),
                  "dsStarTau" :  selec_S_DsStarTau[var].Clone(), 
                  "dsMu"      :  selec_S_DsMu[var]     .Clone(), 
@@ -2644,12 +2587,6 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
                  "data"      :  selec_S_Data[var]     .Clone()}
   
   
-        if newHb:
-          histos["bs"]    = selec_S_Bs[var]           .Clone() 
-          histos["b0"]    = selec_S_B0[var]           .Clone() 
-          histos["bplus"] = selec_S_Bplus[var]        .Clone() 
-  
-
         # Remark: histos_blind = histos.copy() only does a shallow copy! It defines a new
         # address for the dict, but not for the elements stored in the dict. Save way is:
 
@@ -2667,48 +2604,14 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
  
           histos      ["data_sf_kk"]   = selec_S_Data_sf_kk[var]  .Clone() 
           histos      ["data_sf_pimu"] = selec_S_Data_sf_pimu[var].Clone() 
-          #histos      ["data_sf_both"] = selec_S_Data_sf_both[var].Clone() 
-          #histos      ["data_sf_one"]  = selec_S_Data_sf_one[var].Clone() 
-          #histos_blind["data_sf_kk"]   = selec_S_Data_sf_kk[var]  .Clone() 
-          #histos_blind["data_sf_pimu"] = selec_S_Data_sf_pimu[var].Clone() 
-          #histos_blind["data_sf_both"] = selec_S_Data_sf_both[var].Clone() 
 
-          #histos      ["combL"] = selec_S_DataL[var].Clone() 
-          #histos      ["combR"] = selec_S_DataR[var].Clone() 
-          #histos_blind["combL"] = selec_S_DataL[var].Clone() 
-          #histos_blind["combR"] = selec_S_DataR[var].Clone() 
-
-          #A = abc[0]
-          #B = abc[1]
-          #C = abc[2]
-
-          #histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, fakemass = fakemass, abc = abc, scale_bkg = scale_bkg, scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          #histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          histosScaled       , _  = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          histosScaledLogx    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False, logx = True )
-          histosScaledLogy    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False, logy = True )
-          #histosScaled_blind , _ = stackedPlot(histos_blind, var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk_blind, scale_pimu = scale_pimu_blind, scale_rest = scale_rest_blind, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = True  )
+          histosScaled       , _  = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest,  region = f"{splitter}_ch{i}", blind = False )
+          histosScaledLogx    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest,  region = f"{splitter}_ch{i}", blind = False, logx = True )
+          histosScaledLogy    , _ = stackedPlot(histos,       var, hb_scale_S, abc = abc,  scale_bkg = scale_bkg, scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest,  region = f"{splitter}_ch{i}", blind = False, logy = True )
  
-          #histosScaled_shapes    = shapesPlot(histos,        var, hb_scale_S, fakemass = fakemass, abc = abc, scale_bkg = scale_bkg, scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          #histosScaled_shapes    = shapesPlot(histos,        var, hb_scale_S, abc = abc, scale_kk =  scale_kk, scale_pimu = scale_pimu, scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          histosScaled_shapes    = shapesPlot(histos,        var, hb_scale_S, abc = abc, scale_bkg = scale_bkg, scale_kk =  scale_kk, scale_pimu = scale_pimu, scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          #histosScaled_shapes = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False )
-          #histosScaled_shapes_log = shapesPlot(histos,       var, hb_scale_S, A = A, B = B, C = C,  scale_kk = scale_kk,       scale_pimu = scale_pimu,       scale_rest = scale_rest, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False , log = True)
-       
-
-          #histosScaled_shapes_bkg = shapesBkg(histos,       var, region = f"{splitter}_ch{i}")
+          histosScaled_shapes    = shapesPlot(histos,        var, hb_scale_S, abc = abc, scale_bkg = scale_bkg, scale_kk =  scale_kk, scale_pimu = scale_pimu, scale_rest = scale_rest,  region = f"{splitter}_ch{i}", blind = False )
  
  
-        else:
- 
-          histos      ["combL"] = selec_S_DataL[var].Clone() 
-          histos      ["combR"] = selec_S_DataR[var].Clone() 
-          histos_blind["combL"] = selec_S_DataL[var].Clone() 
-          histos_blind["combR"] = selec_S_DataR[var].Clone() 
-  
-          histosScaled       , _ = stackedPlot(histos,       var, hb_scale_S, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = False)
-          histosScaled_blind , _ = stackedPlot(histos_blind, var, hb_scale_S, fakemass = fakemass, A = A, B = B, C = C, S = S, bs = bs_in_hb, b0 = b0_in_hb, bplus = bplus_in_hb, region = f"{splitter}_ch{i}", blind = True )
-  
  
         writeShapes(histosScaled,       myFile,       binned = True, channel = i)
         #writeShapes(histosScaled_blind, myFile_blind, binned = True, channel = i)
@@ -2720,83 +2623,14 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
         #cards_blind[var].append(card_blind)
 
 
-        #find optimal working points
-        if "WP" in models[var][0].fName:
-          dstau   = [] 
-          dssttau = [] 
-          dsmu    = [] 
-          dsstmu  = [] 
-          hb      = [] 
-          comb    = [] 
-          #take one to get the binning
-          bins  = histosScaled["dsMu"].GetNbinsX()  #f.e. 100
- 
-          #reproduce this binning with numpy
-          lower = models[var][0].fXLow #0.0
-          upper = models[var][0].fXUp  #f.e. 0.1
-          #attention, linspace expects the nr of steps, not the bins!
-          #steps = bins + 1!
-          edges = np.linspace(lower,upper,bins+1)#f.e. [0,0.001,0.002,...]
-
-          #this is a finely binned histogram over the scores, lets count S and B in every bin!
-          for i in range(bins):
-            dstau   .append(histosScaled["dsTau"]    .GetBinContent(i+1))
-            dssttau .append(histosScaled["dsStarTau"].GetBinContent(i+1))
-            #dsmu    .append(histosScaled["dsMu"]     .GetBinContent(i+1))
-            #dsstmu  .append(histosScaled["dsStarMu"] .GetBinContent(i+1))
-            #hb      .append(histosScaled["hb"]       .GetBinContent(i+1))
-            comb    .append(histosScaled["comb"]     .GetBinContent(i+1))
-
-          S = []
-          B = []
-
-          if "lower" in models[var][0].fName:
-            #this is a cut where we keep everything "lower" than the cut
-            for i in range(bins):
-            
-              # up until bin i ( in nclusive i) we have signals:
-              # example: bin content is b = [1,2,3,4], then: b[:1] = [1], b[:2] = [1,2], etc.
-              S.append(sum(dstau[:i+1]) + sum(dssttau[:i+1])) #+1 since i starts at 0                     
-              B.append(sum(comb[:i+1]))  
-
-            cut = edges[1:] 
-
-          if "upper" in models[var][0].fName:
-            #this is a cut where we keep everything "higher" than the cut
-            for i in range(bins):
-            
-              S.append(sum(dstau[i:]) + sum(dssttau[i:])) #now we start at 0                     
-              B.append(sum(comb[i:]))  
-
-
-            cut = edges[: len(edges)-1]
-
-          fom = [s / np.sqrt(b) for (s,b) in zip(S,B)]
-
-          #find cut at which fom is max
-          max_fom = np.max(fom)
-          max_cut = cut[np.argmax(fom)]
-
-
-          plt.figure()
-          plt.plot(cut,fom)
-          plt.scatter(cut,fom)
-          plt.xlabel(f"Cut on {var}") 
-          plt.ylabel(r"$ S / \sqrt{B}$ ")
-          plt.ylim(0, max_fom * 1.2)
-          plt.text(max_cut, max_fom * 1.1, f"Optimal cut at {max_cut}")
-          toSave = f"/work/pahwagne/RDsTools/plots/cmsplots_binned/{dt}/"
-          plt.savefig(toSave + f"{var}_WP.pdf")
-          plt.savefig(toSave + f"{var}_WP.png")
-          plt.clf()
-
-
 
 #more advanced, create binned datacards
 if control == "highmass":
   createBinnedPlots(split,binning, controlPlotsHighMass = True) 
-elif control == "sb":
-  createBinnedPlots(split,binning, controlPlotsSidebands = True) 
+elif control == "leftsb":
+  createBinnedPlots(split,binning, controlPlotsLeftSideband = True) 
+elif control == "rightsb":
+  createBinnedPlots(split,binning, controlPlotsRightSideband = True) 
 elif control == "complete":
   createBinnedPlots(split,binning, controlPlotsComplete = True) 
 elif control == "custom":

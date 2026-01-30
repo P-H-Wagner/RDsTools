@@ -9,38 +9,16 @@ from helper import *
 
 parser = argparse.ArgumentParser()
 #parser.add_argument('channel') # sig or hb or data
-parser.add_argument("-s", "--sb",     required = True, help = "Specify if bdt trained on 'left' sideband or both 'double' or 'high'")
 parser.add_argument("-p", "--prod",   required = True, help = "Specify production year '24' or '25'")
 #parser.add_argument("-t", "--trigger",required = True, help = "Specify '7' or '9' to specify trigger menu")
 parser.add_argument("-n", "--nFiles", help = "Specify #files to process")
 args = parser.parse_args()
 
-if args.sb not in ["left", "double", "high"]:
-  raise ValueError ("Error: Not a valid key for --sb, please use 'left' or 'double' or 'high'")
-else: 
-  sb = ""
-  if args.sb == "double": 
-    sb += args.sb
-    folder = ""
-    model = "bdt_model_double" 
-    tools = "bdt_tools_double" 
-
-  elif args.sb == "high": 
-    sb += args.sb
-    folder = ""
-    model = "bdt_model_high" 
-    tools = "bdt_tools_high" 
-    
-
-  else: 
-    folder = "leftSB"
-    model = "bdt_model" 
-    tools = "bdt_tools" 
-
 #if args.trigger not in ["7", "9"]:
 #  raise ValueError ("Error: Not a valid key for --trigger, please use '7' or '9'")
 #else: trig = args.trigger
 
+folder = ""
 now       = datetime.now()
 dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
 
@@ -123,8 +101,6 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
         
     elif "HOOK_FILE_OUT"  in line: cfg.write(line.replace("HOOK_FILE_OUT" , fout)     )
     elif "HOOK_DATE_TIME" in line: cfg.write(line.replace("HOOK_DATE_TIME", dt_string))
-    elif "HOOK_MODEL"     in line: cfg.write(line.replace("HOOK_MODEL", model)        )
-    elif "HOOK_TOOLS"     in line: cfg.write(line.replace("HOOK_TOOLS", tools)        )
     else: cfg.write(line)
 
   temp.close()
