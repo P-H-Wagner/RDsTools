@@ -34,6 +34,7 @@ parser.add_argument("--hammer",      required = True,     help = "Specify 'true'
 parser.add_argument("--hammer_sys",  required = True,     help = "Specify 'true' or 'false' to save weight variation shapes") 
 parser.add_argument("--trigger",     required = True,     help = "Specify mu7 or mu9 for the trigger") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
+parser.add_argument("--bdt2",         required = True,     help = "Specify 'true' or 'false' to add bdt2 weights") 
 parser.add_argument("--debug",       action='store_true', help = "If given, run plotter with 50k events only") 
 parser.add_argument("--control",                          help = "If given, run control plots, either 'highmass', 'leftsb', 'rightsb' or 'complete' or 'custom' ") 
 parser.add_argument("--cut",                              help = "Cut on the discriminator score 5. ") 
@@ -51,7 +52,7 @@ parser.add_argument("--split",         required = True,     help = "")
 
 args = parser.parse_args()
 
-print(f"====> Running  {args.nn} neural network on trigger {args.trigger} and sf_weights: {args.bdt} with hammer on: {args.hammer} and sys {args.hammer_sys}")
+print(f"====> Running  {args.nn} neural network on trigger {args.trigger} and sf_weights: {args.bdt}, sf_weights2: {args.bdt2} with hammer on: {args.hammer} and sys {args.hammer_sys}")
 
 if args.nn not in  ["before", "past"]:
   raise ValueError ("Error: Not a valid key for --nn, please use 'before' or 'past' (all lowercase!)")
@@ -73,6 +74,10 @@ if args.bdt not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --bdt , please use 'true' or 'false' (all lowercase!)")
 else: sf_weights = (args.bdt == "true")
 
+if args.bdt2 not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --bdt2 , please use 'true' or 'false' (all lowercase!)")
+else: sf_weights2 = (args.bdt2 == "true")
+
 if args.control and args.control not in ["highmass","leftsb","rightsb", "complete", "custom"]:
     raise ValueError ("Error: Not a valid key for --control, please use 'highmass', 'sb' or 'complete' or 'custom' ")
 control = args.control
@@ -84,7 +89,7 @@ if args.debug: debug = 50000
 else         : debug = None
 
 
-print(f"====> Running  {args.nn} neural network on trigger {args.trigger} and sf_weights: {args.bdt} with hammer on: {args.hammer} and sys {args.hammer_sys}")
+print(f"====> Running  {args.nn} neural network on trigger {args.trigger} and sf_weights: {args.bdt}, sf_weights2: {args.bdt2} with hammer on: {args.hammer} and sys {args.hammer_sys}")
 
 if pastNN: models.update(pastNN_models)
 
@@ -114,6 +119,14 @@ else:
 sig_cons_pastNN     =  cons_pastNN_25["sig"]    
 hb_cons_pastNN      =  cons_pastNN_25["hb"]     
 data_cons_pastNN    =  cons_pastNN_25["data"]   
+
+
+#if bdt2 also activated
+if sf_weights2 and (trigger == "mu7"):
+  data_cons_pastNN = bdt_data_afternn_mu7
+if sf_weights2 and (trigger == "mu9"):
+  data_cons_pastNN = bdt_data_afternn_mu9
+
 
 skimmed = True 
 
@@ -148,7 +161,8 @@ else:
 # Load chain into RDataFrame #
 ##############################
 
-def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights = None, bph_part = None, isData = None):
+ 
+def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights = None, sf_weights2 = None, bph_part = None, isData = None):
 
   print(dateTimes)
   chain = ROOT.TChain("tree")
@@ -156,23 +170,44 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
   #if ((not pastNN) and (not isinstance(dateTimes, list))):
   #  print("dateTimes must be a list of strings")
 
-  if (pastNN and not rdfSys):
+  if (pastNN and not rdfSys and not sf_weights2):
     print(f"picking past NN files ...")
     #dateTimes here is a string like: "data_26Sep..._cons"
     files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}/*"
+
     print(files)
     n = chain.Add(files)
     print(f"Chaining {n} files for this channel")
 
-    if debug: 
-      reduced_chain = chain.CloneTree(debug); 
+    if debug:
+      reduced_chain = chain.CloneTree(debug);
       rdf = ROOT.RDataFrame(reduced_chain,debug)
       return (reduced_chain,rdf)
 
-    else:     
-      rdf = ROOT.RDataFrame(chain)
+    else:
+      #rdf = ROOT.RDataFrame(chain)
+      rdf = ROOT.RDataFrame("tree", files)
       return (chain,rdf)
- 
+
+  if (pastNN and not rdfSys and sf_weights2):
+
+    print(f"picking past NN files with bdt2 weights...")
+    #dateTimes here is a string like: "data_26Sep..._cons"
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{dateTimes}/*"
+
+    print(files)
+    n = chain.Add(files)
+    print(f"Chaining {n} files for this channel")
+    if debug:
+      reduced_chain = chain.CloneTree(debug);
+      rdf = ROOT.RDataFrame(reduced_chain,debug)
+      return (reduced_chain,rdf)
+    else:
+      #rdf = ROOT.RDataFrame(chain)
+      rdf = ROOT.RDataFrame("tree", files)
+      return (chain,rdf)
+
+
   if (not pastNN and rdfSys):
     print(f"picking pre NN files with hammer weights...")
     #dateTimes here is a string like: "data_26Sep..._cons"
@@ -181,12 +216,12 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
     n = chain.Add(files)
     print(f"Chaining {n} files for this channel")
 
-    if debug: 
-      reduced_chain = chain.CloneTree(debug); 
+    if debug:
+      reduced_chain = chain.CloneTree(debug);
       rdf = ROOT.RDataFrame(reduced_chain,debug)
       return (reduced_chain,rdf)
 
-    else:     
+    else:
       rdf = ROOT.RDataFrame(chain)
       return (chain,rdf)
 
@@ -196,7 +231,7 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
     print("picking sf weighted files: ", files)
     chain.Add(files)
     if debug:
-      reduced_chain = chain.CloneTree(debug); 
+      reduced_chain = chain.CloneTree(debug);
       rdf = ROOT.RDataFrame(reduced_chain, debug)
       return(reduced_chain, rdf)
     else:
@@ -208,7 +243,7 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
     if bph_part is not None:
       print("Restrict plotting to bph part: ", bph_part)
       # if bph_part given, restrict to it.
-      if dateTime != dateTimes[bph_part-1]: 
+      if dateTime != dateTimes[bph_part-1]:
         print("skip this bph part ...")
         continue
 
@@ -222,7 +257,7 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
     else:
       #access the flat ntuples
       files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*" #test
- 
+
       #if debug and isData:
       #  print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHh")
       #  files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dateTime}/*22*" #test
@@ -232,15 +267,16 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
     #chain them all
     chain.Add(files)
 
-  if debug: 
-    reduced_chain = chain.CloneTree(debug); 
+  if debug:
+    reduced_chain = chain.CloneTree(debug);
     rdf = ROOT.RDataFrame(reduced_chain,debug)
     return (reduced_chain,rdf)
 
-  else:     
+  else:
     rdf = ROOT.RDataFrame(chain)
     print("rdf created")
     return (chain,rdf)
+
 
 ########################################
 # Assign selections depending on the   #
@@ -295,7 +331,7 @@ if pastNN:
   chainSig,   rdfSig       = getRdf(sig_cons_pastNN                 , debug = debug)
   chainHb,    rdfHb        = getRdf(hb_cons_pastNN                  , debug = debug)
   _,          rdfHbHammer  = getRdf(hb_cons_pastNN                  , debug = debug)
-  chainData,  rdfData      = getRdf(data_cons_pastNN                , debug = debug)
+  chainData,  rdfData      = getRdf(data_cons_pastNN                , sf_weights2 = sf_weights2, debug = debug)
 
   print("rdf data has events: ", rdfData.Count().GetValue() )
   print("rdf sig has events: ", rdfSig.Count().GetValue() )
@@ -438,7 +474,7 @@ def addSystematics(hist_dict, var, selec_DsTau, selec_DsMu, selec_DsStarTau, sel
 ## CREATE DEFAULT HISTOS               ##
 #########################################
 
-def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variables = None, hammer_central = False, hammer_sys = False, sig = None, sf_weights = None, region = None, massfit = False):
+def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variables = None, hammer_central = False, hammer_sys = False, sig = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
@@ -465,12 +501,19 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   
         model = special_models[var + f"_bin{region}" ]
 
-      #if var == "score1" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
-      #  
-      #  #adapt the binning
-      #  print(f"Adapt binning for {var} and region {region}")
+      if var == "score1" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
+        
+        #adapt the binning
+        print(f"Adapt binning for {var} and region {region}")
   
-      #  model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+        model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+
+      if var == "e_star_lhcb_alt" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
+        
+        #adapt the binning
+        print(f"======> Adapt binning for {var} and region {region}")
+  
+        model = special_models_e_star_lhcb_alt[var + f"_bin{region}" ]                                     
 
 
       ##############################################
@@ -513,11 +556,18 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
           histos[var].Scale(1.0 / central_av) 
  
 
-        elif sf_weights:
+        elif sf_weights and not sf_weights2:
           # this only happens for data
           # sf_weight is a smart string
-          print("YES I APPLY SF WEIGHTS!!!!!!")
+          print("applying sf_weights!!!!!!")
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" ,"sf_weights")
+
+        elif sf_weights and sf_weights2:
+          # this only happens for data
+          # sf_weight is a smart string
+          print("applying sf_weights and sf_weights2!!!!!!")
+          total_sf_weights = "sf_weights * sf_weights2"
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("total_sf_weights", total_sf_weights).Histo1D(model[0], "m_corr" ,"total_sf_weights")
 
         else:
           #fill without any weights
@@ -568,11 +618,18 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
                            .Histo1D(model[0], tofill,"central_w_notnan") 
           histos[var].Scale(1.0 / central_av) 
  
-        elif (sf_weights):
+        elif (sf_weights and not sf_weights2):
           # this only happens for data
           # sf_weight is a smart string
-          print("YES I APPLY SF WEIGHTS!!!!!!")
+          print("applying sf_weights!!!!!!")
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], tofill, "sf_weights")
+
+        elif sf_weights and sf_weights2:
+          # this only happens for data
+          # sf_weight is a smart string
+          print("applying sf_weights and sf_weights2!!!!!!")
+          total_sf_weights = "sf_weights * sf_weights2"
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("total_sf_weights", total_sf_weights).Histo1D(model[0], "m_corr" ,"total_sf_weights")
 
 
         else:
@@ -663,7 +720,7 @@ if args.channel == "Data":
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Data_{args.bin}.root")
 
 if args.channel == "Data_sf_pimu":
-  histo1d       = createHistos(args.data_selection,  rdfData         , gen = False, sf_weights = sf_weights,                                                                region = args.bin, data = True)
+  histo1d       = createHistos(args.data_selection,  rdfData         , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2,                                     region = args.bin, data = True)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Data_sf_pimu_{args.bin}.root")
 
 

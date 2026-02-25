@@ -15,9 +15,9 @@ pastNN_models = {}
 pastNN_2Dmodels = {}
 
 ##masses 
-models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   30,   1.91, 2.028), r"m(KK#pi) (GeV)"                           ,    0)
+models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   40,   1.91, 2.028), r"m(KK#pi) (GeV)"                           ,    0)
 #models["kk_m"    ]                   = (ROOT.RDF.TH1DModel("kk_m"                              , '',   30,   1.0,  1.040), r"m(KK) (GeV)"                           ,    0)
-models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   25,      2,   8), r" m(KK#pi#mu) (GeV)"                       ,    0)
+#models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   25,      2,   8), r" m(KK#pi#mu) (GeV)"                       ,    0)
 #models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      2,   5.366), r"m(KK#pi#mu)(GeV)"                       ,    0)
 #models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      5.366,   8), r"m(KK#pi#mu)(GeV)"                       ,    0)
 #
@@ -34,7 +34,7 @@ models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"              
 #
 #
 #models["m2_miss_coll" ]              = (ROOT.RDF.TH1DModel("m2_miss_coll"                      , '',   21,      0,     6), r"m^{2}_{miss,coll} (GeV^{2})"                     ,    0)
-#models["m2_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("m2_miss_lhcb_alt"                  , '',   21,      0,     6), r"m^{2}_{miss,xyz} (GeV^{2})"                     ,    0)
+#models["m2_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("m2_miss_lhcb_alt"                  , '',   20,      -2,     8), r"m^{2}_{miss,xyz} (GeV^{2})"                     ,    0)
 #models["m2_miss_reco_1" ]            = (ROOT.RDF.TH1DModel("m2_miss_reco_1"                    , '',   21,      0,     6), r"m^{2}_{miss,math,1} (GeV^{2})"                     ,    0)
 #models["m2_miss_reco_2" ]            = (ROOT.RDF.TH1DModel("m2_miss_reco_2"                    , '',   21,      0,     6), r"m^{2}_{miss,math,2} (GeV^{2})"                     ,    0)
 #
@@ -50,8 +50,8 @@ models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"              
 #models["bs_pt_reco_1" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_1"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
 #models["bs_pt_reco_2" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_2"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
 ##
-models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      0,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
-#models["q2_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                   , '',   31,      0,     12), r"q^{2}_{xyz} (GeV)"                             ,    0)
+#models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      0,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
+#models["q2_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                   , '',   20,       0,     12), r"q^{2}_{xyz} (GeV)"                             ,    0)
 #models["q2_reco_1" ]             = (ROOT.RDF.TH1DModel("q2_reco_1"                     , '',   31,      0,     12), r"q^{2}_{math,1} (GeV)"                             ,    0)
 #models["q2_reco_2" ]             = (ROOT.RDF.TH1DModel("q2_reco_2"                     , '',   31,      0,     12), r"q^{2}_{math,2} (GeV)"                             ,    0)
 #models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      -12,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
@@ -61,7 +61,7 @@ models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                
 #
 #
 #models["e_star_coll" ]               = (ROOT.RDF.TH1DModel("e_star_coll"                       , '',   31,      0,     3), r"E*_{coll} (GeV)"                             ,    0)
-#models["e_star_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("e_star_lhcb_alt"                   , '',   31,      0,     3), r"E*_{xyz} (GeV)"                             ,    0)
+models["e_star_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("e_star_lhcb_alt"                   , '',   10,      0.3,     3), r"E*_{xyz} (GeV)"                             ,    0)
 #models["e_star_reco_1" ]             = (ROOT.RDF.TH1DModel("e_star_reco_1"                     , '',   31,      0,     3), r"E*_{math,1} (GeV)"                             ,    0)
 #models["e_star_reco_2" ]             = (ROOT.RDF.TH1DModel("e_star_reco_2"                     , '',   31,      0,     3), r"E*_{math,2} (GeV)"                             ,    0)
 #
@@ -81,7 +81,7 @@ models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                
 #models["bs_boost_reco_2" ]           = (ROOT.RDF.TH1DModel("bs_boost_reco_2"                   , '',   21,      0,     1), r"Boost(B_{s})      "                         ,    0)
 #
 #models["cosMuW_coll" ]               = (ROOT.RDF.TH1DModel("cosMuWColl"                        , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{coll}"                           ,    0)
-#models["cosMuW_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("cosMuWLhcbAlt"                     , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{xyz}"                            ,    0)
+#models["cosMuW_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("cosMuWLhcbAlt"                     , '',   10,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{xyz}"                            ,    0)
 #models["cosMuW_reco_1" ]             = (ROOT.RDF.TH1DModel("cosMuWReco1"                       , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{math,1}"                         ,    0)
 #models["cosMuW_reco_2" ]             = (ROOT.RDF.TH1DModel("cosMuWReco2"                       , '',   21,     -1,     1), r"cos(#theta^{W,\mu}_{hel})_{math,2}"                         ,    0)
 #
@@ -169,12 +169,12 @@ models["phiPi_pt" ]               = (ROOT.RDF.TH1DModel("phiPi_pt"              
 
 #pastNN_models["class" ]                    = (ROOT.RDF.TH1DModel("class"                            , '',   6,       0,    5.9999), r"Class"                            ,    0)
 
-pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    1), r"Score 0"                            ,    0)
-pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    0.7), r"Score 1"                            ,    0)
-pastNN_models["score2" ]                   = (ROOT.RDF.TH1DModel("score2"                           , '',   31,       0,    1), r"Score 2"                            ,    0)
-pastNN_models["score3" ]                   = (ROOT.RDF.TH1DModel("score3"                           , '',   31,       0,    1), r"Score 3"                            ,    0)
-pastNN_models["score4" ]                   = (ROOT.RDF.TH1DModel("score4"                           , '',   31,       0,    1), r"Score 4"                            ,    0)
-pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   50,       0,    0.1), r"Score 5"                            ,    0)
+#pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    0.6), r"Score 0"                            ,    0)
+pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   10,        0,    0.6), r"Score 1"                            ,    0)
+#pastNN_models["score2" ]                   = (ROOT.RDF.TH1DModel("score2"                           , '',   31,       0,    0.6), r"Score 2"                            ,    0)
+#pastNN_models["score3" ]                   = (ROOT.RDF.TH1DModel("score3"                           , '',   31,       0,    0.6), r"Score 3"                            ,    0)
+#pastNN_models["score4" ]                   = (ROOT.RDF.TH1DModel("score4"                           , '',   31,       0,    0.6), r"Score 4"                            ,    0)
+#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   50,       0,    0.1), r"Score 5"                            ,    0)
 #pastNN_models["score5" ]                = (ROOT.RDF.TH1DModel("score5_WP_lower"                           , '',   100,      0,    0.1), r"Score 5"                            ,    0)
 #pastNN_models["score0" ]                = (ROOT.RDF.TH1DModel("score0_WP_upper"                           , '',   200,      0,    0.2), r"Score 0"                            ,    0)
 #
@@ -210,6 +210,7 @@ special_models["score1_bin4" ]                   = (ROOT.RDF.TH1DModel("score1_b
 special_models["score1_bin5" ]                   = (ROOT.RDF.TH1DModel("score1_bin5"                           , '',   31,       0  ,    1   ), r"Score 1"                            ,    0)
 
 special_models_q2_coll = {}
+special_models_e_star_lhcb_alt = {}
 
 ######### 2D fit ############
 
@@ -263,94 +264,199 @@ special_models_q2_coll = {}
 ############ 3D fit in the mass ###########
 
 #bin 0,1
-edges = list(np.linspace(0,0.04,20)) 
+edges = list(np.linspace(0.0,0.6,4)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin0" ]                   = (ROOT.RDF.TH1DModel("score1_bin0"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.04,20)) 
+edges = list(np.linspace(0.0,0.25,4)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin1" ]                   = (ROOT.RDF.TH1DModel("score1_bin1"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 2,3
-edges = list(np.linspace(0,0.11,20)) 
+edges = list(np.linspace(0.0,0.35,12)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin2" ]                   = (ROOT.RDF.TH1DModel("score1_bin2"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.11,20)) 
+edges = list(np.linspace(0.0,0.45,12)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin3" ]                   = (ROOT.RDF.TH1DModel("score1_bin3"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 4,5
-edges = list(np.linspace(0,0.21,20)) 
+edges = list(np.linspace(0.0,0.5,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin4" ]                   = (ROOT.RDF.TH1DModel("score1_bin4"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.21,20)) 
+edges = list(np.linspace(0.0,0.55,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin5" ]                   = (ROOT.RDF.TH1DModel("score1_bin5"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 6,7
-edges = list(np.linspace(0,0.35,20)) 
+edges = list(np.linspace(0.0,0.6,6)   ) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin6" ]                   = (ROOT.RDF.TH1DModel("score1_bin6"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.35,20)) 
+edges = list(np.linspace(0.0,0.6,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin7" ]                   = (ROOT.RDF.TH1DModel("score1_bin7"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 8,9
-edges = list(np.linspace(0,0.5,20)) 
+edges = list(np.linspace(0.0,0.6,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin8" ]                   = (ROOT.RDF.TH1DModel("score1_bin8"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.5,20)) 
+edges = list(np.linspace(0.0,0.15,4)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin9" ]                   = (ROOT.RDF.TH1DModel("score1_bin9"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 10,11
-edges = list(np.linspace(0,0.6,20)) 
+edges = list(np.linspace(0.0,0.35,12)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin10" ]                   = (ROOT.RDF.TH1DModel("score1_bin10"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
-
-edges = list(np.linspace(0,0.6,20)) 
+#
+edges = list(np.linspace(0.0,0.5,12)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin11" ]                   = (ROOT.RDF.TH1DModel("score1_bin11"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 12,13
-edges = list(np.linspace(0,0.7,12)) 
+edges = list(np.linspace(0.0,0.5,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin12" ]                   = (ROOT.RDF.TH1DModel("score1_bin12"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.7,12)) 
+edges = list(np.linspace(0.0,0.55,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin13" ]                   = (ROOT.RDF.TH1DModel("score1_bin13"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 #bin 14,15
-edges = list(np.linspace(0,0.7,12)) 
+edges = list(np.linspace(0.0,0.6,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin14" ]                   = (ROOT.RDF.TH1DModel("score1_bin14"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
-edges = list(np.linspace(0,0.7,12)) 
+edges = list(np.linspace(0.0,0.6,6)) 
 edgescpp = array('d', edges)
 special_models_q2_coll["score1_bin15" ]                   = (ROOT.RDF.TH1DModel("score1_bin15"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
+#bin 16,17
+edges = list(np.linspace(0.0,0.6,6)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin16" ]                   = (ROOT.RDF.TH1DModel("score1_bin16"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.0,0.6,6)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin17" ]                   = (ROOT.RDF.TH1DModel("score1_bin17"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 18
+edges = list(np.linspace(0.0,0.7,6)) 
+edgescpp = array('d', edges)
+special_models_q2_coll["score1_bin18" ]                   = (ROOT.RDF.TH1DModel("score1_bin18"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+############
+
+#bin 0,1
+edges = list(np.linspace(0.0,3,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin0" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin0"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(1.0,3.0,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin1" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin1"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 2,3
+edges = list(np.linspace(1.0,2.5,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin2" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin2"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.75,2.5,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin3" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin3"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 4,5
+edges = list(np.linspace(0.75,2.2,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin4" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin4"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.5,2.2,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin5" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin5"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 6,7
+edges = list(np.linspace(0.5,2,10)   ) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin6" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin6"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.5,2,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin7" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin7"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 8,9
+edges = list(np.linspace(0.0,1.75,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin8" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin8"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(1.0,2.5,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin9" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin9"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 10,11
+edges = list(np.linspace(1.0,2.5,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin10" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin10"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+#
+edges = list(np.linspace(0.75,2.3,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin11" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin11"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 12,13
+edges = list(np.linspace(0.75,2.3,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin12" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin12"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.75,2.0,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin13" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin13"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 14,15
+edges = list(np.linspace(0.75,2.0,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin14" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin14"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.5,2.0,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin15" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin15"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 16,17
+edges = list(np.linspace(0.0,1.7,10)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin16" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin16"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+edges = list(np.linspace(0.0,0.6,6)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin17" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin17"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
+
+#bin 18
+edges = list(np.linspace(0.0,0.7,6)) 
+edgescpp = array('d', edges)
+special_models_e_star_lhcb_alt["e_star_lhcb_alt_bin18" ]                   = (ROOT.RDF.TH1DModel("e_star_lhcb_alt_bin18"                           , '', len(edges)-1, edgescpp  ), r"Score 1"                            ,    0)
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##

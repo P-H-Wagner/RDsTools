@@ -1,3 +1,4 @@
+import glob
 import ROOT
 import argparse
 import os
@@ -16,7 +17,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, getSignflipRatioTest, fitAnotherVar
 from helper import * 
-from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll
+from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll,special_models_e_star_lhcb_alt
 from blinding import *
 import numpy as np
 
@@ -37,6 +38,7 @@ parser.add_argument("--hammer",      required = True,     help = "Specify 'true'
 parser.add_argument("--hammer_sys",  required = True,     help = "Specify 'true' or 'false' to save weight variation shapes") 
 parser.add_argument("--trigger",     required = True,     help = "Specify mu7 or mu9 for the trigger") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
+parser.add_argument("--bdt2",        required = True,     help = "Specify 'true' or 'false' to add bdt weights2") 
 parser.add_argument("--debug",       action='store_true', help = "If given, run plotter with 50k events only") 
 parser.add_argument("--control",                          help = "If given, run control plots, either 'highmass', 'leftsb', 'rightsb' or 'complete' or 'custom' ") 
 parser.add_argument("--cut",                              help = "Cut on the discriminator score 5. ") 
@@ -63,6 +65,11 @@ if args.bdt not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --bdt , please use 'true' or 'false' (all lowercase!)")
 else: sf_weights = (args.bdt == "true")
 
+if args.bdt2 not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --bdt2 , please use 'true' or 'false' (all lowercase!)")
+else: sf_weights2 = (args.bdt2 == "true")
+
+
 if args.control and args.control not in ["highmass","leftsb","rightsb", "complete", "custom"]:
     raise ValueError ("Error: Not a valid key for --control, please use 'highmass', 'sb' or 'complete' or 'custom' ")
 control = args.control
@@ -70,7 +77,7 @@ control = args.control
 if args.cut  : score_cut = f" && (score5 <= {args.cut}) "
 else         : score_cut = ""
 
-if args.debug: debug = 50000
+if args.debug: debug = 100000
 else         : debug = None
 
 print(f"====> Running  {args.nn} neural network on trigger {trigger} and sf_weights: {sf_weights} with hammer on: {hammer_central} and sys {hammer_sys}")
@@ -105,6 +112,12 @@ sig_cons_pastNN     =  cons_pastNN_25["sig"]
 hb_cons_pastNN      =  cons_pastNN_25["hb"]     
 data_cons_pastNN    =  cons_pastNN_25["data"]   
 
+#if bdt2 also activated
+if sf_weights2 and (trigger == "mu7"):
+  data_cons_pastNN = bdt_data_afternn_mu7
+if sf_weights2 and (trigger == "mu9"):
+  data_cons_pastNN = bdt_data_afternn_mu9
+
 skimmed = True 
 
 # disable title and stats and displaying
@@ -126,6 +139,7 @@ shapes_folder_blind = f"/work/pahwagne/RDsTools/fit/shapes_binned/{dt}/blind/"
 if not os.path.exists(toSave_plots): 
   os.makedirs(toSave_plots)
   os.makedirs(toSave_plots + "/log")  
+  os.makedirs(toSave_plots + "/err")  
 
 if not os.path.exists(shapes_folder): 
   os.makedirs(shapes_folder)
@@ -134,7 +148,7 @@ if not os.path.exists(shapes_folder_blind):
   os.makedirs(shapes_folder_blind)
 
 with open( toSave_plots + f"/info.txt", "a") as f:
-  f.write( f"====> Running  {args.nn} neural network on trigger {trigger} and sf_weights: {sf_weights} with hammer on: {hammer_central} and sys {hammer_sys} \n")
+  f.write( f"====> Running  {args.nn} neural network on trigger {trigger} and sf_weights: {sf_weights}, sf_weights2: {sf_weights2} with hammer on: {hammer_central} and sys {hammer_sys} \n")
 
 #############
 # Split MC  #
@@ -154,6 +168,7 @@ sigma = 0.009
 # set the to be splitter variable and binning
 #split   = "cosMuW_lhcb_alt"
 split   = "q2_coll"
+#split   = "m2_miss_lhcb_alt"
 #split   = "q2_lhcb_alt"
 #split   = "class"
 #split   = "phiPi_m"
@@ -163,9 +178,13 @@ split   = "q2_coll"
 #split = "score2"
 #binning = [[0,0.03],[0.03,0.06],[0.06,0.1],[0.1,0.2],[0.2,0.4],[0.4,0.6],[0.6,1.0]] #score 3
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
-#binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
-binning = [[0,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
-#binning = [[0,6],[6,7],[7,8],[8,9],[9,12]]
+binning = [[0,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,9.5],[9.5,10],[10,12]]
+#binning = [[0,4],[4,6],[6,8],[8,12]]
+#binning= [[0.05,0.1],[0.1,0.2],[0.2,0.3],[0.3,0.4],[0.4,0.7]]
+#binning = [[-2,0], [0,2], [2,4], [4,6], [6,8], [8,10],[10,12]]
+#binning = [[-2,-1],[-1,0], [0,1],[1,10]]
+#binning = [[0,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
+#binning = [[0,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12]]
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,12]]
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,10],[10,12]]
 #binning = [[0,4],[4,5],[5,6],[6,7],[7,12]]
@@ -179,7 +198,7 @@ binning = [[0,6],[6,7],[7,8],[8,9],[9,10],[10,12]]
 #binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
-binning = [[-99,99]]
+#binning = [[-99,99]]
 
 ################
 ## 3D binning ##
@@ -191,18 +210,22 @@ sr_string = " && ((phiPi_m >= 1.94134) && (phiPi_m <= 1.99534 ) )"
 sb_string = " && ((phiPi_m < 1.94 ) || (phiPi_m > 1.995  ) )"
 #
 
+#e* binning
+
 #custom strings
-mass_r1 = f" (  (phiPi_m <  {dsMass_ - 5*sigma}) || ( phiPi_m > {dsMass_ + 5*sigma} ))"  
-mass_r2 = f" ( ((phiPi_m >= {dsMass_ - 5*sigma}) && ( phiPi_m < {dsMass_ - 3*sigma} )) || ((phiPi_m <= {dsMass_ + 5*sigma}) && ( phiPi_m > {dsMass_ + 3*sigma} )) )" 
-mass_r3 = f" ( ((phiPi_m >= {dsMass_ - 3*sigma}) && ( phiPi_m < {dsMass_ - 2*sigma} )) || ((phiPi_m <= {dsMass_ + 3*sigma}) && ( phiPi_m > {dsMass_ + 2*sigma} )) )" 
-mass_r4 = f" ( ((phiPi_m >= {dsMass_ - 2*sigma}) && ( phiPi_m < {dsMass_ - 1*sigma} )) || ((phiPi_m <= {dsMass_ + 2*sigma}) && ( phiPi_m > {dsMass_ + 1*sigma} )) )" 
-mass_r5 = f" ( ((phiPi_m >= {dsMass_ - 1*sigma}) && ( phiPi_m < {dsMass_ - 0*sigma} )) || ((phiPi_m <= {dsMass_ + 1*sigma}) && ( phiPi_m > {dsMass_ + 0*sigma} )) )" 
+#mass_r1 = f" (  (phiPi_m <  {dsMass_ - 5*sigma}) || ( phiPi_m > {dsMass_ + 5*sigma} ))"  
+#mass_r2 = f" ( ((phiPi_m >= {dsMass_ - 5*sigma}) && ( phiPi_m < {dsMass_ - 3*sigma} )) || ((phiPi_m <= {dsMass_ + 5*sigma}) && ( phiPi_m > {dsMass_ + 3*sigma} )) )" 
+#mass_r3 = f" ( ((phiPi_m >= {dsMass_ - 3*sigma}) && ( phiPi_m < {dsMass_ - 2*sigma} )) || ((phiPi_m <= {dsMass_ + 3*sigma}) && ( phiPi_m > {dsMass_ + 2*sigma} )) )" 
+mass_r1 = f" (  (phiPi_m <  {dsMass_ - 2*sigma}) || ( phiPi_m > {dsMass_ + 2*sigma} ))"  
+mass_r2 = f" ( ((phiPi_m >= {dsMass_ - 2*sigma}) && ( phiPi_m < {dsMass_ - 1*sigma} )) || ((phiPi_m <= {dsMass_ + 2*sigma}) && ( phiPi_m > {dsMass_ + 1*sigma} )) )" 
+mass_r3 = f" ( ((phiPi_m >= {dsMass_ - 1*sigma}) && ( phiPi_m < {dsMass_ - 0*sigma} )) || ((phiPi_m <= {dsMass_ + 1*sigma}) && ( phiPi_m > {dsMass_ + 0*sigma} )) )" 
 #
-mass_binning = [mass_r1, mass_r2, mass_r3, mass_r4, mass_r5]
+#mass_binning = [mass_r1, mass_r2, mass_r3, mass_r4, mass_r5]
+mass_binning = [mass_r1, mass_r2, mass_r3]#, mass_r4, mass_r5]
 
 for i,mass_b in enumerate(mass_binning):
 
-  if i in [0,1,2,3]:
+  if i in [0]:
     #first mass bin, no slice in q2
     binning_str.append(mass_b)
 
@@ -210,13 +233,38 @@ for i,mass_b in enumerate(mass_binning):
     for b in binning:
       binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} ) && " + mass_b)
 
+
+#estar_r1 = f"(e_star_lhcb_alt > 0  ) && (e_star_lhcb_alt < 1. ) "
+#estar_r2 = f"(e_star_lhcb_alt > 1. ) && (e_star_lhcb_alt < 2. ) "
+#estar_r3 = f"(e_star_lhcb_alt > 2. ) && (e_star_lhcb_alt < 3. ) "
+#
+#estar_binning = [estar_r1, estar_r2, estar_r3]
+
+#mass_r1 = f"(phiPi_m < 1.96)"
+#mass_r2 = f"(phiPi_m > 1.96) && (phiPi_m < 1.97)"
+#mass_r3 = f"(phiPi_m > 1.97) && (phiPi_m < 1.98)"
+#mass_r4 = f"(phiPi_m > 1.98)"
+#
+#mass_binning = [mass_r1, mass_r2, mass_r3, mass_r4]#, mass_r5]
+#
+#for i,mass_b in enumerate(mass_binning):
+#
+#  if i in [0,3]:
+#    #first mass bin, no slice in q2
+#    binning_str.append(mass_b)
+#
+#  else:
+#    for b in binning:
+#      binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} ) && " + mass_b)
+
+
 #for b in binning:
 #  
 #  # b is a list
-#  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
+#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
 #  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
-#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
-#
+#  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
+
   
 
 ##overwrite
@@ -229,7 +277,7 @@ binning = binning_str
 # Load chain into RDataFrame #
 ##############################
 
-def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights = None, bph_part = None, isData = None):
+def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights = None, sf_weights2 = None, bph_part = None, isData = None):
 
   print(dateTimes)
   chain = ROOT.TChain("tree")
@@ -237,10 +285,34 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
   #if ((not pastNN) and (not isinstance(dateTimes, list))):
   #  print("dateTimes must be a list of strings")
 
-  if (pastNN and not rdfSys):
+  if (pastNN and not rdfSys and not sf_weights2):
     print(f"picking past NN files ...")
     #dateTimes here is a string like: "data_26Sep..._cons"
     files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}/*"
+
+    #new
+    file_pattern = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}/*.root"
+    all_files = sorted(glob.glob(file_pattern))
+    print(f"Found {len(all_files)} files")
+
+    good_files = []
+    for i, f in enumerate(all_files):
+        print(f"[{i+1}/{len(all_files)}] testing {f}", flush=True)
+        try:
+            # minimal, blocking-safe test
+            rdf_test = ROOT.RDataFrame("tree", [f])
+            rdf_test.Count().GetValue()
+            good_files.append(f)
+        except Exception as e:
+            print(f"  ✗ skipping bad file: {f}")
+            print(f"    reason: {e}")
+
+    print(f"Using {len(good_files)} / {len(all_files)} files")
+
+    if not good_files:
+        raise RuntimeError("No valid ROOT files found — aborting")
+    ###
+
     print(files)
     n = chain.Add(files)
     print(f"Chaining {n} files for this channel")
@@ -251,9 +323,29 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
       return (reduced_chain,rdf)
 
     else:     
-      rdf = ROOT.RDataFrame(chain)
+      #rdf = ROOT.RDataFrame(chain)
+      rdf = ROOT.RDataFrame("tree", files)
       return (chain,rdf)
+
+  if (pastNN and not rdfSys and sf_weights2):
  
+    print(f"picking past NN files with bdt2 weights...")
+    #dateTimes here is a string like: "data_26Sep..._cons"
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{dateTimes}/*"
+
+    print(files)
+    n = chain.Add(files)
+    print(f"Chaining {n} files for this channel")
+    if debug:
+      reduced_chain = chain.CloneTree(debug);
+      rdf = ROOT.RDataFrame(reduced_chain,debug)
+      return (reduced_chain,rdf)
+    else:
+      #rdf = ROOT.RDataFrame(chain)
+      rdf = ROOT.RDataFrame("tree", files)
+      return (chain,rdf)
+    
+
   if (not pastNN and rdfSys):
     print(f"picking pre NN files with hammer weights...")
     #dateTimes here is a string like: "data_26Sep..._cons"
@@ -396,11 +488,11 @@ if pastNN:
   sig_sample = sig_cons_pastNN
   print("sample is:", sig_cons_pastNN)
 
-  chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN                 , debug = debug)
-  chainSig,   rdfSig       = getRdf(sig_cons_pastNN                 , debug = debug)
-  chainHb,    rdfHb        = getRdf(hb_cons_pastNN                  , debug = debug)
-  _,          rdfHbHammer  = getRdf(hb_cons_pastNN                  , debug = debug)
-  chainData,  rdfData      = getRdf(data_cons_pastNN                , debug = debug)
+  chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN                , debug = debug)
+  chainSig,   rdfSig       = getRdf(sig_cons_pastNN                , debug = debug)
+  chainHb,    rdfHb        = getRdf(hb_cons_pastNN                 , debug = debug)
+  _,          rdfHbHammer  = getRdf(hb_cons_pastNN                 , debug = debug)
+  chainData,  rdfData      = getRdf(data_cons_pastNN               , sf_weights2 = sf_weights2 , debug = debug)
 
   print("rdf data has events: ", rdfData.Count().GetValue() )
   print("rdf sig has events: ", rdfSig.Count().GetValue() )
@@ -672,7 +764,7 @@ def addSystematics(hist_dict, var, selec_DsTau, selec_DsMu, selec_DsStarTau, sel
 ## CREATE DEFAULT HISTOS               ##
 #########################################
 
-def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variables = None, hammer_central = False, hammer_sys = False, sig = None, sf_weights = None, region = None, massfit = False):
+def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variables = None, hammer_central = False, hammer_sys = False, sig = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
@@ -699,12 +791,19 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   
         model = special_models[var + f"_bin{region}" ]
 
-      #if var == "score1" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
-      #  
-      #  #adapt the binning
-      #  print(f"Adapt binning for {var} and region {region}")
+      if var == "score1" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
+        
+        #adapt the binning
+        print(f"======> Adapt binning for {var} and region {region}")
   
-      #  model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+        model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+
+      if var == "e_star_lhcb_alt" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
+        
+        #adapt the binning
+        print(f"======> Adapt binning for {var} and region {region}")
+  
+        model = special_models_e_star_lhcb_alt[var + f"_bin{region}" ]                                     
 
 
       ##############################################
@@ -747,11 +846,18 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
           histos[var].Scale(1.0 / central_av) 
  
 
-        elif sf_weights:
+        elif sf_weights and not sf_weights2:
           # this only happens for data
           # sf_weight is a smart string
-          print("YES I APPLY SF WEIGHTS!!!!!!")
+          print("applying sf_weights!!!!!!")
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" ,"sf_weights")
+
+        elif sf_weights and sf_weights2:
+          # this only happens for data
+          # sf_weight is a smart string
+          print("applying sf_weights and sf_weights2!!!!!!")
+          total_sf_weights = "sf_weights * sf_weights2"
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("total_sf_weights", total_sf_weights).Histo1D(model[0], "m_corr" ,"total_sf_weights")
 
         else:
           #fill without any weights
@@ -802,12 +908,18 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
                            .Histo1D(model[0], tofill,"central_w_notnan") 
           histos[var].Scale(1.0 / central_av) 
  
-        elif (sf_weights):
+        elif (sf_weights and not sf_weights2):
           # this only happens for data
           # sf_weight is a smart string
-          print("YES I APPLY SF WEIGHTS!!!!!!")
+          print("applying sf_weights!!!!!!")
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], tofill, "sf_weights")
 
+        elif sf_weights and sf_weights2:
+          # this only happens for data
+          # sf_weight is a smart string
+          print("applying sf_weights and sf_weights2!!!!!!")
+          total_sf_weights = "sf_weights * sf_weights2"
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("total_sf_weights", total_sf_weights).Histo1D(model[0], "m_corr" ,"total_sf_weights")
 
         else:
           histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
@@ -897,14 +1009,14 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   selec_massfit     = selections(selection_massfit)
 
   ## Signal and Hb (Hammer variations are never needed for the massfit)
-  selec_M_DsMu            = createHistos(selec_massfit.dsMu       ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsmu"     )
-  selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu       ,    rdfSig       , gen = False)
-  selec_M_DsTau           = createHistos(selec_massfit.dsTau      ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dstau"    )
-  selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu   ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstarmu" )
-  selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau  ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstartau")
-  selec_M_Hb              = createHistos(selec_massfit.hb         ,    rdfHb        , gen = False)
-  selec_M_Mu_in_Hb        = createHistos(selec_massfit.dsMu       ,    rdfHb        , gen = False)
-  selec_M_Data            = createHistos(selec_massfit.bare       ,    rdfData      , gen = False)
+  selec_M_DsMu            = createHistos(selec_massfit.dsMu      + score_cut ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsmu"     )
+  selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu      + score_cut ,    rdfSig       , gen = False)
+  selec_M_DsTau           = createHistos(selec_massfit.dsTau     + score_cut ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dstau"    )
+  selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu  + score_cut ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstarmu" )
+  selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau + score_cut ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstartau")
+  selec_M_Hb              = createHistos(selec_massfit.hb        + score_cut ,    rdfHb        , gen = False)
+  selec_M_Mu_in_Hb        = createHistos(selec_massfit.dsMu      + score_cut ,    rdfHb        , gen = False)
+  selec_M_Data            = createHistos(selec_massfit.bare      + score_cut ,    rdfData      , gen = False)
 
   selec_M_DsTau_blind     = { key: selec_M_DsTau[key].Clone()      for key in selec_M_DsTau.keys()     }
   selec_M_DsStarTau_blind = { key: selec_M_DsStarTau[key].Clone()  for key in selec_M_DsStarTau.keys() }
@@ -921,8 +1033,9 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   for key in selec_M_DsStarTau_blind.keys(): selec_M_DsStarTau_blind[key].Scale(blind_vector)    
 
 
-  selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    ,    rdfData       , gen = False, sf_weights = sf_weights , data = True, massfit = True)
-  selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl ,    rdfData       , gen = False, sf_weights = sf_weights , data = True, massfit = True)
+  #no BDT2 correction here since we do this plot before the nn cut :D
+  selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    + score_cut,    rdfData       , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
+  selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl + score_cut,    rdfData       , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
 
   # get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
   hRest       = prepareSignFlip(  selec_M_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
@@ -1016,6 +1129,12 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
   for i,region in enumerate(regions):
 
+
+    with open( toSave_plots + f"/info.txt", "a") as f:
+      f.write( f"====> ch{i} belongs to region: {region} \n")
+  
+    
+
     # now we restrict to the splitter region we want to plot
 
     if isinstance(region, list): 
@@ -1038,7 +1157,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     norm_params = {
     "scale_pimu"      : scale_pimu,
     "scale_rest"      : scale_rest,
-    "hb_ratio_massfit": hb_ratio_massfit
+    "hb_ratio_massfit": hb_ratio_massfit,
+    "trigger"         : trigger,
     }
 
     with open(f"{toSave_plots}/normalization_parameters.json", "w") as f:
@@ -1059,7 +1179,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     #python command line
     python_command =  f"python plot_single_channel_and_bin.py" 
-    python_command += f" --nn=\"{args.nn}\" --hammer=\"{args.hammer}\" --hammer_sys=\"{args.hammer_sys}\" --trigger=\"{args.trigger}\" --bdt=\"{args.bdt}\" "
+    python_command += f" --nn=\"{args.nn}\" --hammer=\"{args.hammer}\" --hammer_sys=\"{args.hammer_sys}\" --trigger=\"{args.trigger}\" --bdt=\"{args.bdt}\" --bdt2=\"{args.bdt2}\" "
     python_command += f" --bin={i} --region=\"{region}\" --toSave_plots=\"{toSave_plots}\" --selection=\"{selection}\" --data_selection=\"{data_selection}\" --split={split} "
     #python_command += " --scale_pimu={scale_pimu} --scale_rest={scale_rest} --hb_ratio_massfit={hb_ratio_massfit} "
 
@@ -1069,63 +1189,65 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     if args.cut:     python_command += f" --cut={args.cut}" 
 
     #submitter command line
+    #sh_command = f"sbatch -p short -o {toSave_plots}/log/log{i}.log -e {toSave_plots}/err/err{i}.err"
     sh_command = f"sbatch -p short "
 
     with open( toSave_plots + f"/submitter_DsMu_ch{i}.sh"         , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=DsMu ")
     os.system("chmod +x " + toSave_plots + f"/submitter_DsMu_ch{i}.sh" )
-    #os.system(sh_command + toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
-    print    ( toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
-    os.system( toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_DsMu{i}.log -e {toSave_plots}/err/err_DsMu{i}.err " + toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
+    print(sh_command + f"-o {toSave_plots}/log/log_DsMu{i}.log -e {toSave_plots}/err/err_DsMu{i}.err " + toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
+    #print    ( toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
+    #os.system( toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_DsMu_woHammer_ch{i}.sh", "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=DsMu_woHammer")
-    #os.system(sh_command + toSave_plots + f"/submitter_DsMu_woHammer_ch{i}.sh"    )  
+    os.system(sh_command + f" -o {toSave_plots}/log/log_DsMu{i}.log -e {toSave_plots}/err/err_DsMu{i}.err " + toSave_plots + f"/submitter_DsMu_woHammer_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_DsTau_ch{i}.sh"        , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=DsTau  ")
-    #os.system(sh_command + toSave_plots + f"/submitter_DsTau_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_DsTau{i}.log -e {toSave_plots}/err/err_DsTau{i}.err " + toSave_plots + f"/submitter_DsTau_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_DsStarMu_ch{i}.sh"     , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=DsStarMu  ")
-    #os.system(sh_command + toSave_plots + f"/submitter_DsStarMu_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_DsStarMu{i}.log -e {toSave_plots}/err/err_DsStarMu{i}.err " + toSave_plots + f"/submitter_DsStarMu_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_DsStarTau_ch{i}.sh"    , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=DsStarTau  ")
-    #os.system(sh_command + toSave_plots + f"/submitter_DsStarTau_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_DsStarTau{i}.log -e {toSave_plots}/err/err_DsStarTau{i}.err " + toSave_plots + f"/submitter_DsStarTau_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_Hb_ch{i}.sh"           , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=Hb")
-    #os.system(sh_command + toSave_plots + f"/submitter_Hb_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb{i}.log -e {toSave_plots}/err/err_Hb{i}.err " + toSave_plots + f"/submitter_Hb_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_Mu_in_Hb_ch{i}.sh"     , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=Mu_in_Hb")
-    #os.system(sh_command + toSave_plots + f"/submitter_Mu_in_Hb_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Mu_in_Hb{i}.log -e {toSave_plots}/err/err_Mu_in_Hb{i}.err " + toSave_plots + f"/submitter_Mu_in_Hb_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_Data_ch{i}.sh"         , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=Data")
-    #os.system(sh_command + toSave_plots + f"/submitter_Data_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Data{i}.log -e {toSave_plots}/err/err_Data{i}.err " + toSave_plots + f"/submitter_Data_ch{i}.sh"    )  
 
 
-    with open( toSave_plots + f"/submitter_sf_kk_ch{i}.sh"        , "w") as f:
+    with open( toSave_plots + f"/submitter_sf_pimu_ch{i}.sh"        , "w") as f:
       f.write(core)
       f.write(f" {python_command} --channel=Data_sf_pimu")
-    #os.system(sh_command + toSave_plots + f"/submitter_sf_kk_ch{i}.sh"    )  
+    os.system(sh_command + f"-o {toSave_plots}/log/log_pimu{i}.log -e {toSave_plots}/err/err_pimu{i}.err " + toSave_plots + f"/submitter_sf_pimu_ch{i}.sh"    )  
    
 if control == "highmass":
   createBinnedPlots(split,binning, controlPlotsHighMass = True) 
