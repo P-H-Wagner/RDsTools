@@ -6,7 +6,7 @@ import yaml
 from datetime import datetime
 import matplotlib.pyplot as plt
 import pdb
-#ROOT.ROOT.EnableImplicitMT() 
+ROOT.ROOT.EnableImplicitMT() 
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, getSignflipRatioTest, fitAnotherVar
 from helper import * 
-from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll
+from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll,special_models_e_star_lhcb_alt
 from blinding import *
 
 import numpy as np
@@ -290,9 +290,15 @@ class selections:
 
 
     self.hb =        selec + mc_selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1)  && (gen_same_mother == 1) "
-    self.bs =        selec + mc_selec + " && (300 <= gen_sig) && (gen_sig < 400) "
-    self.b0 =        selec + mc_selec + " && (200 <= gen_sig) && (gen_sig < 300) "
-    self.bplus =     selec + mc_selec + " && (100 <= gen_sig) && (gen_sig < 200) "
+    self.hb_dc =     selec + mc_selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1)  && (gen_same_mother == 1) && (static_cast<int>(gen_sig) % 10 != 7) && (gen_sig != 500)"
+    self.hb_fd =     selec + mc_selec + " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) & (gen_match_success ==1)  && (gen_same_mother == 1) && (static_cast<int>(gen_sig) % 10 == 7)"
+    self.hb_others = selec + mc_selec + " && (gen_match_success ==1)  && (gen_same_mother == 1) && (gen_sig >= 500)"
+
+    self.hb_bs =     selec + mc_selec + " && (300 <= gen_sig) && (gen_sig < 400) && (gen_same_mother == 1) "
+    self.hb_b0 =     selec + mc_selec + " && (200 <= gen_sig) && (gen_sig < 300) && (gen_same_mother == 1) "
+    self.hb_bpm =    selec + mc_selec + " && (100 <= gen_sig) && (gen_sig < 200) && (gen_same_mother == 1) "
+    self.hb_lambdab =selec + mc_selec + " && (400 <= gen_sig) && (gen_sig < 500) && (gen_same_mother == 1) "
+
     self.dsMu =      selec + mc_selec + " && (gen_sig == 0)" 
     self.dsTau =     selec + mc_selec + " && (gen_sig == 1)"
     self.dsStarMu =  selec + mc_selec + " && (gen_sig == 10)" 
@@ -501,14 +507,14 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   
         model = special_models[var + f"_bin{region}" ]
 
-      if var == "score1" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
-        
-        #adapt the binning
-        print(f"Adapt binning for {var} and region {region}")
+      #if (var == "score1" or var == "score0") and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
+      #  
+      #  #adapt the binning
+      #  print(f"Adapt binning for {var} and region {region}")
   
-        model = special_models_q2_coll[var + f"_bin{region}" ]                                     
+      #  model = special_models_q2_coll[f"score1_bin{region}" ]                                     
 
-      if var == "e_star_lhcb_alt" and (split == "q2_coll" or split == "q2_lhcb_alt") and region != None:
+      if var == "e_star_lhcb_alt" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
         
         #adapt the binning
         print(f"======> Adapt binning for {var} and region {region}")
@@ -710,6 +716,35 @@ if args.channel == "DsStarTau":
 if args.channel == "Hb":
   histo1d       = createHistos(selec.hb           ,    rdfHb         , gen = False,                                                                                         region = args.bin)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_{args.bin}.root")
+
+if args.channel == "Hb_dc":
+  histo1d       = createHistos(selec.hb_dc        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_dc_{args.bin}.root")
+
+if args.channel == "Hb_fd":
+  histo1d       = createHistos(selec.hb_fd        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_fd_{args.bin}.root")
+
+if args.channel == "Hb_others":
+  histo1d       = createHistos(selec.hb_others        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_others_{args.bin}.root")
+
+if args.channel == "Hb_bpm":
+  histo1d       = createHistos(selec.hb_bpm        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_bpm_{args.bin}.root")
+
+if args.channel == "Hb_b0":
+  histo1d       = createHistos(selec.hb_b0        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_b0_{args.bin}.root")
+
+if args.channel == "Hb_bs":
+  histo1d       = createHistos(selec.hb_bs        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_bs_{args.bin}.root")
+
+if args.channel == "Hb_lambdab":
+  histo1d       = createHistos(selec.hb_lambdab        ,    rdfHb         , gen = False,                                                                                         region = args.bin)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_lambdab_{args.bin}.root")
+
 
 if args.channel == "Mu_in_Hb":
   histo1d       = createHistos(selec.dsMu         ,    rdfHb         , gen = False,                                                                                         region = args.bin)

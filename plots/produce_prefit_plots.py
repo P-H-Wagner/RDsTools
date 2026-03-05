@@ -116,7 +116,17 @@ def getColorAndLabelSignalDistinction(key):
               "DsTau":  ROOT.kGreen,
               "DsStarMu":   ROOT.kCyan,
               "DsStarTau":  ROOT.kOrange,
+
               "Hb":         ROOT.kRed,
+              "Hb_fd":      ROOT.kRed -7,
+              "Hb_dc":      ROOT.kRed -2,
+
+              "Hb_others":  ROOT.kRed -8,
+              "Hb_bs":      ROOT.kRed +2,
+              "Hb_b0":      ROOT.kRed -6,
+              "Hb_bpm":     ROOT.kRed -3,
+              "Hb_lambdab":  ROOT.kRed -5,
+
               "bs":         ROOT.kRed - 9,
               "b0":         ROOT.kRed - 6,
               "bplus":      ROOT.kRed - 5,
@@ -357,6 +367,12 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   #print("==========> number of pimu  wrong right after calling stackedPlot", histos["data_sf_pimu"].Integral())
   #print("==========> number of kk wrong right after calling stackedPlot", histos["data_sf_kk"].Integral())
   #print("==========> number of data events right calling stackedPlot", histos["data"].Integral())
+  print("==========> number of hb events right calling stackedPlot", histos["Hb"].Integral())
+  print("==========> number of bs events right calling stackedPlot", histos["Hb_bs"].Integral())
+  print("==========> number of b0 events right calling stackedPlot", histos["Hb_b0"].Integral())
+  print("==========> number of bpm events right calling stackedPlot", histos["Hb_bpm"].Integral())
+  print("==========> number of bpm events right calling stackedPlot", histos["Hb_lambdab"].Integral())
+  print("==========> number of other events right calling stackedPlot", histos["Hb_others"].Integral())
 
   color, labels = getColorAndLabelSignalDistinction("stacked")
 
@@ -406,13 +422,23 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   #scale hb to other mc
 
   # if there is no hb in this bin, there is nothing to scale!
-  if histos["Hb"].Integral() != 0: 
-    histos["Hb"].Scale(scale_hb/ histos["Hb"].Integral())
+  hb_integral = histos["Hb"].Integral()
 
+  for key in histos.keys():
+    if ("Hb" in key) and (histos["Hb"].Integral() != 0): 
+      #histos[key].Scale(scale_hb/ hb_integral)
+      histos[key].Scale(scale_hb[var]/ hb_integral)
+      #histos[key].Scale(hb_scale_S[var])
 
   nSig = histos["DsMu"].Integral() + histos["DsTau"].Integral() + histos["DsStarMu"].Integral() + histos["DsStarTau"].Integral() + histos["Hb"].Integral()
   #print("==========> number of tau* signals before scaling", histos["DsStarTau"].Integral())
   #print("==========> number of mu* signals before scaling", histos["DsStarMu"].Integral())
+  print("==========> number of hb events after first sclaing", histos["Hb"].Integral())
+  print("==========> number of bs events after first sclaing", histos["Hb_bs"].Integral())
+  print("==========> number of b0 events after first sclaing", histos["Hb_b0"].Integral())
+  print("==========> number of bpm events after first sclaing", histos["Hb_bpm"].Integral())
+  print("==========> number of bpm events right calling stackedPlot", histos["Hb_lambdab"].Integral())
+  print("==========> number of other event right calling stackedPlot", histos["Hb_others"].Integral())
 
 
   ###################################
@@ -490,7 +516,10 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   #hs.Add(h_Comb) 
 
   for key in histos.keys():
-    if ('comb' not in key) and ('Data' not in key) and ('b0' not in key) and ('bs' not in key) and ('bplus' not in key) and ("Up" not in key) and ("Down" not in key):
+    #if ('comb' not in key) and ('Data' not in key) and ("Up" not in key) and ("Down" not in key) and (key != "Hb") and ("fd" not in key) and ("dc" not in key):
+    #if key in ["DsStarMu","DsMu","DsStarTau","DsTau","Hb"]:
+    if key in ["DsStarMu","DsMu","DsStarTau","DsTau","Hb_bs","Hb_b0","Hb_bpm","Hb_bs","Hb_lambdab", "Hb_others"]:
+
       hErr.Add(histos[key])
       hs.Add(histos[key])
 
@@ -521,20 +550,27 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   ###################################
  
   #legend
-  leg = ROOT.TLegend(.2,.72,.88,0.88)
+  leg = ROOT.TLegend(.2,.60,.88,0.88)
   leg.SetBorderSize(0)
   leg.SetFillColor(0)
   leg.SetFillStyle(0)
   leg.SetTextFont(42)
   leg.SetTextSize(0.035)
-  leg.SetNColumns(4)
+  leg.SetNColumns(2)
   leg.AddEntry(histos["DsStarMu"]   ,'B_{s}#rightarrow D*_{s}#mu#nu' ,'F' )
   leg.AddEntry(histos["DsMu"]       ,'B_{s}#rightarrow D_{s}#mu#nu'  ,'F' )
   leg.AddEntry(histos["DsStarTau"]  ,'B_{s}#rightarrow D*_{s}#tau#nu','F' )
   leg.AddEntry(histos["DsTau"]      ,'B_{s}#rightarrow D_{s}#tau#nu' ,'F' )
 
-  leg.AddEntry(histos["Hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
-  leg.AddEntry(histos["Data"]       ,'Data','LEP')
+  #leg.AddEntry(histos["Hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
+  #leg.AddEntry(histos["Hb_fd"]       ,'B^{#pm 0}_{(s)}, #Lambda_{b} #rightarrow feed-down'   ,'F' )
+  #leg.AddEntry(histos["Hb_dc"]       ,'B^{#pm 0}_{(s)}, #Lambda_{b} #rightarrow double-charm','F' )
+  leg.AddEntry(histos["Hb_bs"]       ,'B_{s} #rightarrow D_{s} + #mu','F' )
+  leg.AddEntry(histos["Hb_bpm"]      ,'B^{#pm} #rightarrow D_{s} + #mu','F' )
+  leg.AddEntry(histos["Hb_b0"]       ,'B^{0} #rightarrow D_{s} + #mu','F' )
+  leg.AddEntry(histos["Hb_lambdab"]  ,'#Lambda_{b} #rightarrow D_{s} + #mu','F' )
+  leg.AddEntry(histos["Hb_others"]   ,'other b #rightarrow D_{s} + #mu','F' )
+  leg.AddEntry(histos["Data"]        ,'Data','LEP')
   #leg.AddEntry(histos["comb"]                           ,'Comb. + Fakes'  ,'F' )
   leg.AddEntry(hComb_pimu                           ,'Comb. + Fakes'  ,'F' )
   #leg.AddEntry(hComb_kk                             ,'kk'  ,'F' )
@@ -558,7 +594,7 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
     yAxisTitle = "events"
     histos["Data"].GetYaxis().SetTitle(yAxisTitle)
-    histos["Data"].GetYaxis().SetRangeUser(1e-3, histos["Data"].GetBinContent(histos["Data"].GetMaximumBin())*1.5)
+    histos["Data"].GetYaxis().SetRangeUser(1e-3, histos["Data"].GetBinContent(histos["Data"].GetMaximumBin())*2.0)
 
   #print("finally here , data : ", histos["data"].Integral() )
  
@@ -607,8 +643,8 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   ratio_stats = hErr.Clone()
   ratio_stats.SetName(ratio.GetName()+'_ratiostats')
   ratio_stats.Divide(hErr)
-  ratio_stats.SetMaximum(1.999) # avoid displaying 2, that overlaps with 0 in the main_pad
-  ratio_stats.SetMinimum(0.0001) # and this is for symmetry
+  ratio_stats.SetMaximum(1.5) # avoid displaying 2, that overlaps with 0 in the main_pad
+  ratio_stats.SetMinimum(0.5) # and this is for symmetry
   ratio_stats.GetYaxis().SetTitle('Data / MC')
   ratio_stats.GetXaxis().SetTitle(ratio.GetXaxis().GetTitle())
 
@@ -626,7 +662,9 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   norm_stack = ROOT.THStack('norm_stack', '')
 
   for key in histos.keys():
-    if ('comb' not in key) and ('Data' not in key) and ('b0' not in key) and ('bs' not in key) and ('bplus' not in key) and ("Up" not in key) and ("Down" not in key):
+    #if ('comb' not in key) and ('Data' not in key) and ("Up" not in key) and ("Down" not in key) and (key != "Hb") and ("fd" not in key) and ("dc" not in key):
+    #if key in ["DsStarMu","DsMu","DsStarTau","DsTau","Hb"]:
+    if key in ["DsStarMu","DsMu","DsStarTau","DsTau","Hb_bs","Hb_b0","Hb_bpm","Hb_bs","Hb_lambdab", "Hb_others"]:
       h = histos[key].Clone()
       h.Divide(hErr)
       norm_stack.Add(h)
@@ -782,7 +820,7 @@ def shapesPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk = 
   #scale hb to other mc
   print(hb_scale)
   if histos["Hb"].Integral() != 0: 
-    histos["Hb"].Scale(scale_hb / histos["Hb"].Integral())
+    histos["Hb"].Scale(scale_hb[var] / histos["Hb"].Integral())
 
   
   nSig = histos["DsMu"].Integral() + histos["DsTau"].Integral() + histos["DsStarMu"].Integral() + histos["DsStarTau"].Integral() + histos["Hb"].Integral()
@@ -1484,6 +1522,48 @@ f.Close()
 ############################
 # Start plotting loop      #
 ############################
+#load from json file
+with open(f"{toSave_plots}/normalization_parameters.json", "r") as f:
+  data = json.load(f)
+  print(f" ====> JSON file loaded: {data}")
+  hb_ratio   = data["hb_ratio_massfit"]
+  scale_pimu = data["scale_pimu"]
+  scale_rest = data["scale_rest"]
+  trigger    = data["trigger"]
+ 
+#for every variable we plot, we get the total number of Hb and Mu events to get the Hb scale
+
+events_Hb            = {}
+events_Mu_in_Hb      = {}
+events_DsMu_woHammer = {}
+
+for var in vars_base:
+
+  #create dict entry
+  events_Hb           [var] = 0
+  events_DsMu_woHammer[var] = 0
+  events_Mu_in_Hb     [var] = 0
+
+  for i in range(num_bins+1):
+
+    #load Hb and DsMu histo for this channel
+    chan_histos_Hb       = loadHistos(toSave_plots, "Hb",   i)
+    chan_histos_Mu_in_Hb = loadHistos(toSave_plots, "Mu_in_Hb", i)
+    chan_histos_DsMu_woHammer     = loadHistos(toSave_plots, "DsMu_woHammer", i)
+
+    #load histo for this channel and var
+    events_Hb           [var] += chan_histos_Hb           [var].Integral()
+    events_Mu_in_Hb     [var] += chan_histos_Mu_in_Hb     [var].Integral()
+    events_DsMu_woHammer[var] += chan_histos_DsMu_woHammer[var].Integral()
+
+
+hb_scale_S = {}
+
+pdb.set_trace()
+for var in vars_base:
+ 
+  hb_scale_S[var] = events_DsMu_woHammer[var] / events_Mu_in_Hb[var]
+  
 
 for i in range(num_bins+1):
 
@@ -1494,6 +1574,15 @@ for i in range(num_bins+1):
     "DsMu_woHammer",
     "DsStarMu",
     "Hb",
+    "Hb_fd",
+    "Hb_dc",
+
+    "Hb_bs",
+    "Hb_bpm",
+    "Hb_b0",
+    "Hb_lambdab",
+
+    "Hb_others",
     "Data",
     "Data_sf_pimu",
   ]
@@ -1543,17 +1632,13 @@ for i in range(num_bins+1):
   #pdb.set_trace() 
   #get all scales
   
-  #load from json file
-  with open(f"{toSave_plots}/normalization_parameters.json", "r") as f:
-    data = json.load(f)
-    print(f" ====> JSON file loaded: {data}")
-    hb_ratio   = data["hb_ratio_massfit"]
-    scale_pimu = data["scale_pimu"]
-    scale_rest = data["scale_rest"]
-    trigger    = data["trigger"]
-   
   
-  scale_hb  = histos["DsMu_woHammer"]["phiPi_m"].Integral() * hb_ratio
+  
+  #scale_hb  = histos["DsMu_woHammer"]["phiPi_m"].Integral() * hb_ratio
+  scale_hb = {}
+  for var in vars_base:
+    scale_hb[var]  = histos["DsMu_woHammer"][var].Integral() * hb_ratio
+  pdb.set_trace()
 
   # scale the tau histos to get a blind option for data fits
   #selec_S_DsTau_blind     = { key: selec_S_DsTau[key].Clone()                   for key in selec_S_DsTau.keys()     }

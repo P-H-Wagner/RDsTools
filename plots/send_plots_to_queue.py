@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pdb
 import json
 
-#ROOT.ROOT.EnableImplicitMT() 
+ROOT.ROOT.EnableImplicitMT() 
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
@@ -74,7 +74,8 @@ if args.control and args.control not in ["highmass","leftsb","rightsb", "complet
     raise ValueError ("Error: Not a valid key for --control, please use 'highmass', 'sb' or 'complete' or 'custom' ")
 control = args.control
 
-if args.cut  : score_cut = f" && (score5 <= {args.cut}) "
+#if args.cut  : score_cut = f" && (score5 <= {args.cut}) && (score1 > 0.1) && (q2_coll > 0) && (q2_coll < 12) && (score1 < 0.25)"
+if args.cut  : score_cut = f" && (score5 <= {args.cut})"
 else         : score_cut = ""
 
 if args.debug: debug = 100000
@@ -178,7 +179,7 @@ split   = "q2_coll"
 #split = "score2"
 #binning = [[0,0.03],[0.03,0.06],[0.06,0.1],[0.1,0.2],[0.2,0.4],[0.4,0.6],[0.6,1.0]] #score 3
 #binning = [[0,0.02],[0.02,0.1],[0.1,0.4],[0.4,1]] #score 2
-binning = [[0,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,9.5],[9.5,10],[10,12]]
+#binning = [[0,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,9.5],[9.5,10],[10,12]]
 #binning = [[0,4],[4,6],[6,8],[8,12]]
 #binning= [[0.05,0.1],[0.1,0.2],[0.2,0.3],[0.3,0.4],[0.4,0.7]]
 #binning = [[-2,0], [0,2], [2,4], [4,6], [6,8], [8,10],[10,12]]
@@ -198,7 +199,8 @@ binning = [[0,6],[6,7],[7,8],[8,8.5],[8.5,9],[9,9.5],[9.5,10],[10,12]]
 #binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
-#binning = [[-99,99]]
+binning = [[-99,99]]
+binning = [[0,6],[6,12]]
 
 ################
 ## 3D binning ##
@@ -216,22 +218,22 @@ sb_string = " && ((phiPi_m < 1.94 ) || (phiPi_m > 1.995  ) )"
 #mass_r1 = f" (  (phiPi_m <  {dsMass_ - 5*sigma}) || ( phiPi_m > {dsMass_ + 5*sigma} ))"  
 #mass_r2 = f" ( ((phiPi_m >= {dsMass_ - 5*sigma}) && ( phiPi_m < {dsMass_ - 3*sigma} )) || ((phiPi_m <= {dsMass_ + 5*sigma}) && ( phiPi_m > {dsMass_ + 3*sigma} )) )" 
 #mass_r3 = f" ( ((phiPi_m >= {dsMass_ - 3*sigma}) && ( phiPi_m < {dsMass_ - 2*sigma} )) || ((phiPi_m <= {dsMass_ + 3*sigma}) && ( phiPi_m > {dsMass_ + 2*sigma} )) )" 
-mass_r1 = f" (  (phiPi_m <  {dsMass_ - 2*sigma}) || ( phiPi_m > {dsMass_ + 2*sigma} ))"  
+mass_r1 = f" ( ((phiPi_m >= 1.91)                && (phiPi_m  < {dsMass_ - 2*sigma} )) || ((phiPi_m > {dsMass_ + 2*sigma} ) && ( phiPi_m < 2.028               )) )"  
 mass_r2 = f" ( ((phiPi_m >= {dsMass_ - 2*sigma}) && ( phiPi_m < {dsMass_ - 1*sigma} )) || ((phiPi_m <= {dsMass_ + 2*sigma}) && ( phiPi_m > {dsMass_ + 1*sigma} )) )" 
 mass_r3 = f" ( ((phiPi_m >= {dsMass_ - 1*sigma}) && ( phiPi_m < {dsMass_ - 0*sigma} )) || ((phiPi_m <= {dsMass_ + 1*sigma}) && ( phiPi_m > {dsMass_ + 0*sigma} )) )" 
 #
 #mass_binning = [mass_r1, mass_r2, mass_r3, mass_r4, mass_r5]
 mass_binning = [mass_r1, mass_r2, mass_r3]#, mass_r4, mass_r5]
 
-for i,mass_b in enumerate(mass_binning):
-
-  if i in [0]:
-    #first mass bin, no slice in q2
-    binning_str.append(mass_b)
-
-  else: 
-    for b in binning:
-      binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} ) && " + mass_b)
+#for i,mass_b in enumerate(mass_binning):
+#
+#  if i in [0]:
+#    #first mass bin, no slice in q2
+#    binning_str.append(mass_b)
+#
+#  else: 
+#    for b in binning:
+#      binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} ) && " + mass_b)
 
 
 #estar_r1 = f"(e_star_lhcb_alt > 0  ) && (e_star_lhcb_alt < 1. ) "
@@ -240,30 +242,47 @@ for i,mass_b in enumerate(mass_binning):
 #
 #estar_binning = [estar_r1, estar_r2, estar_r3]
 
-#mass_r1 = f"(phiPi_m < 1.96)"
-#mass_r2 = f"(phiPi_m > 1.96) && (phiPi_m < 1.97)"
-#mass_r3 = f"(phiPi_m > 1.97) && (phiPi_m < 1.98)"
-#mass_r4 = f"(phiPi_m > 1.98)"
+#mass_r1 = f"(phiPi_m < 1.93)"
+#mass_r2 = f"(phiPi_m > 1.93) && (phiPi_m < 1.94)"
+#mass_r3 = f"(phiPi_m > 1.94) && (phiPi_m < 1.95)"
+#mass_r4 = f"(phiPi_m > 1.95) && (phiPi_m < 1.965)"
+#mass_r5 = f"(phiPi_m > 1.965) && (phiPi_m < 1.975)"
+#mass_r6 = f"(phiPi_m > 1.975) && (phiPi_m < 1.98)"
+#mass_r7 = f"(phiPi_m > 1.98) && (phiPi_m < 1.99)"
+#mass_r8 = f"(phiPi_m > 1.99 && (phiPi_m < 2.0)"
+#mass_r9 = f"(phiPi_m > 2.0 && (phiPi_m < 2.1)"
+#mass_r10 = f"(phiPi_m > 2.1)"
 #
-#mass_binning = [mass_r1, mass_r2, mass_r3, mass_r4]#, mass_r5]
+#mass_binning = [mass_r1, 
+#                mass_r2, 
+#                mass_r3, 
+#                mass_r4, 
+#                mass_r5, 
+#                mass_r6, 
+#                mass_r7, 
+#                mass_r8, 
+#                mass_r9, 
+#                mass_r10
+#               ]
+#
 #
 #for i,mass_b in enumerate(mass_binning):
 #
-#  if i in [0,3]:
+#  if i in [0,1,2,7,8,9]:
 #    #first mass bin, no slice in q2
 #    binning_str.append(mass_b)
 #
 #  else:
 #    for b in binning:
 #      binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} ) && " + mass_b)
-
-
-#for b in binning:
-#  
-#  # b is a list
-#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
-#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
-#  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
+#
+#
+for b in binning:
+  
+  # b is a list
+  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
+  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
+  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
 
   
 
@@ -1005,8 +1024,10 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   # Later, if we continue with the binning loop, we can just apply this ratio, the selection
   # is automatically applied since the to-be-plotted histograms already care the selection  in its belly
 
-  selection_massfit = baseline + right_sign 
+  selection_massfit = baseline + right_sign + low_mass
   selec_massfit     = selections(selection_massfit)
+
+  print("---> before asking for selec_M")
 
   ## Signal and Hb (Hammer variations are never needed for the massfit)
   selec_M_DsMu            = createHistos(selec_massfit.dsMu      + score_cut ,    rdfSig       , gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsmu"     )
@@ -1034,8 +1055,11 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
 
   #no BDT2 correction here since we do this plot before the nn cut :D
-  selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    + score_cut,    rdfData       , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
-  selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl + score_cut,    rdfData       , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
+  selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    + score_cut + low_mass,    rdfData       , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
+  selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl + score_cut + low_mass,    rdfData       , gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
+
+
+  print("---> after asking for selec_M")
 
   # get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
   hRest       = prepareSignFlip(  selec_M_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
@@ -1197,7 +1221,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
       f.write(f" {python_command} --channel=DsMu ")
     os.system("chmod +x " + toSave_plots + f"/submitter_DsMu_ch{i}.sh" )
     os.system(sh_command + f"-o {toSave_plots}/log/log_DsMu{i}.log -e {toSave_plots}/err/err_DsMu{i}.err " + toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
-    print(sh_command + f"-o {toSave_plots}/log/log_DsMu{i}.log -e {toSave_plots}/err/err_DsMu{i}.err " + toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
+    #print(sh_command + f"-o {toSave_plots}/log/log_DsMu{i}.log -e {toSave_plots}/err/err_DsMu{i}.err " + toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
     #print    ( toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
     #os.system( toSave_plots + f"/submitter_DsMu_ch{i}.sh"    )  
 
@@ -1230,6 +1254,41 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
       f.write(core)
       f.write(f" {python_command} --channel=Hb")
     os.system(sh_command + f"-o {toSave_plots}/log/log_Hb{i}.log -e {toSave_plots}/err/err_Hb{i}.err " + toSave_plots + f"/submitter_Hb_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_fd_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_fd")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_fd{i}.log -e {toSave_plots}/err/err_Hb_fd{i}.err " + toSave_plots + f"/submitter_Hb_fd_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_dc_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_dc")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_dc{i}.log -e {toSave_plots}/err/err_Hb_dc{i}.err " + toSave_plots + f"/submitter_Hb_dc_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_others_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_others")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_others{i}.log -e {toSave_plots}/err/err_Hb_others{i}.err " + toSave_plots + f"/submitter_Hb_others_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_bs_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_bs")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_bs{i}.log -e {toSave_plots}/err/err_Hb_bs{i}.err " + toSave_plots + f"/submitter_Hb_bs_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_bpm_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_bpm")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_bpm{i}.log -e {toSave_plots}/err/err_Hb_bpm{i}.err " + toSave_plots + f"/submitter_Hb_bpm_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_b0_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_b0")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_b0{i}.log -e {toSave_plots}/err/err_Hb_b0{i}.err " + toSave_plots + f"/submitter_Hb_b0_ch{i}.sh"    )  
+
+    with open( toSave_plots + f"/submitter_Hb_lambdab_ch{i}.sh"           , "w") as f:
+      f.write(core)
+      f.write(f" {python_command} --channel=Hb_lambdab")
+    os.system(sh_command + f"-o {toSave_plots}/log/log_Hb_lambdab{i}.log -e {toSave_plots}/err/err_Hb_lambdab{i}.err " + toSave_plots + f"/submitter_Hb_lambdab_ch{i}.sh"    )  
 
 
     with open( toSave_plots + f"/submitter_Mu_in_Hb_ch{i}.sh"     , "w") as f:
