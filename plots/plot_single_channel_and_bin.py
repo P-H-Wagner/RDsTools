@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, getSignflipRatioTest, fitAnotherVar
 from helper import * 
-from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll,special_models_e_star_lhcb_alt
+from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll,special_models_e_star_lhcb_alt, special_models_ds_perp, special_models_score2
 from blinding import *
 
 import numpy as np
@@ -507,12 +507,12 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   
         model = special_models[var + f"_bin{region}" ]
 
-      #if (var == "score1" or var == "score0") and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
-      #  
-      #  #adapt the binning
-      #  print(f"Adapt binning for {var} and region {region}")
+      if (var == "score1" or var == "score0") and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
+        
+        #adapt the binning
+        print(f"Adapt binning for {var} and region {region}")
   
-      #  model = special_models_q2_coll[f"score1_bin{region}" ]                                     
+        model = special_models_q2_coll[f"score1_bin{region}" ]                                     
 
       if var == "e_star_lhcb_alt" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
         
@@ -520,6 +520,20 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
         print(f"======> Adapt binning for {var} and region {region}")
   
         model = special_models_e_star_lhcb_alt[var + f"_bin{region}" ]                                     
+
+      if var == "score1" and (args.split == "ds_perp" ) and region != None:
+        
+        #adapt the binning
+        print(f"======> Adapt binning for {var} and region {region}")
+  
+        model = special_models_ds_perp[var + f"_bin{region}" ]                                     
+
+      if ("score" in var) and (args.split == "score2" ) and region != None:
+        
+        #adapt the binning
+        print(f"======> Adapt binning for {var} and region {region}")
+  
+        model = special_models_score2[var + f"_bin{region}" ]                                     
 
 
       ##############################################
