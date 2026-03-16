@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from glob import glob
 from datetime import datetime
 import sys 
@@ -13,7 +14,8 @@ from helper import *
 #############################################
 # In this file we skim the files coming     #
 # from the nanoAOD production. Additionally #
-# we add the weighted reco branch.          #
+# we add the weighted reco branch and the   #
+# pileup weights.                           #
 #############################################
 
 def boolean_string(s):
@@ -37,9 +39,9 @@ args = parser.parse_args()
 #python create_skimmer.py 24_04_2025_14_03_22 data base_wout_tv_25 True 25
 
 queue = 'short' 
-time = 10
+time = 60
 nevents = -1
-filesPerJob = 50
+filesPerJob = 20
 
 #naming and files
 
@@ -88,6 +90,7 @@ chain.Add(directory)
 
 # get the inputfiles
 inputfiles = filesFromFolder(directory[:-1]) # remove * used for the chain
+#inputfiles = inputfiles[:1]
 
 #define weights for math solution (take the most actual signal sample)
 signals = ROOT.TChain("tree")
@@ -102,11 +105,14 @@ for sig in input_sig:
 
 # get all non-nan solutions
 def getWeights(name):
-  print("checking", name)
-  ntot   = signals.GetEntries("(gen_sig == 0)")                                                                          #check that reco is not nan!
-  nReco1 = signals.GetEntries(f"(abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && (gen_sig == 0) && !({name}_reco_1 != {name}_reco_1)")
-  w1 = nReco1/ntot
-  print("w1 is: ", w1)
+  #print("checking", name)
+  #ntot   = signals.GetEntries("(gen_sig == 0)")                                                                          #check that reco is not nan!
+  #nReco1 = signals.GetEntries(f"(abs({name}_reco_1 - gen_{name}) < abs({name}_reco_2 - gen_{name})) && (gen_sig == 0) && !({name}_reco_1 != {name}_reco_1)")
+  #w1 = nReco1/ntot
+  #print("w1 is: ", w1)
+
+  w1 = 0.5
+
   return w1 , 1 - w1
 
 
@@ -122,10 +128,16 @@ if not os.path.exists(f"./{args.date_time}_{args.selection}/"):
 
 #write for loop as string to print into the skimmer file
 
+
 forLoop = "df \\"
 
+############################
+# add reco weighted branch #
+############################
 
 w1, w2 = getWeights("bs_pt")
+
+#loop over branches
 
 for name in names:
   #check if reco is available
@@ -140,6 +152,21 @@ for name in names:
     #w1, w2 = getWeights(core)
     #forLoop += f"\n.Define(\"{core}_reco_weighted\",\"{w1}*{core}_reco_1 + {w2}*{core}_reco_2\")\\"  
     forLoop += f"\n.Define(\"{reco_w}\",\"{w1}*{name} + {w2}*{reco_2}\")\\"  
+
+
+############################
+# add pileup weight branch #
+############################
+
+if args.channel == "sig":
+  forLoop += f"\n.Define('pu_weight',  'get_pu_weights(gen_sig)')\\"
+if args.channel != "data":
+  forLoop += f"\n.Define('trigger_sf', 'get_scale_factors(mu_pt, dxy_mu_sig_pv)')\\"
+
+
+############################
+# take snapshot            #
+############################
 
 forLoop += f"\n.Filter(selec).Snapshot(\"tree\", destination)"
 print(forLoop)
@@ -180,7 +207,7 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
          'conda activate /work/pahwagne/environments/hammer3p8',
          f'mkdir -p /scratch/pahwagne/skimmed_{args.date_time}_{args.selection}',
          f'python /work/pahwagne/RDsTools/skim/{args.date_time}_{args.selection}/skimmer_{i}.py',
-         f'xrdcp {fout} root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{args.date_time}/skimmed_{args.selection}_{args.date_time}_chunk_{i}.root',
+         f'xrdcp {fout} root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{args.date_time}/skimmed_{args.selection}_{args.date_time}_chunk_{i}.root',
          f'rm -r {fout}',
          '',
      ])
@@ -198,7 +225,7 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
         f'-e {args.date_time}_{args.selection}/errs/err_{i}.txt',
         #'--mem=1500M',
         f'--job-name=SKIM_{args.channel}',
-        #f'--time={time}',
+        f'--time={time}',
         f'{args.date_time}_{args.selection}/skimmer_{i}.sh',
      ])
   
