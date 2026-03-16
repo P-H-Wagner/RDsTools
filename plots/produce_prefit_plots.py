@@ -1,3 +1,4 @@
+import glob
 import ROOT
 import argparse
 import os
@@ -369,7 +370,7 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
   #supress data plotting in SR. region is a string of type: q2_coll_ch0
   dataBlind = False
-  if region[2:] not in ["0","1","2"]: #,"6","7","8","14","15","16","13"]:
+  if int(region[2:]) > 5: 
     dataBlind = True 
 
 
@@ -1417,36 +1418,7 @@ for f in os.listdir(toSave_plots):
   
 #get the maximum 
 num_bins = max(bins)
-
-###############################
-# Extract variable base names #
-###############################
-
-# take channel DsMu in bin 0 as example
-f = ROOT.TFile.Open(f"{toSave_plots}/histos_DsMu_0.root")
-
-#contains files of type:
-# phiPi_m;1	
-# phiPi_m_e1Up;1	
-# phiPi_m_e1Down;1
-# ...
-# ---> extract only phiPi_m
-
-#pattern to look for
-pattern = re.compile(r"^(?P<var>.+?)(?:_e\d+(?:Up|Down))?$")
-
-#create a set to automatically reduce
-vars_base = set()
-
-#loop over keys and match to pattern
-for key in f.GetListOfKeys():
-    name = key.GetName()
-
-    m = pattern.match(name)
-    if not m: continue
-    vars_base.add(m.group("var"))
-
-f.Close()
+pdb.set_trace()
 
 ############################
 # Start plotting loop      #
@@ -1463,31 +1435,65 @@ with open(f"{toSave_plots}/normalization_parameters.json", "r") as f:
  
 #for every variable we plot, we get the total number of Hb and Mu events to get the Hb scale
 
-events_Hb            = {}
-events_Mu_in_Hb      = {}
-events_DsMu_woHammer = {}
-
-for var in vars_base:
-
-  #create dict entry
-  events_Hb           [var] = 0
-  events_DsMu_woHammer[var] = 0
-  events_Mu_in_Hb     [var] = 0
-
-  for i in range(num_bins+1):
-
-    #load Hb and DsMu histo for this channel
-    chan_histos_Hb       = loadHistos(toSave_plots, "Hb",   i)
-    chan_histos_Mu_in_Hb = loadHistos(toSave_plots, "Mu_in_Hb", i)
-    chan_histos_DsMu_woHammer     = loadHistos(toSave_plots, "DsMu_woHammer", i)
-
-    #load histo for this channel and var
-    events_Hb           [var] += chan_histos_Hb           [var].Integral()
-    events_Mu_in_Hb     [var] += chan_histos_Mu_in_Hb     [var].Integral()
-    events_DsMu_woHammer[var] += chan_histos_DsMu_woHammer[var].Integral()
+#events_Hb            = {}
+#events_Mu_in_Hb      = {}
+#events_DsMu_woHammer = {}
+#
+#for var in vars_base:
+#
+#  #create dict entry
+#  events_Hb           [var] = 0
+#  events_DsMu_woHammer[var] = 0
+#  events_Mu_in_Hb     [var] = 0
+#
+#  for i in range(num_bins+1):
+#
+#    #load Hb and DsMu histo for this channel
+#    chan_histos_Hb       = loadHistos(toSave_plots, "Hb",   i)
+#    chan_histos_Mu_in_Hb = loadHistos(toSave_plots, "Mu_in_Hb", i)
+#    chan_histos_DsMu_woHammer     = loadHistos(toSave_plots, "DsMu_woHammer", i)
+#
+#    #load histo for this channel and var
+#    events_Hb           [var] += chan_histos_Hb           [var].Integral()
+#    events_Mu_in_Hb     [var] += chan_histos_Mu_in_Hb     [var].Integral()
+#    events_DsMu_woHammer[var] += chan_histos_DsMu_woHammer[var].Integral()
 
 
 for i in range(num_bins+1):
+
+  ###############################
+  # Extract variable base names #
+  ###############################
+  
+  #pattern to look for
+  pattern = re.compile(r"^(?P<var>.+?)(?:_e\d+(?:Up|Down))?$")
+  
+  #create a set to automatically reduce
+  vars_base = set()
+  
+  #since we can have diff variables for different channels,
+  #we need to compute for every channel explicitly!
+  
+  # take channel DsMu as example
+  fstr = f"{toSave_plots}/histos_DsMu_{i}.root"
+  f = ROOT.TFile.Open(fstr)
+  
+  #contains files of type:
+  # phiPi_m;1	
+  # phiPi_m_e1Up;1	
+  # phiPi_m_e1Down;1
+  # ...
+  # ---> extract only phiPi_m
+  
+  #loop over keys and match to pattern
+  for key in f.GetListOfKeys():
+      name = key.GetName()
+  
+      m = pattern.match(name)
+      if not m: continue
+      vars_base.add(m.group("var"))
+  
+  f.Close()
 
   channels = [
     "DsTau",
@@ -1551,7 +1557,6 @@ for i in range(num_bins+1):
 
           #pdb.set_trace() 
 
-  #pdb.set_trace() 
   #get all scales
   
   

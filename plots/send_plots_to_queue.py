@@ -131,6 +131,9 @@ ROOT.TH1.SetDefaultSumw2() #apply weights!
 now = datetime.now()
 dt  = now.strftime("%d_%m_%Y_%H_%M_%S") 
 
+#specify chan:variable for each chan to only plot this variable per chan
+fitted_vars = {} #leave empty if you want all
+
 #where to save plots and datacards
 toSave_plots        = f"/work/pahwagne/RDsTools/plots/cmsplots_binned/{dt}/"
 toSave_cards        = f"/work/pahwagne/RDsTools/fit/datacards_binned/{dt}"
@@ -343,42 +346,59 @@ score4_binning = [score4_r1,score4_r2]
 
 ########################################3
 
-fitted_vars = {}
 
 #used later
-mass_center = " && ((phiPi_m >= 1.955) && (phiPi_m <= 1.98))"
-mass_sb     = " && ((phiPi_m <  1.955) || (phiPi_m >  1.98))" 
+#mass_center = " && ((phiPi_m >= 1.955) && (phiPi_m <= 1.98))"
+#mass_sb     = " && ((phiPi_m <  1.955) || (phiPi_m >  1.98))" 
+mass_sb     = "    ((phiPi_m <  1.92) || (phiPi_m >  2.02))" 
+mass_center = " && ((phiPi_m >= 1.92) && (phiPi_m <= 2.02))"
+
+#comb control region
+binning_str.append( mass_sb                                                                                                          ); fitted_vars[0]  = "phiPi_m";
 
 #dsmu control region
-binning_str.append("(score2 > 0.6)                                       && (q2_lhcb_alt >= 0)  && (q2_lhcb_alt < 1) "); fitted_vars[0] = "score2";
-binning_str.append("(score2 > 0.6)                                       && (q2_lhcb_alt >= 1)  && (q2_lhcb_alt < 2) "); fitted_vars[1] = "score2";
-binning_str.append("(score2 > 0.6)                                       && (q2_lhcb_alt >= 2)  && (q2_lhcb_alt < 3) "); fitted_vars[2] = "score2";
-binning_str.append("(score2 > 0.6)                                       && (q2_lhcb_alt >= 3)  && (q2_lhcb_alt < 4) "); fitted_vars[3] = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[1]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[2]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[3]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 6)  && (q2_coll < 8) "  + mass_center); fitted_vars[4]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[5]  = "score2";
+binning_str.append("(score2 > 0.6)                                       "  + mass_center); fitted_vars[1]  = "q2_coll";
 
-#ds*mu control region
-binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     && (q2_lhcb_alt >= 0)  && (q2_lhcb_alt < 4) "); fitted_vars[4] = "score2";
-binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     && (q2_lhcb_alt >= 4)  && (q2_lhcb_alt < 6) "); fitted_vars[5] = "score2";
-binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     && (q2_lhcb_alt >= 6)  && (q2_lhcb_alt < 8) "); fitted_vars[6] = "score2";
-binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     && (q2_lhcb_alt >= 8)  && (q2_lhcb_alt < 10)"); fitted_vars[7] = "score2";
-binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     && (q2_lhcb_alt >= 10) && (q2_lhcb_alt < 12)"); fitted_vars[8] = "score2";
+#ds*mu center region
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[6]  = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[7]  = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[8]  = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 6)  && (q2_coll < 8)"  + mass_center); fitted_vars[9]   = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[10] = "score2";
+binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     "  + mass_center); fitted_vars[2]  = "q2_coll";
 
 #hb control region
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 > 0.35)"); fitted_vars[9] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 > 0.35)                                              "  + mass_center); fitted_vars[3] = "score1";
 
 #sr
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)"                                                + mass_sb    ); fitted_vars[10] = "phiPi_m";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 0)  && (q2_lhcb_alt < 4) "  + mass_center); fitted_vars[11] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 4)  && (q2_lhcb_alt < 5) "  + mass_center); fitted_vars[12] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 5)  && (q2_lhcb_alt < 6) "  + mass_center); fitted_vars[13] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 6)  && (q2_lhcb_alt < 7) "  + mass_center); fitted_vars[14] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 7)  && (q2_lhcb_alt < 8) "  + mass_center); fitted_vars[15] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 8)  && (q2_lhcb_alt < 9) "  + mass_center); fitted_vars[16] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 9)  && (q2_lhcb_alt < 10)"  + mass_center); fitted_vars[17] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 10) && (q2_lhcb_alt < 11)"  + mass_center); fitted_vars[18] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_lhcb_alt >= 0)  && (q2_lhcb_alt < 4) "  + mass_center); fitted_vars[19] = "score1";
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 2) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 4) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 4)  && (q2_coll < 5) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 6) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 6)  && (q2_coll < 7) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 7)  && (q2_coll < 8) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 8)  && (q2_coll < 9) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[7] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 9)  && (q2_coll < 10)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[8] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 10) && (q2_coll < 12)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[9] = "score1";
 
-# signal region
-sr = " (score2 < 0.3) && (score3 < 0.3) && (score4 < 0.3)"
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 2) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 2)  && (q2_coll < 3) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 3)  && (q2_coll < 4) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
+#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 4)  && (q2_coll < 5) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[16] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 6) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[10] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 6)  && (q2_coll < 7) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[11] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 7)  && (q2_coll < 8) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[12] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 8)  && (q2_coll < 9) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 9)  && (q2_coll < 10)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 10) && (q2_coll < 12)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
+#
+## signal region
+#sr = " (score2 < 0.3) && (score3 < 0.3) && (score4 < 0.3)"
 
 # ---> bin in q2
 #binning_str.append( sr + mass_center + " && (q2_lhcb_alt >= 0)   && (q2_lhcb_alt < 5)  " )
@@ -419,6 +439,17 @@ binning = binning_str
 
 #print("====> Using 3D regions: ")
 #print(binning_str)
+
+if ((len(fitted_vars) != 0) and (len(fitted_vars) != len(binning))): print("Abort! Bin:var dict doesn't match binning!"); sys.exit()
+
+
+##########################
+# write info into file   #
+##########################
+
+with open(f"{toSave_plots}/fitted_vars.json", "w") as f:
+  json.dump(fitted_vars,f)
+
 
 ##############################
 # Load chain into RDataFrame #
@@ -916,6 +947,7 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   print(" ====> We are in Region", region)
 
 
+
   histos = {}
 
   if pastNN:           models.update(pastNN_models)
@@ -1306,6 +1338,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     "hb_scale_massfit": hb_scale_massfit,
     "trigger"         : trigger,
     }
+
 
     with open(f"{toSave_plots}/normalization_parameters.json", "w") as f:
       json.dump(norm_params,f)

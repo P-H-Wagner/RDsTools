@@ -493,7 +493,12 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   if pastNN:           models.update(pastNN_models)
   if massfit == False: models.update(modelsSR)
 
+
+
+
   for var,model in models.items(): 
+
+      if ((len(fitted_vars) != 0) and (var != fitted_vars[str(region)])): continue
 
       #print("var is", var, "split is", split)
 
@@ -528,7 +533,7 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   
         model = special_models_ds_perp[var + f"_bin{region}" ]                                     
 
-      if ("score" in var) and (args.split == "score2" ) and region != None:
+      if ("score" in var or var == "phiPi_m" or "q2" in var) and (args.split == "score2" ) and region != None:
         
         #adapt the binning
         print(f"======> Adapt binning for {var} and region {region}")
@@ -702,6 +707,11 @@ def saveHisto1D(hist_dict, name):
   f.Close()
 
 
+#load fitted_vars
+with open(f"{args.toSave_plots}/fitted_vars.json", "r") as f:
+  fitted_vars = json.load(f)
+  print(f" ====> JSON file loaded: {fitted_vars}")
+ 
 
 #make this a class 
 selec = selections(args.selection)
