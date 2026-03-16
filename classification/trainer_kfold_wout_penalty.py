@@ -276,7 +276,7 @@ lowMass      = f"& (dsMu_m < {bsMass_})"
 kin_var = [
 
 # helicity
-'cosPhiDs_lhcb_alt',
+#'cosPhiDs_lhcb_alt',
 #'cosPhiDs_reco_1',
 #'cosPhiDs_reco_2',
 #
@@ -292,13 +292,21 @@ kin_var = [
 'sv_chi2', # "
 
 # displacement
+'lxy_bs_sig',
 'lxy_ds_sig',
+
+'dxy_mu_sig_pv',
+'dxy_mu_sig_sv',
 
 # kinematics
 'mu_pt',
 'mu_eta',
 'pi_pt',
 'pi_eta',
+'k1_pt',
+'k1_eta',
+'k2_pt',
+'k2_eta',
 
 # masses
 'kk_m',
@@ -307,27 +315,33 @@ kin_var = [
 
 # delta R
 'kk_deltaR',
-#'phiPi_deltaR',
+'phiPi_deltaR',
 'dsMu_deltaR',
 
 # q2 and co
 'q2_coll',
+'e_star_coll',
 
-'bs_boost_lhcb_alt',
+#'bs_boost_lhcb_alt',
 'bs_pt_lhcb_alt',
 'e_star_lhcb_alt',
-'m2_miss_lhcb_alt',
+#'m2_miss_lhcb_alt',
 'pt_miss_lhcb_alt',
+'m2_miss_lhcb_alt',
 
-'bs_boost_reco_1',
+#'bs_boost_reco_1',
 'bs_pt_reco_1',
 'e_star_reco_1',
 'q2_reco_1',
+'pt_miss_reco_1',
+'m2_miss_reco_1',
 
-'bs_boost_reco_2',
+#'bs_boost_reco_2',
 'bs_pt_reco_2',
 'e_star_reco_2',
 'q2_reco_2',
+'pt_miss_reco_2',
+'m2_miss_reco_2',
 
 'disc_negativity',
 ]
@@ -354,9 +368,10 @@ if args.prod == "24":
 if args.prod == "25":
 
   #old defintions
-  #kin_var.append("ds_vtx_cosine_xy_pv")
+  kin_var.append("ds_vtx_cosine_xy_pv")
   #kinematics
   #kin_var.append("e_gamma")
+  kin_var.append("kappa")
   #isolation
   #kin_var.append("rel_iso_03")
 
@@ -367,25 +382,32 @@ if args.prod == "25":
   #kin_var.append("lxy_bs_sig")
   #kin_var.append("ds_vtx_cosine_xy_pv")
   #kin_var.append("ds_vtx_cosine_xy")
-  #kin_var.append("signed_decay_ip3d_mu_ds_sv")
+  kin_var.append("signed_decay_ip3d_mu_ds_sv")
+  kin_var.append("signed_decay_ip3d_mu_bs_sv")
 
   #kinematics
   #kin_var.append("e_gamma/photon_pt")
-  kin_var.append("e_gamma")
-  kin_var.append("photon_pt")
+  #kin_var.append("e_gamma")
+  #kin_var.append("photon_pt")
   #kin_var.append("cosMuW_lhcb_alt_photon")
   #kin_var.append("disc_negativity_photon")
-  kin_var.append("dsPhotonMu_m")
+  #kin_var.append("dsPhotonMu_m")
 
-  kin_var.append("bs_mass_corr")
-  kin_var.append("bs_mass_corr_photon")
-  kin_var.append("ds_perp")
-  kin_var.append("ds_perp_photon")
-  kin_var.append("ds_mu_perp")
-  kin_var.append("ds_mu_perp_photon")
+  #kin_var.append("bs_mass_corr")
+  #kin_var.append("bs_mass_corr_photon")
+  #kin_var.append("ds_perp")
+  #kin_var.append("ds_perp_photon")
+  #kin_var.append("ds_mu_perp")
+  #kin_var.append("ds_mu_perp_photon")
    
   #isolation
+  kin_var.append("rel_iso_03")
   kin_var.append("rel_iso_03_pv")
+  kin_var.append("rel_iso_03_sv")
+  kin_var.append("rel_iso_03_ds_sv")
+  kin_var.append("rel_iso_03_tv")
+
+  print("blub")
 
 
 class Sample(object):
@@ -533,7 +555,7 @@ class Trainer(object):
     tree_name = 'tree'
   
     # Lets collect everything which is not signal and not combinatorial into hb = -1 (for now)
-    hb_selec = " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) && (gen_match_success)"
+    hb_selec = " && (gen_sig != 0) && (gen_sig != 1) && (gen_sig != 10) && (gen_sig != 11) && (gen_match_success) && (gen_same_mother == 1)"
  
     #signals      #ds mu   #ds tau   #dstar mu   #dstar tau   #hb
     mc_ids      = [0       ,1        ,10         ,11          ,-1]
@@ -546,10 +568,10 @@ class Trainer(object):
       class_label[class_id].append(label[mc_id]) 
 
       if mc_id >= 0: 
-        mc_sample            = Sample(filename = file_sig,    selection=self.baseline_selection  + trigger_mc + f'&& (gen_sig == {mc_id})' + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample            = Sample(filename = file_sig,    selection=self.baseline_selection  + trigger_mc + f'&& (gen_sig == {mc_id})' + lowMass ,                tree = tree_name,signal = class_id).df
 
       else:
-        mc_sample0          = Sample(filename = file_hb,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
+        mc_sample0          = Sample(filename = file_hb,     selection=self.baseline_selection  + trigger_mc + hb_selec + lowMass ,                tree = tree_name,signal = class_id).df
         #mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
         #mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
         #mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
@@ -585,7 +607,8 @@ class Trainer(object):
     sign_flip   = " && ((k1_charge*k2_charge < 0) && (pi_charge*mu_charge>0))"
     #sign_flip   = " && ((k1_charge*k2_charge > 0) || (pi_charge*mu_charge>0))"
 
-    data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
+    #data_selec  = self.baseline_selection + sign_flip + signalRegion + lowMass
+    data_selec  = self.baseline_selection + sign_flip + lowMass 
 
     data_sample_sf = Sample(filename=file_data,   selection=data_selec + trigger_data , tree = 'tree',signal = data_id).df
     data_sample  = pd.concat([data_sample_sf], sort = False)
@@ -2215,7 +2238,7 @@ if __name__ == '__main__':
   #np.random.seed(1000)
   
   features = kin_var 
-  epochs = 300 #30 here
+  epochs = 600  #30 here
   #batch_size = 128 #128 here
   batch_size = 2000 #128 here
   scaler_type = 'robust'
@@ -2223,7 +2246,7 @@ if __name__ == '__main__':
   do_reduce_lr = False
   dirname = 'test'
   baseline_selection = baseline_selection 
-  nfolds = 10
+  nfolds =10
   frac_sb = 0.0
   frac_sf = 1.0
 
