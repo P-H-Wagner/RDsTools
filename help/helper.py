@@ -21,26 +21,24 @@ import json
 # kk constrained
 data_cons_25     = ["20250915_094746", "20250915_131727", "20250915_131849", "20250915_131952", "20250915_132020"]
 sig_cons_25      = ["23_09_2025_13_17_17"]
-hb_cons_25       = ["26_01_2026_17_50_33"] #["23_09_2025_13_12_55"] #(wout pileup info): with pileup: 30_09_2025_09_15_30
-
-#kk unconstrained
-#data_cons_25 = ["20251027_161544", "20251027_161733", "20251027_161828", "20251027_161959", "20251027_162140"]
-#sig_cons_25  = ["03_11_2025_16_01_07"]
-#hb_cons_25   = ["03_11_2025_10_48_49"]
+hb_cons_25       = ["25_02_2026_16_36_40"] #<-- with new gen labeling #for cms talk: ["29_01_2026_17_35_47"] #["23_09_2025_13_12_55"] #["29_01_2026_17_35_47"] 
 
 #### BDT 
 
-# kk constrained
-bdt_model_25_mu7= "28_01_2026_09_11_15" #"16_01_2026_12_31_25"  
-bdt_model_25_mu9= "28_01_2026_09_49_54" #"16_01_2026_11_30_13" 
+bdt_model_25_mu7        = "27_02_2026_08_25_42" #"19_02_2026_13_23_30" #<-- cont. weights #"28_01_2026_09_11_15"   
+bdt_model_afternn_25_mu7= "09_03_2026_10_14_51"   
+#bdt_model_afternn_25_mu7= "12_03_2026_16_46_06"   
 
-# kk unconstrained
-#bdt_model_25_mu7= "26_11_2025_13_40_02" #"21_11_2025_15_49_43" #less features: "11_11_2025_13_41_34"
-#bdt_model_25_mu9= "26_11_2025_16_17_08" #less features: "11_11_2025_13_41_37"
+bdt_model_25_mu9        = "27_02_2026_08_40_28" #"19_02_2026_13_28_24" #<-- cont. weights # "28_01_2026_09_49_54"   
+bdt_model_afternn_25_mu9= "24_02_2026_09_31_30"   
+#bdt_model_afternn_25_mu9= "12_03_2026_16_50_12"   
 
-# kk constrained 
-#bdt_data_25     = "26_11_2025_16_36_16" #"21_11_2025_16_51_16" #less features: "12_11_2025_13_51_29" #"16_09_2025_21_41_00"
-bdt_data_25     = "16_01_2026_11_49_11" #"16_01_2026_12_54_24" #trained in highmass and low mass: "16_01_2026_11_49_11" 
+bdt_data_25     = "27_02_2026_08_43_51"#"26_02_2026_11_52_09"#"19_02_2026_14_01_51" # <--- cont. weight "30_01_2026_09_38_39"    
+
+bdt_data_afternn_mu7 ="09_03_2026_10_22_26"
+#bdt_data_afternn_mu7 ="12_03_2026_16_53_36"
+bdt_data_afternn_mu9 ="24_02_2026_09_46_20" 
+#bdt_data_afternn_mu9 ="12_03_2026_16_55_15" 
 
 # kk unconstrained
 #bdt_data_25     = "26_11_2025_16_33_07" #"21_11_2025_16_32_00" #less features: missing?  #didnt cut at track pt 1 here: "12_11_2025_13_57_45"
@@ -48,12 +46,17 @@ bdt_data_25     = "16_01_2026_11_49_11" #"16_01_2026_12_54_24" #trained in highm
 #### signflip fit for relative normalization used in analysis note     : 08_12_2025_13_34_12 
 
 # stacked plots before bdt weights used in analysis note               : 22_07_2025_10_11_46 
-# stacked plots after bdt weights used in analysis note                : 22_07_2025_08_54_02 (same as below) 
+# stacked plots after bdt weights used in analysis note in SR          : 29_01_2026_11_52_28, 29_01_2026_11_50_43, 29_01_2026_11_51_55, 29_01_2026_11_52_54, 29_01_2026_11_51_14 #mu7 
+# stacked plots after bdt weights used in analysis note in SR          : 30_01_2026_13_45_24,30_01_2026_13_44_35, 30_01_2026_13_42_15,30_01_2026_13_43_21, 30_01_2026_13_44_57 #mu9 
 
-# closure plots after bdt weights for high mass region in analysis note: 09_12_2025_00_09_43 #mu7  
-# closure plots after bdt weights for high mass region in analysis note: 08_12_2025_18_41_16 #mu9 
-# closure plots after bdt weights for sidebands in analysis note       : 09_12_2025_00_10_19 #mu7
-# closure plots after bdt weights for sidebands in analysis note       : 08_12_2025_18_19_03 #mu9
+# closure plots after bdt weights for high mass region in analysis note: 28_01_2026_10_42_04 #mu7  
+# closure plots after bdt weights for high mass region in analysis note: 30_01_2026_09_55_20, 30_01_2026_09_53_31, 30_01_2026_09_54_30, 30_01_2026_09_56_08, 30_01_2026_10_24_26 #mu9 
+
+# closure plots after bdt weights for left sideband in analysis note   : 28_01_2026_10_43_30 #mu7
+# closure plots after bdt weights for left sideband in analysis note   : 30_01_2026_11_35_05,30_01_2026_11_35_49,30_01_2026_11_35_21, 30_01_2026_11_36_23, 30_01_2026_11_24_51 #mu9
+# closure plots after bdt weights for right sideband in analysis note  : 29_01_2026_09_59_08, 29_01_2026_10_03_21, 29_01_2026_10_00_25, 29_01_2026_10_02_26, 29_01_2026_10_01_23 #mu7 (ch0)
+
+# closure plots after bdt weights for right sideband in analysis note  : 30_01_2026_12_31_27,30_01_2026_12_31_02, 30_01_2026_12_33_24,30_01_2026_12_30_11, 30_01_2026_12_32_55 #mu9
 
 # ds peak on dsmu signal mc plot used in analysis note                 : 08_12_2025_10_05_28 #on mu7 
 # shapes plot of different reconstructions: used in analysis note      : 08_12_2025_10_01_51 #on mu7
@@ -62,12 +65,11 @@ bdt_data_25     = "16_01_2026_11_49_11" #"16_01_2026_12_54_24" #trained in highm
 # hb inclusive cocktail list is taken from this folder                 : inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1 in the /gen repo
 
 # kk constrained 
-nn_25_mu7 = "05Dec2025_11h14m48s" #"26Nov2025_16h40m23s" #"25Nov2025_16h14m45s" #"12Nov2025_14h02m26s" # find the norm score plot: test_12Nov2025_16h56m34s resp to 0.4 only: test_12Nov2025_17h14m00s
-nn_25_mu9 = "05Dec2025_11h15m22s"
+nn_25_mu7 = "02Feb2026_13h29m45s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
+nn_25_mu9 = "02Feb2026_09h24m08s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
 
-# kk unconstrained 
-#nn_25_mu7 = "01Dec2025_15h16m00s" #"26Nov2025_19h21m09s" #"21Nov2025_16h56m09s"#"19Nov2025_09h20m20s" # this is with no track pt cut: "12Nov2025_09h57m07s" # 500 epochs but wrong hammer: "11Nov2025_16h20m49s" find the norm score plot: test_12Nov2025_16h50m09s resp to 0.4 only: test_12Nov2025_17h15m06s 
-#nn_25_mu9 = "11Nov2025_15h57m14s"
+#nn_25_mu7 = "09Mar2026_10h05m52s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
+#nn_25_mu9 = "09Mar2026_15h07m00s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
 
 cons_pastNN_25_mu7    = {}
 cons_pastNN_25_mu7["sig"  ] = "sig_"    + nn_25_mu7
@@ -102,9 +104,8 @@ f'(mu_pt > 8.0)',
 ])
 
 # kk constrained 
-sig_cons_hammer_25 = "signal_default_17_10_2025_16_16_23" 
-# kk unconstrained
-#sig_cons_hammer_25 = "signal_default_04_11_2025_17_41_46"
+#sig_cons_hammer_25 = "signal_default_17_10_2025_16_16_23" 
+sig_cons_hammer_25 = "signal_default_16_03_2026_13_34_54" #same as line above but with scale factors :D! 
 
 isoflip = ' && '.join([ #remove the charge and ds+mu mass cuts! 
 '(rel_iso_03_pv > 0.3)',
