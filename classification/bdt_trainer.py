@@ -1,4 +1,5 @@
 import xgboost as xgb
+import pdb
 import numpy as np
 import pandas as pd
 from glob import glob
@@ -213,11 +214,11 @@ correct_sign = "&& ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0))"
 
 #                    # high mass region      # low mass region + sidebands
 #train_region = f"(  (dsMu_m > {bsMass_})  || ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) ) && (bs_pt_coll>10) && (cosMuW_coll > -0.95) "
-#train_region = f"(  (dsMu_m > {bsMass_})  || ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) )  "
-train_region = f"(  (dsMu_m > {bsMass_})  )  "
+train_region = f"(  ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) )  "
 
 #train_region = f"(  (dsMu_m > {bsMass_}) ) && (bs_pt_coll>10) && (cosMuW_coll > -0.95) "
 low_mass     = f"&& (dsMu_m < {bsMass_})"
+high_mass    = f"(  (dsMu_m > {bsMass_})  )  "
 
 start_time = time.time()
 
@@ -268,6 +269,12 @@ features = [
     "fv_chi2",
     "tv_chi2",
     "sv_chi2",
+    "lxy_ds", 
+    "mu_id_medium", 
+    "rel_iso_03_pv", 
+    "mu_is_global", 
+    "ds_vtx_cosine_xyz_pv"
+
 ]
 
 branches = [
@@ -315,94 +322,79 @@ branches = [
     "e_star_coll",
     "e_star_lhcb_alt",
     "e_star_reco_1",
-    "e_star_reco_2"
+    "e_star_reco_2",
+    "lxy_ds", 
+    "mu_id_medium", 
+    "rel_iso_03_pv", 
+    "mu_is_global", 
+    "ds_vtx_cosine_xyz_pv"
+
 ]
 
-######################################
-# data for train region   #
-######################################
+#############
+# Load data #
+#############
 
 dfs = {}
 
-dfs["df_pimu_wrong"  ] = getDf(data_path, branches = branches, selection = train_region + pimu_wrong   + trigger, debug = debug  ) 
-dfs["df_kk_wrong"    ] = getDf(data_path, branches = branches, selection = train_region + kk_wrong     + trigger, debug = debug  ) 
-dfs["df_correct"     ] = getDf(data_path, branches = branches, selection = train_region + correct_sign + trigger, debug = debug  ) 
+# WRONG SIGN EVENTS
+df_wrong   = getDf(data_path, branches = branches, selection = train_region + pimu_wrong   + trigger, debug = debug  ) 
 
-events_train_pimu    = len(dfs["df_pimu_wrong"])
-events_train_kk      = len(dfs["df_kk_wrong"  ])
-print(f"=====> We have {events_train_pimu} pimu wrong sign events and {events_train_kk} kk wrong sign events for training")
+#split wrong sign events here to get control region
+df_wrong_active  = df_wrong[df_wrong["event"].astype(int) % 2 == 0]
+df_wrong_control = df_wrong[df_wrong["event"].astype(int) % 2 == 1]
 
-events_correct_train = len(dfs["df_correct"   ])
-print(f"=====> We have {events_correct_train} right sign events for training ")
+# CORRECT SIGN EVENTS
+df_correct  = getDf(data_path, branches = branches, selection = train_region + correct_sign + trigger, debug = debug  ) 
 
+# LOADING TIME
 end_time = time.time()
-
 elapsed_time = end_time - start_time
 print(f"File loading time: {elapsed_time:.4f} seconds")
 
-########################################
-# Balance classes and define weights   #
-########################################
+#append target column
+df_wrong_active["target"] = 0
+df_correct     ["target"] = 1
 
-#balance classes: (negative is 0 and pos is 1)
-weight_pimu   = events_correct_train / events_train_pimu 
-weight_kk     = events_correct_train / events_train_kk
+#concatenate wrong and correct data into one for the training :D
+df_train = pd.concat( [df_wrong_active, df_correct], ignore_index=True)
 
-#######################################
-# Prepare datasets for training       #
-#######################################
+#keep only features for training
+X = df_train[features]
+#keep only target for training
+y = df_train["target"]  #  column (0 or 1)
 
-dfs["df_pimu_wrong"   ]["weights"] = weight_pimu 
-dfs["df_kk_wrong"     ]["weights"] = weight_kk
-dfs["df_correct"      ]["weights"] = 1.0
-
-dfs["df_pimu_wrong"   ]["target"] = 0
-dfs["df_kk_wrong"     ]["target"] = 0
-dfs["df_correct"      ]["target"] = 1
-
-#concatenate to a main df
-data_pimu = pd.concat([dfs["df_pimu_wrong"], dfs["df_correct"] ], ignore_index=True)
-data_kk   = pd.concat([dfs["df_kk_wrong"  ], dfs["df_correct"] ], ignore_index=True)
-
-X_pimu    = data_pimu[features + ["weights"]]
-X_kk      = data_kk  [features + ["weights"]]
-
-X_pimu_wrong = dfs["df_pimu_wrong"  ][features]
-X_kk_wrong   = dfs["df_kk_wrong"  ][features]
-X_correct    = dfs["df_correct"     ][features]
-
-
-y_pimu    = data_pimu['target']  #  column (0 or 1)
-y_kk      = data_kk  ['target']  #  column (0 or 1)
+# this is to do the plots later :)
+X_control = df_wrong_control[features]
+X_correct = df_correct[features]
 
 # Split data into training and testing sets
-X_pimu_train, X_pimu_test, y_pimu_train, y_pimu_test = train_test_split(X_pimu, y_pimu, test_size=0.2, random_state=42)
-X_kk_train  , X_kk_test  , y_kk_train  , y_kk_test   = train_test_split(X_kk,   y_kk,   test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-weights_pimu = X_pimu_train["weights"]
-weights_kk   = X_kk_train  ["weights"]
+events_train_wrong   = len(X_train[y_train == 0])
+print(f"=====> We have {events_train_wrong} pimu wrong sign events ")
 
-bdt_bins_pimu = [0.00, 0.4] + list(np.linspace(0.45, 0.6, 20).tolist()) + [0.65, 1.0]
-bdt_bins_kk   = [0.00, 0.4] + list(np.linspace(0.45, 0.8, 20).tolist()) + [0.85, 1.0]
+events_train_correct = len(X_train[y_train == 1])
+print(f"=====> We have {events_train_correct} right sign events for training ")
 
-#now only keep going with features
-X_pimu_train = X_pimu_train[features]
-X_pimu_test  = X_pimu_test [features]
-X_pimu       = X_pimu      [features]
+#balance classes: (negative is 0 and pos is 1)
+weight_wrong   = events_train_correct / events_train_wrong 
+#assign non-zero weight (weight_wrong) to wrong class (target 0), otherwise 1.0 for correct class (target 1)
+X_train["weights"] = np.where(y_train == 0, weight_wrong, 1.0)
 
-X_kk_train   = X_kk_train  [features]
-X_kk_test    = X_kk_test   [features]
-X_kk         = X_kk        [features]
+# define binning for weights
+bdt_bins = [0.00, 0.4] + list(np.linspace(0.45, 0.6, 20).tolist()) + [0.65, 1.0]
+ 
+#now only keep going with features and drop weights
+#X_pimu_train = X_pimu_train[features]
+#X_pimu_test  = X_pimu_test [features]
+#X_pimu       = X_pimu      [features]
 
 # use .train() rather than .fit() -> allows more complex handling
 
 # prepare input as Dmatrix
-
-dtrain_pimu  = xgb.DMatrix(X_pimu_train[features], label=y_pimu_train, weight=weights_pimu)
-dtest_pimu   = xgb.DMatrix(X_pimu_test[features] , label=y_pimu_test)
-
-dtrain_kk    = xgb.DMatrix(X_kk_train[features], label=y_kk_train, weight=weights_kk)
-dtest_kk     = xgb.DMatrix(X_kk_test[features] , label=y_kk_test)
+dtrain  = xgb.DMatrix(X_train[features], label=y_train, weight=X_train["weights"])
+dtest   = xgb.DMatrix(X_test [features], label=y_test)
 
 
 # define the model here!
@@ -414,58 +406,35 @@ params = {
   "tree_method": "gpu_hist",
 }
 
-evals_pimu    = [(dtrain_pimu, "train"),   (dtest_pimu, "eval")]
-evals_kk      = [(dtrain_kk, "train"),     (dtest_kk, "eval")  ]
+evals    = [(dtrain, "train"),   (dtest, "eval")]
 
 #to save history
-history_pimu = {}
-history_kk   = {}
+history = {}
 
-import pdb
-pdb.set_trace()
+rounds = 10000 
+es = 30
 
-rounds_pimu = 35000 
-es_pimu = 30
-
-model_pimu = xgb.train(
+model = xgb.train(
     params,
-    dtrain_pimu,
-    num_boost_round=rounds_pimu,
-    evals=evals_pimu,
-    evals_result=history_pimu,
-    early_stopping_rounds=es_pimu,
+    dtrain,
+    num_boost_round=rounds,
+    evals=evals,
+    evals_result=history,
+    early_stopping_rounds=es,
     verbose_eval=True
 )
 
-params["eta"] = 0.0005
-rounds_kk = 30000 
-es_kk = 30
-
-#model_kk = xgb.train(
-#    params,
-#    dtrain_kk,
-#    num_boost_round=rounds_kk,
-#    evals=evals_kk,
-#    evals_result=history_kk,
-#    early_stopping_rounds=es_kk,
-#    verbose_eval=True
-#)
 
 if not os.path.exists(dt):
   os.makedirs(dt)
   os.makedirs(dt + "/plots_pimu")
-  #os.makedirs(dt + "/plots_kk")
+  os.makedirs(dt + "/plots_pimu_control")
 
 with open( dt + f"/info_pimu.txt", "w") as f:
-  f.write( f" These plots use the following params: {params}, with {rounds_pimu} rounds and early stopping after {es_pimu}\n")
+  f.write( f" These plots use the following params: {params}, with {rounds} rounds and early stopping after {es}\n")
   f.write( f" These plots use trigger: {trig}\n")
 
-#with open( dt + f"/info_kk.txt", "w") as f:
-#  f.write( f" These plots use the following params: {params}, with {rounds_kk} rounds and early stopping after {es_kk}\n")
-#  f.write( f" These plots use trigger: {trig}\n")
-
-model_pimu.save_model( dt + '/bdt_model_pimu.json') 
-#model_kk.save_model  ( dt + '/bdt_model_kk.json'  ) 
+model.save_model( dt + '/bdt_model_pimu.json') 
 
 print("=====> training finished")
 
@@ -473,21 +442,19 @@ print("=====> training finished")
 # Plot ROC curve and prob. histo      #
 #######################################
 
-def plotRoc(model, data, X, X_tt, y_tt, bdt_bins, flag = "", roc_type = "train"):
+def plotRoc(model, X_tt, y_tt, bdt_bins, flag = "", roc_type = "train"):
 
-  # X_tt = X_train or X_test
-  # y_tt = y_train or y_test
 
   # convert to DMatrix format
-  X_tt = xgb.DMatrix(X_tt)  
-  X    = xgb.DMatrix(X)     
+  X_tt_dmat = xgb.DMatrix(X_tt[features])  
+  #X    = xgb.DMatrix(X)     
 
   # Make predictions on train/test X
-  y_prob  = model.predict(X_tt) # this already outputs probabilites
-  y_pred = (y_prob > 0.5).astype(int) #convert to 0 or 1 
+  y_prob  = model.predict(X_tt_dmat) # this already outputs probabilites
+  y_pred  = (y_prob > 0.5).astype(int) #convert to 0 or 1 
 
-  # Make predictions on complete dataframe
-  data['bdt_prob'] = model.predict(X) # this already outputs probabilites
+  #append column 
+  X_tt["bdt_prob"] = y_prob 
 
   # Evaluate model
   accuracy = accuracy_score(y_tt, y_pred)
@@ -517,8 +484,8 @@ def plotRoc(model, data, X, X_tt, y_tt, bdt_bins, flag = "", roc_type = "train")
   
   
   # Prediction distribution
-  aa = axes[1].hist(data.bdt_prob[data.target==0], bins=bdt_bins, alpha=0.5, label='Wrong sign', color='red'  , density=True)
-  bb = axes[1].hist(data.bdt_prob[data.target==1], bins=bdt_bins, alpha=0.5, label='Correct sign' , color='green', density=True)
+  aa = axes[1].hist(X_tt.bdt_prob[y_tt==0], bins=bdt_bins, alpha=0.5, label='Wrong sign',    color='red'  , density=True)
+  bb = axes[1].hist(X_tt.bdt_prob[y_tt==1], bins=bdt_bins, alpha=0.5, label='Correct sign' , color='green', density=True)
 
   # get weights from histogram ratio
   binned_weights = np.zeros_like(aa[0])
@@ -540,22 +507,24 @@ def plotRoc(model, data, X, X_tt, y_tt, bdt_bins, flag = "", roc_type = "train")
   print("here")
   plt.savefig( dt + f'/plots{flag}/roc_{roc_type}.pdf')
   plt.clf()
-  return data, binned_weights
+  return X_tt, binned_weights
 
 
 #######################################
 # Create weight signflip weight histo #
 #######################################
   
-def predictAndGetWeight(model, data, df, X_df, bdt_bins, binned_weights):
+def predictAndGetWeight(model, X_df, bdt_bins, binned_weights):
+
+  X_df = X_df.copy()
 
   #first, lets predict the prob for this df
-  X_df = xgb.DMatrix(X_df)
-  df['bdt_prob'] = model.predict(X_df)
+  X_df_dmat  = xgb.DMatrix(X_df[features])
+  X_df["bdt_prob"] = model.predict(X_df_dmat)
   
   # apply the weights to our df 
   # bdt_bins are the edges, so we have to subtract 1
-  masks = [(df['bdt_prob'] > bdt_bins[i]) & (df['bdt_prob'] <= bdt_bins[i+1]) for i in range(len(bdt_bins)-1)]
+  masks = [(X_df['bdt_prob'] > bdt_bins[i]) & (X_df['bdt_prob'] <= bdt_bins[i+1]) for i in range(len(bdt_bins)-1)]
   
   sf_weights = []
   for i in range(len(masks)):
@@ -565,9 +534,16 @@ def predictAndGetWeight(model, data, df, X_df, bdt_bins, binned_weights):
   sf_weights = sum(sf_weights)
 
   #append the column
-  df["sf_weights"] = sf_weights
+  #X_df["sf_weights"] = sf_weights
 
-  return df 
+  #NEW
+  s = np.clip(X_df["bdt_prob"], 1e-6, 1 - 1e-6)
+  #X_df["sf_weights"] = (s / (1 - s)) / weight_wrong
+  X_df["sf_weights"] = (s / (1 - s)) 
+
+  pdb.set_trace()
+
+  return X_df 
 
 #######################################
 # Plot loss function                  #
@@ -633,8 +609,8 @@ def plotKS(model, X_train, y_train, X_test, y_test, flag = ""):
 
   # we only have class 0 and class 1, plot them on one.
 
-  y_pred_train = model.predict(xgb.DMatrix(X_train))#.head(50000)))
-  y_pred_test  = model.predict(xgb.DMatrix(X_test ))#.head(50000)))
+  y_pred_train = model.predict(xgb.DMatrix(X_train[features]))#.head(50000)))
+  y_pred_test  = model.predict(xgb.DMatrix(X_test [features]))#.head(50000)))
 
 
   for i in [0,1]:
@@ -705,64 +681,101 @@ def plotKS(model, X_train, y_train, X_test, y_test, flag = ""):
 
 # plot roc and get the binned weights from hist ratio 
 
-data_pimu,binned_weights_pimu = plotRoc(model_pimu, data_pimu,X_pimu, X_pimu_train, y_pimu_train, bdt_bins_pimu, flag = "_pimu" , roc_type = "train")
-data_pimu,_                     = plotRoc(model_pimu, data_pimu,X_pimu, X_pimu_test,  y_pimu_test,  bdt_bins_pimu, flag = "_pimu" , roc_type = "test")
-
-#data_kk,binned_weights_kk = plotRoc(model_kk, data_kk,X_kk, X_kk_train, y_kk_train, bdt_bins_kk, flag = "_kk" , roc_type = "train")
-#data_kk,_                     = plotRoc(model_kk, data_kk,X_kk, X_kk_test,  y_kk_test,  bdt_bins_kk, flag = "_kk" , roc_type = "test")
+X_train, binned_weights      = plotRoc(model,  X_train, y_train, bdt_bins, flag = "_pimu" , roc_type = "train")
+X_test , _                   = plotRoc(model,  X_test , y_test , bdt_bins, flag = "_pimu" , roc_type = "test")
 
 with open( dt + "/bdt_tools_pimu.json", "w") as f: 
-  json.dump({"binned_weights": binned_weights_pimu.tolist(), "bdt_bins": bdt_bins_pimu, "features": features}, f)
-
-#with open( dt + "/bdt_tools_kk.json", "w") as f: 
-#  json.dump({"binned_weights": binned_weights_kk.tolist(), "bdt_bins": bdt_bins_kk, "features": features}, f)
+  json.dump({"binned_weights": binned_weights.tolist(), "bdt_bins": bdt_bins, "features": features, "weight_wrong":weight_wrong}, f)
 
 #plot loss
-plotLoss(history_pimu, flag = "_pimu")
-#plotLoss(history_kk, flag = "_kk")
+plotLoss(history, flag = "_pimu")
 
 #plot KS test between train and test
-plotKS(model_pimu, X_pimu_train, y_pimu_train, X_pimu_test, y_pimu_test, flag = "_pimu")
-#plotKS(model_kk, X_kk_train, y_kk_train, X_kk_test, y_kk_test, flag = "_kk")
-
+plotKS(model, X_train, y_train, X_test, y_test, flag = "_pimu")
 
 # predict for all the partial df and apply weight column
-predictAndGetWeight(model_pimu, data_pimu, dfs["df_pimu_wrong"]  , X_pimu_wrong        , bdt_bins_pimu, binned_weights_pimu)
-predictAndGetWeight(model_pimu, data_pimu, dfs["df_correct"]     , X_correct     , bdt_bins_pimu, binned_weights_pimu)
+df_wrong_active  = predictAndGetWeight(model, df_wrong_active  ,  bdt_bins, binned_weights)
+df_wrong_control = predictAndGetWeight(model, df_wrong_control ,  bdt_bins, binned_weights)
+df_correct       = predictAndGetWeight(model, df_correct       ,  bdt_bins, binned_weights)
 
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "q2_coll", 20, 0 ,12        , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "q2_lhcb_alt", 20, 0 ,12    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "q2_reco_1", 20, 0 ,12      , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "q2_reco_2", 20, 0 ,12      , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "bs_pt_coll", 20, 0 ,30     , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "bs_pt_lhcb_alt", 20, 0 ,30 , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "bs_pt_reco_2", 20, 0 ,30   , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "bs_pt_reco_1", 20, 0 ,30   , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "pi_pt", 20, 0 ,15          , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "kk_deltaR", 20, 0 ,0.3     , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "kk_m", 20, 1.0 , 1.035     , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "phiPi_deltaR", 20, 0 ,0.5  , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "dsMu_deltaR", 20, 0 ,1     , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "cosPiK1", 20, -1 ,1        , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "cosMuW_lhcb_alt", 20, -1 ,1, flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "phiPi_m", 20, 1.91, 2.028  , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "mu_pt", 20,  7, 15         , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "pi_pt", 20,  0, 6          , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "k1_pt", 20,  0, 6          , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "k2_pt", 20,  0, 6          , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "mu_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "pi_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "k1_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "k2_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "e_star_coll", 25,0, 3      , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "e_star_lhcb_alt", 25,0, 3  , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "e_star_reco_1", 25,0, 3    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "e_star_reco_2", 25,0, 3    , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "dsMu_m", 25,0, 8           , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "dsMu_m", 25,0, 8           , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "sv_chi2", 25,0, 10         , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "tv_chi2", 25,0,  7         , flag = "_pimu", region = "")
-plotHist(dfs["df_pimu_wrong"],dfs["df_correct"], "fv_chi2", 25,0,  5         , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "q2_coll", 20, 0 ,12        , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "q2_reco_1", 20, 0 ,12      , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "q2_reco_2", 20, 0 ,12      , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "bs_pt_coll", 20, 0 ,30     , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "bs_pt_lhcb_alt", 20, 0 ,30 , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "bs_pt_reco_2", 20, 0 ,30   , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "bs_pt_reco_1", 20, 0 ,30   , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "pi_pt", 20, 0 ,15          , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "kk_deltaR", 20, 0 ,0.3     , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "kk_m", 20, 1.0 , 1.035     , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "cosPiK1", 20, -1 ,1        , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "cosMuW_lhcb_alt", 20, -1 ,1, flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "phiPi_m", 20, 1.91, 2.028  , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "mu_pt", 20,  7, 15         , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "pi_pt", 20,  0, 6          , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "k1_pt", 20,  0, 6          , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "k2_pt", 20,  0, 6          , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "k1_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "k2_eta", 25,  -2.4, 2.4    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "e_star_coll", 25,0, 3      , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "e_star_lhcb_alt", 25,0, 3  , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "e_star_reco_1", 25,0, 3    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "e_star_reco_2", 25,0, 3    , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "dsMu_m", 25,0, 8           , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "dsMu_m", 25,0, 8           , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "sv_chi2", 25,0, 10         , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "tv_chi2", 25,0,  7         , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "fv_chi2", 25,0,  5         , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "lxy_ds", 25,0,  1          , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "mu_id_medium", 3,0,  1     , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "rel_iso_03_pv", 25,0,0.3   , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "mu_is_global", 3,0,1.0     , flag = "_pimu", region = "")
+plotHist(df_wrong_active ,df_correct, "ds_vtx_cosine_xyz_pv", 25,0.8,1.0 , flag = "_pimu", region = "")
+
+
+plotHist(df_wrong_control ,df_correct, "q2_coll", 20, 0 ,12        , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "q2_reco_1", 20, 0 ,12      , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "q2_reco_2", 20, 0 ,12      , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "bs_pt_coll", 20, 0 ,30     , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "bs_pt_lhcb_alt", 20, 0 ,30 , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "bs_pt_reco_2", 20, 0 ,30   , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "bs_pt_reco_1", 20, 0 ,30   , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "pi_pt", 20, 0 ,15          , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "kk_deltaR", 20, 0 ,0.3     , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "kk_m", 20, 1.0 , 1.035     , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "cosPiK1", 20, -1 ,1        , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "cosMuW_lhcb_alt", 20, -1 ,1, flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "phiPi_m", 20, 1.91, 2.028  , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "mu_pt", 20,  7, 15         , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "pi_pt", 20,  0, 6          , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "k1_pt", 20,  0, 6          , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "k2_pt", 20,  0, 6          , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "mu_eta", 25,  -2.4, 2.4    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "pi_eta", 25,  -2.4, 2.4    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "k1_eta", 25,  -2.4, 2.4    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "k2_eta", 25,  -2.4, 2.4    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "e_star_coll", 25,0, 3      , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "e_star_lhcb_alt", 25,0, 3  , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "e_star_reco_1", 25,0, 3    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "e_star_reco_2", 25,0, 3    , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "dsMu_m", 25,0, 8           , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "dsMu_m", 25,0, 8           , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "sv_chi2", 25,0, 10         , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "tv_chi2", 25,0,  7         , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "fv_chi2", 25,0,  5         , flag = "_pimu_control", region = "")
+plotHist(df_wrong_control ,df_correct, "lxy_ds", 25,0,  1          , flag = "_pimu", region = "")
+plotHist(df_wrong_control ,df_correct, "mu_id_medium", 3,0,  1     , flag = "_pimu", region = "")
+plotHist(df_wrong_control ,df_correct, "rel_iso_03_pv", 25,0,0.3   , flag = "_pimu", region = "")
+plotHist(df_wrong_control ,df_correct, "mu_is_global", 3,0,1.0     , flag = "_pimu", region = "")
+plotHist(df_wrong_control ,df_correct, "ds_vtx_cosine_xyz_pv", 25,0.8,1.0 , flag = "_pimu", region = "")
 
 #predictAndGetWeight(model_kk, data_kk, dfs["df_kk_wrong"]  , X_kk_wrong      , bdt_bins_kk, binned_weights_kk)
 #predictAndGetWeight(model_kk, data_kk, dfs["df_correct"]     , X_correct     , bdt_bins_kk, binned_weights_kk)
