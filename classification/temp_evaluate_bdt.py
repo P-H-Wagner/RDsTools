@@ -1,3 +1,4 @@
+import pdb
 import uproot
 import xgboost as xgb
 import numpy as np
@@ -59,10 +60,12 @@ with open(f"/work/pahwagne/RDsTools/classification/{bdt_model_25_mu7}/bdt_tools_
     binned_weights_mu7_pimu = np.array(data_mu7["binned_weights"])
     bdt_bins_mu7_pimu       = np.array(data_mu7["bdt_bins"      ])
     features_mu7_pimu       = np.array(data_mu7["features"      ])
+    weight_wrong_mu7_pimu   = np.array(data_mu7["weight_wrong"  ])
 
 binned_weights_mu7_pimu     = np.array(binned_weights_mu7_pimu)
 bdt_bins_mu7_pimu           = np.array(bdt_bins_mu7_pimu      )
 features_mu7_pimu           = np.array(features_mu7_pimu      )
+weight_wrong_mu7_pimu       = float(weight_wrong_mu7_pimu  )
 
 #with open(f"/work/pahwagne/RDsTools/classification/{bdt_model_25_mu7}/bdt_tools_kk.json", "r") as f:
 #    data_mu7 = json.load(f)
@@ -83,10 +86,12 @@ with open(f"/work/pahwagne/RDsTools/classification/{bdt_model_25_mu9}/bdt_tools_
     binned_weights_mu9_pimu  = np.array(data_mu9["binned_weights"])
     bdt_bins_mu9_pimu        = np.array(data_mu9["bdt_bins"      ])
     features_mu9_pimu        = np.array(data_mu9["features"      ])
+    weight_wrong_mu9_pimu    = np.array(data_mu9["weight_wrong"  ])
 
 binned_weights_mu9_pimu      = np.array(binned_weights_mu9_pimu)
 bdt_bin_mu9_pimu             = np.array(bdt_bins_mu9_pimu      )
 feature_mu9_pimu             = np.array(features_mu9_pimu      )
+weight_wrong_mu9_pimu        = float(weight_wrong_mu9_pimu  )
 
 #with open(f"/work/pahwagne/RDsTools/classification/{bdt_model_25_mu9}/bdt_tools_kk.json", "r") as f:
 #    data_mu9 = json.load(f)
@@ -113,6 +118,8 @@ print("used moels are:")
 print(bdt_model_25_mu7)
 print(bdt_model_25_mu9)
 
+
+#pdb.set_trace()
 #apply weights column
 
 #mu7 trigger (careful bc it is a float! use > 0.5)
@@ -134,6 +141,18 @@ weights_mu7_pimu = [bins_mu7_pimu[i] * binned_weights_mu7_pimu[i] for i in range
 weights_mu9_pimu = [bins_mu9_pimu[i] * binned_weights_mu9_pimu[i] for i in range(len(bins_mu9_pimu))]
 #weights_mu9_kk   = [bins_mu9_kk[i]   * binned_weights_mu9_kk[i]   for i in range(len(bins_mu9_kk))  ]
 
+# NEW!!
+s7 = np.clip(df['bdt_prob_mu7_pimu'], 1e-6, 1 - 1e-6)
+s9 = np.clip(df['bdt_prob_mu9_pimu'], 1e-6, 1 - 1e-6)
+weights_mu7_pimu = (s7 / (1 - s7)) / weight_wrong_mu7_pimu
+weights_mu9_pimu = (s9 / (1 - s9)) / weight_wrong_mu9_pimu
+
+
+df["sf_weights"] = 1.0
+df.loc[trig_mu7_pimu, "sf_weights"] = (s7 / (1 - s7)) / weight_wrong_mu7_pimu
+df.loc[trig_mu9_pimu, "sf_weights"] = (s9 / (1 - s9)) / weight_wrong_mu9_pimu
+
+
 # now we want to pick mask_mu9 for events which are triggered by mu9, otherwise mu7
 #sf_weights = [
 #     np.select([trig_mu7_pimu, trig_mu7_kk   , trig_mu9_pimu   , trig_mu9_kk], [w1, w2, w3, w4], default=1.0)
@@ -141,15 +160,16 @@ weights_mu9_pimu = [bins_mu9_pimu[i] * binned_weights_mu9_pimu[i] for i in range
 #    )
 #]
 
-sf_weights = [
-     np.select([trig_mu7_pimu, trig_mu9_pimu], [w1, w2], default=1.0)
-     for w1, w2 in zip( weights_mu7_pimu, weights_mu9_pimu)
-]
+#sf_weights = [
+#     np.select([trig_mu7_pimu, trig_mu9_pimu], [w1, w2], default=1.0)
+#     for w1, w2 in zip( weights_mu7_pimu, weights_mu9_pimu)
+#]
 
-sf_weights = sum(sf_weights)
-                                                                                                             
+
+#comment this out!!
+#sf_weights = sum(sf_weights)
 #append the column
-df["sf_weights"] = sf_weights
+#df["sf_weights"] = sf_weights
 
 
 # save into tree:

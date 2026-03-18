@@ -108,6 +108,8 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
 
   to_write = '\n'.join([
          '#!/bin/bash',
+         'eval "$(conda shell.bash hook)"',
+         'conda activate /work/pahwagne/environments/gpu_bdt',
          'cd /work/pahwagne/RDsTools/classification/'+dt_string + "/" + folder ,
          'mkdir -p /scratch/pahwagne/'+dt_string,
          'ls /scratch/pahwagne/',
