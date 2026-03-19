@@ -1,3 +1,4 @@
+from concurrent.futures import ProcessPoolExecutor
 import xgboost as xgb
 import pdb
 import numpy as np
@@ -34,50 +35,20 @@ ROOT.gStyle.SetOptTitle(0)
 # Set: export PYTHONNOUSERSITE=1 when running on CPU with cpu_bdt environment!
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--prod", required = True, help = "Specify '24' or '25' to specify the data production")
-parser.add_argument("-t", "--trigger", required = True, help = "Specify '7' or '9' to specify trigger menu")
 parser.add_argument('-d', '--debug'  , action='store_true' )
 args = parser.parse_args()
 
-#ipython -i bdt_trainer.py -- -p 25 -t 7 
-
-
-if args.prod not in ["24", "25"]:
-  raise ValueError ("Error: Not a valid key for --prod, please use '24' or '25'")
-else: prod = args.prod
-
-if args.trigger not in ["7", "9"]:
-  raise ValueError ("Error: Not a valid key for --trigger, please use '7' or '9'")
-else: trig = args.trigger
-
+#ipython -i bdt_trainer.py -- --debug
 
 debug = False
 if args.debug: debug = args.debug
 
-
-# Load datasets (only part 1)
+# Load datasets 
 chain = ROOT.TChain("tree")
 
-if prod == "24":
-
-  data_path = []
-  for f in data_cons_24:
-    data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/*") # old prod
-  #files_data = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/20240724_170443/*.root" #old prod
-  trigger = f""
-
-else:
-
-  #files_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{data_cons_25[0]}/*.root" # new prod
-  data_path = []
-  for f in data_cons_25:
-    data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/*") # new prod
-  #data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_31Aug2025_20h37m02s/*") # new prod
-
-  if trig == "7":
-    trigger = f"&& (mu7_ip4)  "
-  else: 
-    trigger = f"&& (mu9_ip6) && (!mu7_ip4)  "
+data_path = []
+for f in data_cons_25:
+  data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{f}/*") # new prod
 
 print(f"Training on files: {data_path}")
 
@@ -93,7 +64,7 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 #######################################
 # Load the dataframe                  #
 #######################################
-from concurrent.futures import ProcessPoolExecutor
+
 def load_one_file(name, branches, selection):
 
     f = ROOT.TFile(name)
@@ -105,6 +76,7 @@ def load_one_file(name, branches, selection):
 def load_file_for_pool(fn_br_sel):
     fn, branches, selection = fn_br_sel
     return load_one_file(fn, branches, selection)
+
 
 def getDf(path, branches = None, selection = None, debug = None):
 
@@ -127,11 +99,7 @@ def getDf(path, branches = None, selection = None, debug = None):
     files = files[:3]
     print(files)
 
-  
-
   pd_list = []
-
-
   total_len = len(files)
 
 
@@ -139,46 +107,11 @@ def getDf(path, branches = None, selection = None, debug = None):
   args = [(fn, branches, selection) for fn in files]
 
   with ProcessPoolExecutor(max_workers=8) as exe:
-      results = list(exe.map(load_file_for_pool, args))
+    results = list(exe.map(load_file_for_pool, args))
 
   df = pd.concat(results, ignore_index=True)
 
-  #for i,name in enumerate(files):
-
-  #  if ( i% 10 == 0 and i != 0): 
-  #    print(f"====> {i}/{total_len} files loaded")
-  #    #concat now
-  #    big = pd.concat(pd_list, ignore_index=True)
-  #    pd_list = [big]
-
-
-  #  f = ROOT.TFile(name)
-  #  tree_obj = f.Get("tree")
-
-  #  if branches is None:
-  #      branches = [br.GetName() for br in tree_obj.GetListOfBranches()]
-  #
-  #
-  #  #arr = tree2array(tree_obj,selection = selection, branches = branches) #event will be removed later!
-  #  arr = tree2array(tree_obj, branches = branches) #event will be removed later!
-  #  pd_list.append(pd.DataFrame(arr).query(selection))
-
-  #chain = ROOT.TChain("tree")
-  #for i,name in enumerate(files):
-
-  #  chain.Add(name)
-
-  #  if ( i% 100 == 0 and i != 0): 
-  #    print(f"====> {i}/{total_len} files added")
-
-  #    arr = tree2array(chain, branches = branches) #event will be removed later!
-  #    pd_list.append(pd.DataFrame(arr).query(selection))
-
-
-  #df = pd.concat(pd_list)
-
   return df
-
 
 #######################################
 # Define signal regions and sidebands #
@@ -198,10 +131,10 @@ def getRegions(sigma):
   mlow3  = mlow2  - sbWidth*sigma
   mhigh3 = mhigh2 + sbWidth*sigma
 
-  signalRegion      = f"({mlow} < phiPi_m) && (phiPi_m < {mhigh})"
+  signalRegion      = f"({mlow} < phiPi_m)    && (phiPi_m < {mhigh})"
   anti_signalRegion = f"((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3}))) "
-  leftSB            = f"({mlow3} < phiPi_m) && (phiPi_m < {mlow2})"
-  rightSB           = f"({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})"
+  leftSB            = f"({mlow3} < phiPi_m)   && (phiPi_m < {mlow2})"
+  rightSB           = f"({mhigh2} < phiPi_m)  && (phiPi_m < {mhigh3})"
 
   return mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, signalRegion, anti_signalRegion, leftSB, rightSB
 
@@ -214,7 +147,8 @@ correct_sign = "&& ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0))"
 
 #                    # high mass region      # low mass region + sidebands
 #train_region = f"(  (dsMu_m > {bsMass_})  || ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) ) && (bs_pt_coll>10) && (cosMuW_coll > -0.95) "
-train_region = f"(  ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) )  "
+#train_region = f"(  ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) )  "
+train_region = f"(  (dsMu_m < {bsMass_}) && ((phiPi_m < 1.92) || (phiPi_m >  2.02)) )"
 
 #train_region = f"(  (dsMu_m > {bsMass_}) ) && (bs_pt_coll>10) && (cosMuW_coll > -0.95) "
 low_mass     = f"&& (dsMu_m < {bsMass_})"
@@ -222,58 +156,92 @@ high_mass    = f"(  (dsMu_m > {bsMass_})  )  "
 
 start_time = time.time()
 
+trigger = " && ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
+#trigger = "&& ((mu7_ip4 == 1))"
+
 #######################################
 # Defining training features          #
 #######################################
-
 
 features = [
     "phiPi_deltaR", 
     "kk_deltaR", 
     "dsMu_deltaR", 
-    #"bs_eta_lhcb_alt", 
-    #"bs_phi_lhcb_alt", 
+
     "bs_pt_coll", 
     "bs_pt_lhcb_alt", 
     "bs_pt_reco_1", 
     "bs_pt_reco_2", 
-    #"bs_phi_lhcb_alt", 
-    #"q2_lhcb_alt", 
+
     "dsMu_m", 
     "phiPi_m", 
+
     "q2_coll", 
     "q2_lhcb_alt", 
     "q2_reco_1", 
     "q2_reco_2", 
+
     "pi_pt",
-    #"pi_eta",
+    "pi_eta",
     "mu_pt",
-    #"mu_eta",
+    "mu_eta",
     "k1_pt",
+    "k1_eta",
     "k2_pt",
-    #"pv_prob",
-    #"sv_prob",
-    #"tv_prob",
-    #"pt_miss_coll", #affects q2 coll 
+    "k2_eta",
+
+    "pt_miss_coll",  
+    "pt_miss_lhcb_alt",  
+    "pt_miss_reco_1",  
+    "pt_miss_reco_2",  
+
+    "m2_miss_coll",  
+    "m2_miss_lhcb_alt",  
+    "m2_miss_reco_1",  
+    "m2_miss_reco_2",  
+
     "cosPiK1", 
+
     "cosMuW_coll",
     "cosMuW_lhcb_alt",
     "cosMuW_reco_1",
     "cosMuW_reco_2",
-    #"e_gamma"
+    
     "e_star_coll",
     "e_star_lhcb_alt",
     "e_star_reco_1",
     "e_star_reco_2",
-    #"mu_pt",
+
     "fv_chi2",
     "tv_chi2",
     "sv_chi2",
+
     "lxy_ds", 
-    "mu_id_medium", 
-    "rel_iso_03_pv", 
+
     "mu_is_global", 
-    "ds_vtx_cosine_xyz_pv"
+    "mu_id_medium", 
+
+    "disc_negativity",
+    "ds_vtx_cosine_xyz_pv",
+    "kappa",
+
+    'lxy_bs_sig',
+    'lxy_ds_sig',
+    
+    'dxy_mu_sig_pv',
+    'dxy_mu_sig_sv',
+
+    'signed_decay_ip3d_mu_ds_sv',
+    'signed_decay_ip3d_mu_bs_sv',
+    
+    'rel_iso_03',
+    'rel_iso_03_pv',
+    'rel_iso_03_sv',
+    'rel_iso_03_ds_sv',
+    'rel_iso_03_tv',
+   
+    'ds_perp',
+    'bs_mass_corr', 
 
 ]
 
@@ -282,52 +250,97 @@ branches = [
     "q2_lhcb_alt",
     "q2_reco_1",
     "q2_reco_2",
+
     "bs_pt_lhcb_alt",
-    "pi_pt",
+    "bs_pt_coll",
+    "bs_pt_reco_1",
+    "bs_pt_reco_2",
+
     "kk_deltaR",
-    "kk_m",
     "phiPi_deltaR",
     "dsMu_deltaR",
-    "cosPiK1",
-    "pt_miss_coll",
+
+    "pt_miss_coll",  
+    "pt_miss_lhcb_alt",  
+    "pt_miss_reco_1",  
+    "pt_miss_reco_2",  
+
+    "m2_miss_coll",  
+    "m2_miss_lhcb_alt",  
+    "m2_miss_reco_1",  
+    "m2_miss_reco_2",  
+
     "phiPi_m",
+    "kk_m",
+
     "mu_pt",
     "mu_eta",
+    "pi_pt",
     "pi_eta",
     "k1_pt",
     "k2_pt",
     "k1_eta",
     "k2_eta",
+
     "bs_eta_lhcb_alt",
     "bs_phi_lhcb_alt",
-    "bs_pt_coll",
-    "bs_pt_reco_1",
-    "bs_pt_reco_2",
+
     "dsMu_m",
+
     "fv_chi2",
     "sv_chi2",
     "tv_chi2",
+
+    "cosPiK1",
     "cosMuW_coll",
     "cosMuW_lhcb_alt",
     "cosMuW_reco_1",
     "cosMuW_reco_2",
+
     "e_gamma",
+
     "event",
+
     "mu7_ip4",
     "mu9_ip6",
+
     "mu_charge",
     "pi_charge",
     "k1_charge",
     "k2_charge",
+
     "e_star_coll",
     "e_star_lhcb_alt",
     "e_star_reco_1",
     "e_star_reco_2",
+
     "lxy_ds", 
-    "mu_id_medium", 
-    "rel_iso_03_pv", 
+
     "mu_is_global", 
-    "ds_vtx_cosine_xyz_pv"
+    "mu_id_medium", 
+
+    "disc_negativity",
+    "ds_vtx_cosine_xyz_pv",
+    "kappa",
+
+    'lxy_bs_sig',
+    'lxy_ds_sig',
+    
+    'dxy_mu_sig_pv',
+    'dxy_mu_sig_sv',
+
+    'signed_decay_ip3d_mu_ds_sv',
+    'signed_decay_ip3d_mu_bs_sv',
+    
+    'rel_iso_03',
+    'rel_iso_03_pv',
+    'rel_iso_03_sv',
+    'rel_iso_03_ds_sv',
+    'rel_iso_03_tv',
+   
+    'ds_perp',
+    'bs_mass_corr', 
+
 
 ]
 
@@ -383,7 +396,7 @@ weight_wrong   = events_train_correct / events_train_wrong
 X_train["weights"] = np.where(y_train == 0, weight_wrong, 1.0)
 
 # define binning for weights
-bdt_bins = [0.00, 0.4] + list(np.linspace(0.45, 0.6, 20).tolist()) + [0.65, 1.0]
+bdt_bins = list(np.linspace(0.2, 0.7, 40).tolist()) 
  
 #now only keep going with features and drop weights
 #X_pimu_train = X_pimu_train[features]
@@ -432,7 +445,7 @@ if not os.path.exists(dt):
 
 with open( dt + f"/info_pimu.txt", "w") as f:
   f.write( f" These plots use the following params: {params}, with {rounds} rounds and early stopping after {es}\n")
-  f.write( f" These plots use trigger: {trig}\n")
+  f.write( f" These plots use trigger: {trigger}\n")
 
 model.save_model( dt + '/bdt_model_pimu.json') 
 
@@ -498,7 +511,7 @@ def plotRoc(model, X_tt, y_tt, bdt_bins, flag = "", roc_type = "train"):
 
   # axes[1].set_yscale("log")  # Set y-axis to logarithmic scale
   axes[1].set_xlabel('Predicted Probability')
-  axes[1].set_ylabel('Frequency')
+  axes[1].set_ylabel('a.u.')
   axes[1].set_title('Prediction Distribution')
   axes[1].legend()
   axes[1].grid()
@@ -538,7 +551,6 @@ def predictAndGetWeight(model, X_df, bdt_bins, binned_weights):
 
   #NEW
   s = np.clip(X_df["bdt_prob"], 1e-6, 1 - 1e-6)
-  #X_df["sf_weights"] = (s / (1 - s)) / weight_wrong
   X_df["sf_weights"] = (s / (1 - s)) 
 
   pdb.set_trace()
@@ -628,8 +640,8 @@ def plotKS(model, X_train, y_train, X_test, y_test, flag = ""):
     #fill root histos and do KS test
 
     c1=ROOT.TCanvas()
-    h1 = ROOT.TH1F(f'train_{i}', f'train_{i}', 30, 0, 1)
-    h2 = ROOT.TH1F(f'test_{i}' , f'test_{i}' , 30, 0, 1)
+    h1 = ROOT.TH1F(f'train_{i}', f'train_{i}', 30, 0.2, 0.7)
+    h2 = ROOT.TH1F(f'test_{i}' , f'test_{i}' , 30, 0.2, 0.7)
 
     for s_train, s_test in zip(scores_train, scores_test):
       h1.Fill(s_train)
@@ -697,6 +709,10 @@ plotKS(model, X_train, y_train, X_test, y_test, flag = "_pimu")
 df_wrong_active  = predictAndGetWeight(model, df_wrong_active  ,  bdt_bins, binned_weights)
 df_wrong_control = predictAndGetWeight(model, df_wrong_control ,  bdt_bins, binned_weights)
 df_correct       = predictAndGetWeight(model, df_correct       ,  bdt_bins, binned_weights)
+
+df_wrong_active.to_json(dt + "/df_wrong_active.json")
+df_wrong_active.to_json(dt + "/df_wrong_control.json")
+df_correct     .to_json(dt + "/df_correct.json")
 
 plotHist(df_wrong_active ,df_correct, "q2_coll", 20, 0 ,12        , flag = "_pimu", region = "")
 plotHist(df_wrong_active ,df_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "_pimu", region = "")

@@ -8,9 +8,6 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from helper import *
 
 parser = argparse.ArgumentParser()
-#parser.add_argument('channel') # sig or hb or data
-parser.add_argument("-p", "--prod",   required = True, help = "Specify production year '24' or '25'")
-#parser.add_argument("-t", "--trigger",required = True, help = "Specify '7' or '9' to specify trigger menu")
 parser.add_argument("-n", "--nFiles", help = "Specify #files to process")
 args = parser.parse_args()
 
@@ -60,14 +57,9 @@ def filesFromTxt(txtFile):
 
 #loop over all bph parts
 inputfiles = []
-if args.prod == "24":
-  for dt in data_cons_24:
-    directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dt}/' #
-    inputfiles +=  filesFromFolder(directory)
-else:
-  for dt in data_cons_25:
-    directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dt}/' #
-    inputfiles +=  filesFromFolder(directory)
+for dt in data_cons_25:
+  directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dt}/' #
+  inputfiles +=  filesFromFolder(directory)
 
 naming = 'data'
 
