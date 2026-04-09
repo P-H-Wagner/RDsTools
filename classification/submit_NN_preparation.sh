@@ -10,7 +10,7 @@ mkdir -p $here
 mkdir -p $pnfs
 
 #queue submission
-sbatch -p short -o $here/out.log -e $here/err.err --mem=6000M prepare_NN_training.sh $dt 
+#sbatch -p short -o $here/out.log -e $here/err.err --mem=6000M prepare_NN_training.sh $dt 
 
 #local
 #prepare_NN_training.sh $dt 

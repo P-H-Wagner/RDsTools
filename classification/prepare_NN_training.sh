@@ -13,8 +13,8 @@ mkdir -p $scratch
 mkdir -p $pnfs
 ls -ld $scratch   
 
-python prepare_NN_training.py --debug --datetime=$dt
-#python prepare_NN_training.py --datetime=$dt
+#python prepare_NN_training.py --debug --datetime=$dt
+python prepare_NN_training.py --datetime=$dt
 xrdcp -r  $scratch/* $pnfs_w_redir
 
 rm -r $scratch

@@ -425,17 +425,12 @@ class Trainer(object):
     ]
 
 
-  def createOutDir(self):
-    '''
-      This function creates the output directory
-    '''
-    outdir = f'./outputs/{self.dirname}'
+  def saveSettings(self):
+
+    #already created in submitter file
+    outdir = f'./nn_training/{dt}'
     self.outdir = outdir
 
-    if not path.exists(outdir):
-      os.system(f'mkdir -p ./outputs/{self.dirname}')
-
-    
     f = open(self.outdir + "/settings.txt", "x")
     f.write("Features: "                  + str(self.features)            + "\n")
     f.write("Epochs: "                    + str(self.epochs)              + "\n")
@@ -445,13 +440,9 @@ class Trainer(object):
     f.write("Early stopping: "            + str(self.do_early_stopping)   + "\n")
     f.write("Reduce lr: "                 + str(self.do_reduce_lr)        + "\n")
     f.write("Baseline selection: "        + str(self.baseline_selection)  + "\n")
-    #f.write("year of data: "              + str(args.prod)                + "\n")
-    #f.write("trigger: "                   + str(args.trigger)             + "\n")
     f.write("Signal region up to:"        + str(nSignalRegion) + " sigma" + "\n")
     f.write("Sideband region starts at:"  + str(nSidebands)    + " sigma" + "\n")
     f.write("Sideband region width:"      + str(sbWidth)       + " sigma" + "\n")
-    #f.write("frac of sideband events:"    + str(self.frac_sb)             + "\n")
-    #f.write("frac of signflip events:"    + str(self.frac_sf)             + "\n")
     f.close()
 
     return 
@@ -500,14 +491,10 @@ class Trainer(object):
 
       else:
         mc_sample0          = Sample(filename = file_hb,     selection=self.baseline_selection  + trigger_mc + hb_selec + lowMass ,                tree = tree_name,signal = class_id).df
-        #mc_sample1          = Sample(filename = file_b0,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        #mc_sample2          = Sample(filename = file_bs,     selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-        #mc_sample3          = Sample(filename = file_bplus,  selection=self.baseline_selection  + trigger_mc + hb_selec                + signalRegion + lowMass,                tree = tree_name,signal = class_id).df
-
-        #mc_sample           = pd.concat([mc_sample0, mc_sample1,mc_sample2,mc_sample3], sort = False)
         mc_sample           = pd.concat([mc_sample0], sort = False)
       
       mc_train, mc_test = train_test_split(mc_sample,test_size = 0.2,random_state = 1000)
+
       f = open(self.outdir + "/settings.txt", "a")
       f.write(f"train sample for signal {mc_id} has class name {class_id} and contains {len(mc_train)} events \n" )
       f.write(f"test sample for signal {mc_id} has class name {class_id} and contains {len(mc_test)} events \n"   )
@@ -553,11 +540,8 @@ class Trainer(object):
 
     print(f"train sample for data has class name {data_id} and  has {len(data_train)} events")
     print(f"test sample for data has class name {data_id} and  has {len(data_test)} events")
-
-
-    
     print(f'========> it took {round(time() - now,2)} seconds' )
-    #pdb.set_trace()
+
     return train, test, class_label 
 
   def createDataframe(self, samples):
@@ -638,8 +622,11 @@ class Trainer(object):
     test  = test .fillna(1.0)
 
     # create new column which holds the multiplication of all weights
-    train["total_w"] = train["sf_weights"] * train["central_w"] * train["trigger_sf"]
-    test ["total_w"] = test ["sf_weights"] * test ["central_w"] * test ["trigger_sf"]
+    #train["total_w"] = train["sf_weights"] * train["central_w"] * train["trigger_sf"]
+    #test ["total_w"] = test ["sf_weights"] * test ["central_w"] * test ["trigger_sf"]
+
+    train["total_w"] = train["central_w"] * train["trigger_sf"]
+    test ["total_w"] = test ["central_w"] * test ["trigger_sf"]
 
 
     # even undo the splitting which is not used for k-folding
@@ -2122,9 +2109,8 @@ class Trainer(object):
   def process(self):
     print( '------------------- MVA Trainer --------------------')
     
-    # create output directory
-    print('\n========> creating output directory')
-    self.createOutDir()
+    print('\n========> save settings')
+    self.saveSettings()
 
     # get the samples (dictionaries with signal key)
     print('\n========> getting the samples')

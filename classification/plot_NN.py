@@ -356,11 +356,12 @@ def plotAverageKSTest(h1, h2, sig, nfolds):
 
 
 #get the number of folds
-files = glob.glob("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nn_training/xx_train_*.pck")
+files = glob.glob(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nn_training/{dt}/xx_train_*.pck")
 folds = [int(re.search(r'_(\d+)\.pck', f).group(1)) for f in files]
 max_fold = max(folds) #f.e. 9 when we have 10 folds (0, ..., 9)
 nfolds = max_fold + 1
 
+print(f"====> Plotting for model with {nfolds} folds")
 
 ###################
 # K-folding loop  #
