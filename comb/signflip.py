@@ -59,7 +59,7 @@ ROOT.gStyle.SetPadLeftMargin(0.15)
 
 #this command is a test for git
 
-def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, key, start, stop,findcut = None, cut = None):
+def getSignflipRatio(hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, key, start, stop,findcut = None, cut = None):
 
   if findcut:
     outdir = f"/work/pahwagne/RDsTools/comb/signflip_fits/cut_fits/{cut}/"
@@ -73,11 +73,11 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
 
 
   # initial values
-  n0_bkg_kk      = hBkg_kk.Integral()
+  #n0_bkg_kk      = hBkg_kk.Integral()
   n0_bkg_pimu    = hBkg_pimu.Integral()
 
   #fix the scale to how it comes in data
-  n0_tot = n0_bkg_kk + n0_bkg_pimu
+  #n0_tot = n0_bkg_kk + n0_bkg_pimu
   #n0_scale = n0_bkg_kk / n0_tot 
   n0_scale = 0.00
 
@@ -103,15 +103,15 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   # Define a RooDataHist from TH1D
   hData_Roo      = ROOT.RooDataHist("hData_Roo", "hData_Roo", ROOT.RooArgList(dsMass), hData)
   #hBkg_Roo      = ROOT.RooDataHist("hBkg_Roo" , "hBkg_Roo" , ROOT.RooArgList(dsMass), hBkg)
-  hBkg_kk_Roo    = ROOT.RooDataHist("hBkg_kk_Roo" , "hBkg_kk_Roo" , ROOT.RooArgList(dsMass), hBkg_kk)
+  #hBkg_kk_Roo    = ROOT.RooDataHist("hBkg_kk_Roo" , "hBkg_kk_Roo" , ROOT.RooArgList(dsMass), hBkg_kk)
   hBkg_pimu_Roo  = ROOT.RooDataHist("hBkg_pimu_Roo" , "hBkg_pimu_Roo" , ROOT.RooArgList(dsMass), hBkg_pimu)
   #hBkg_both_Roo  = ROOT.RooDataHist("hBkg_both_Roo" , "hBkg_both_Roo" , ROOT.RooArgList(dsMass), hBkg_both)
   hSig_Roo       = ROOT.RooDataHist("hSig_Roo" , "hSig_Roo" , ROOT.RooArgList(dsMass), hSig)
 
   #create pdf from histo
   #pdf_bkg     = ROOT.RooHistPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgSet(dsMass), hBkg_Roo);
-  pdf_bkg_kk     = ROOT.RooHistPdf("pdf_kk_bkg", "pdf_kk_bkg", ROOT.RooArgSet(dsMass), hBkg_kk_Roo);
-  pdf_bkg_pimu   = ROOT.RooHistPdf("pdf_pimu_bkg", "pdf_pimu_bkg", ROOT.RooArgSet(dsMass), hBkg_pimu_Roo);
+  #pdf_bkg_kk     = ROOT.RooHistPdf("pdf_kk_bkg", "pdf_kk_bkg", ROOT.RooArgSet(dsMass), hBkg_kk_Roo);
+  pdf_bkg_pimu   = ROOT.RooHistPdf("pdf_bkg_pimu", "pdf_bkg_pimu", ROOT.RooArgSet(dsMass), hBkg_pimu_Roo);
   #pdf_bkg_both   = ROOT.RooHistPdf("pdf_both_bkg", "pdf_both_bkg", ROOT.RooArgSet(dsMass), hBkg_both_Roo);
   pdf_sig     = ROOT.RooHistPdf("pdf_sig", "pdf_sig", ROOT.RooArgSet(dsMass), hSig_Roo);
 
@@ -120,7 +120,7 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   # kk and pimu only
   #kk_scale   = ROOT.RooRealVar( "kk_scale",   "kk_scale"      ,  0.5   ,    0.00, 1.0)
   #pimu_scale  = ROOT.RooFormulaVar("pimu_scale", "1.0 - kk_scale"    ,  ROOT.RooArgList(kk_scale))
-  kk_scale    = ROOT.RooRealVar   ("kk_scale",   "kk_scale"          ,  n0_scale )
+  kk_scale    = ROOT.RooRealVar   ("kk_scale",   "kk_scale"          ,  0.0)
   pimu_scale  = ROOT.RooFormulaVar("pimu_scale", "1.0 - kk_scale"    ,  ROOT.RooArgList(kk_scale))
 
 
@@ -143,13 +143,14 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
 
   # Define functions
 
-  pdf_bkg       = ROOT.RooAddPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgList(pdf_bkg_kk,pdf_bkg_pimu), ROOT.RooArgList(kk_scale, pimu_scale))
+  #pdf_bkg       = ROOT.RooAddPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgList(pdf_bkg_kk,pdf_bkg_pimu), ROOT.RooArgList(kk_scale, pimu_scale))
+  pdf_bkg        = pdf_bkg_pimu
   #pdf_bkg       = ROOT.RooAddPdf("pdf_bkg", "pdf_bkg", ROOT.RooArgList(pdf_bkg_kk,pdf_bkg_pimu, pdf_bkg_both), ROOT.RooArgList(kk_scale, pimu_scale, both_scale))
 
   if n0_sig > 0:
-    pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg, pdf_sig), ROOT.RooArgList(bkg_scale, sig_scale ))
+    pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg_pimu, pdf_sig), ROOT.RooArgList(bkg_scale, sig_scale ))
   else:
-    pdf_total     = pdf_bkg #ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg), ROOT.RooArgList(bkg_scale))
+    pdf_total     = pdf_bkg_pimu #ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg), ROOT.RooArgList(bkg_scale))
 
   #pdf_total     = ROOT.RooAddPdf("pdf_total", "pdf_total", ROOT.RooArgList(pdf_bkg,pdf_sig), ROOT.RooArgList(bkg_scale))
   pdf_total_ext = ROOT.RooExtendPdf("pdf_total_scaled", "pdf_total_scaled", pdf_total, nData, "complete") 
@@ -159,7 +160,7 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   result = pdf_total_ext.fitTo(hData_Roo, ROOT.RooFit.Range("complete"), ROOT.RooFit.SumW2Error(True))
   
   #get results of parameters
-  k_scale    = round(kk_scale.getVal()  ,5)
+  #k_scale    = round(kk_scale.getVal()  ,5)
   p_scale    = round(pimu_scale.getVal()  ,5)
   #kp_scale   = round(both_scale.getVal()  ,5)
   b_scale    = round(bkg_scale.getVal()  ,5)
@@ -167,21 +168,21 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   n_data     = round(nData.getVal()  ,5)
   n_sig      = round(nData.getVal() * (1 - bkg_scale.getVal())  ,5)
   n_bkg      = round(nData.getVal() * (bkg_scale.getVal())      ,5)
-  n_kk       = round(nData.getVal() * (bkg_scale.getVal()) * kk_scale.getVal()       ,5)
+  #n_kk       = round(nData.getVal() * (bkg_scale.getVal()) * kk_scale.getVal()       ,5)
   n_pimu     = round(nData.getVal() * (bkg_scale.getVal()) * pimu_scale.getVal()     ,5)
   #n_both     = round(nData.getVal() * (bkg_scale.getVal()) * both_scale.getVal()     ,5)
   #s_scale = round(sig_scale.getVal()  ,5)
 
 
-  print(f" =======> kk scale is: {k_scale} ")
+  #print(f" =======> kk scale is: {k_scale} ")
   print(f" =======> pimu scale is: {p_scale} ")
   #print(f" =======> both scale is: {kp_scale} ")
   print(f" =======> bkg scale is: {b_scale} ")
   print(f" =======> sig scale is: {s_scale} ")
   print(f" =======> number of events are: {n_data} ")
   print(f" =======> number of bkg events: {n_data * b_scale}")
-  print(f" =======> number of kk bkg events: {n_pimu}")
-  print(f" =======> number of pimu bkg events: {n_kk}")
+  #print(f" =======> number of kk bkg events: {n_kk}")
+  print(f" =======> number of pimu bkg events: {n_pimu}")
   print(f" =======> number of signal events: {n_data * (1-b_scale)}")
 
   #plotting
@@ -221,8 +222,8 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray),      ROOT.RooFit.FillColor(ROOT.kGray),      ROOT.RooFit.Name("pdf_bkg"),          ROOT.RooFit.Components("pdf_bkg"),         ROOT.RooFit.DrawOption("F"),  ROOT.RooFit.FillStyle(1001))
   pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed - 7 ),   ROOT.RooFit.Name("pdf_sig"),             ROOT.RooFit.Components("pdf_sig"), ROOT.RooFit.FillColor(ROOT.kRed - 7), ROOT.RooFit.DrawOption("F") , ROOT.RooFit.FillStyle(3444)        )
   pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed - 7 ),   ROOT.RooFit.Name("pdf_sig"),             ROOT.RooFit.Components("pdf_sig"), ROOT.RooFit.FillColor(ROOT.kRed - 7)        )
-  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg"),             ROOT.RooFit.Components("pdf_bkg"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
-  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg"),             ROOT.RooFit.Components("pdf_bkg"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), )
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg_pimu"),             ROOT.RooFit.Components("pdf_bkg_pimu"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
+  pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGray + 2),   ROOT.RooFit.Name("pdf_bkg_pimu"),             ROOT.RooFit.Components("pdf_bkg_pimu"),  ROOT.RooFit.FillColor(ROOT.kGray + 2), )
   #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGreen -7),   ROOT.RooFit.Name("pdf_kk_bkg"),          ROOT.RooFit.Components("pdf_kk_bkg"),  ROOT.RooFit.FillColor(ROOT.kGreen -7), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
   #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGreen -7),   ROOT.RooFit.Name("pdf_kk_bkg"),          ROOT.RooFit.Components("pdf_kk_bkg"),  ROOT.RooFit.FillColor(ROOT.kGreen -7), )
   #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kGreen +9),   ROOT.RooFit.Name("pdf_pimu_bkg"),          ROOT.RooFit.Components("pdf_pimu_bkg"),  ROOT.RooFit.FillColor(ROOT.kGreen +9), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
@@ -230,7 +231,7 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kOrange ),   ROOT.RooFit.Name("pdf_both_bkg"),          ROOT.RooFit.Components("pdf_both_bkg"),  ROOT.RooFit.FillColor(ROOT.kOrange), ROOT.RooFit.DrawOption("F"), ROOT.RooFit.FillStyle(3344)   )
   #pdf_total.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kOrange ),   ROOT.RooFit.Name("pdf_both_bkg"),          ROOT.RooFit.Components("pdf_both_bkg"),  ROOT.RooFit.FillColor(ROOT.kOrange), )
 
-  hist_bkg = pdf_bkg.createHistogram("hist_bkg", dsMass)
+  hist_bkg = pdf_bkg_pimu.createHistogram("hist_bkg", dsMass)
   hist_sig = pdf_sig.createHistogram("hist_sig", dsMass)
 
 
@@ -261,7 +262,7 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
   leg2.SetLineColor(ROOT.kWhite);
   leg2.SetTextSize(0.030)
   leg2.AddEntry("hData_Roo","Data","EP")
-  leg2.AddEntry("pdf_bkg"," Comb. + Fakes","F")
+  leg2.AddEntry("pdf_bkg_pimu"," Comb. + Fakes","F")
   #leg2.AddEntry("pdf_kk_bkg"," KK wrong","F")
   #leg2.AddEntry("pdf_pimu_bkg"," #pi#mu wrong","F")
   #leg2.AddEntry("pdf_both_bkg"," both wrong","F")
@@ -446,7 +447,8 @@ def getSignflipRatio(hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2
 
 
   print("==============> Saved!")
-  return n_kk, n_pimu, n_sig, [A,B,C]
+  #return n_kk, n_pimu, n_sig, [A,B,C]
+  return  n_pimu, n_sig, [A,B,C]
 
 
 def fitAnotherVar   (hBkg_kk, hBkg_pimu, hSig, hData, mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, key, start, stop):
