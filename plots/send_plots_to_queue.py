@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pdb
 import json
 
-ROOT.ROOT.EnableImplicitMT() 
+ROOT.ROOT.EnableImplicitMT(8) 
 
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/comb"))
 sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
@@ -78,7 +78,7 @@ control = args.control
 if args.cut  : score_cut = f" && (score5 <= {args.cut} ) "
 else         : score_cut = ""
 
-if args.debug: debug = 100000
+if args.debug: debug = 1000000
 else         : debug = None
 
 print(f"====> Running  {args.nn} neural network on trigger {trigger} and sf_weights: {sf_weights} with hammer on: {hammer_central} and sys {hammer_sys}")
@@ -94,11 +94,20 @@ with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/20_10_20
 
 
 # Data, selections, trigger
-baseline      = base_wout_tv_25
-print("Using baseline selection:", baseline)
+baseline      = base_wout_tv_25 
+print("Using baseline selection:", base_wout_tv_25)
+
+# remove nan whammer weights:
+hammer_str = "&& (TMath::Finite(central_w) > 0 )"
+
+if hammer_sys:
+
+  for sys in systematics_vector:
+    hammer_str += f" && (TMath::Finite({sys}_up) > 0   )"
+    hammer_str += f" && (TMath::Finite({sys}_down) > 0 )"
 
 #before NN
-bdt_data   = bdt_data_25
+#bdt_data   = bdt_data_25
 sig_cons   = sig_cons_25
 hb_cons    = hb_cons_25
 data_cons  = data_cons_25
@@ -109,15 +118,15 @@ if trigger == "mu7":
 else:                
   cons_pastNN_25 = cons_pastNN_25_mu9
 
-sig_cons_pastNN     =  cons_pastNN_25["sig"]    
-hb_cons_pastNN      =  cons_pastNN_25["hb"]     
-data_cons_pastNN    =  cons_pastNN_25["data"]   
+#sig_cons_pastNN     =  cons_pastNN_25["sig"]    
+#hb_cons_pastNN      =  cons_pastNN_25["hb"]     
+#data_cons_pastNN    =  cons_pastNN_25["data"]   
 
 #if bdt2 also activated
-if sf_weights2 and (trigger == "mu7"):
-  data_cons_pastNN = bdt_data_afternn_mu7
-if sf_weights2 and (trigger == "mu9"):
-  data_cons_pastNN = bdt_data_afternn_mu9
+#if sf_weights2 and (trigger == "mu7"):
+#  data_cons_pastNN = bdt_data_afternn_mu7
+#if sf_weights2 and (trigger == "mu9"):
+#  data_cons_pastNN = bdt_data_afternn_mu9
 
 skimmed = True 
 
@@ -158,23 +167,28 @@ with open( toSave_plots + f"/info.txt", "a") as f:
 # Split MC  #
 #############
 
-if trigger == "mu7":
-  data_selec   = " && (mu7_ip4 == 1)"
-  mc_selec     = " && (mu7_ip4 == 1) && (static_cast<int>(event) % 20 < 10) " #on mc we use event nr (all triggers are on for mc!)
-else:
-  data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
-  mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
+#if trigger == "mu7":
+#  data_selec   = " && (mu7_ip4 == 1)"
+#  mc_selec     = " && (mu7_ip4 == 1) && (static_cast<int>(event) % 20 < 10) " #on mc we use event nr (all triggers are on for mc!)
+#else:
+#  data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
+#  mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
+
+data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
+#data_selec = " && ((mu7_ip4 == 1)||(mu9_ip6==1))"
+#data_selec = " && ((mu7_ip4 == 1))"
+mc_selec   = " "
 
 #also freeze sigma here!
 sigma = 0.009
 
 
 # set the to be splitter variable and binning
-#split   = "cosMuW_lhcb_alt"
+split   = "cosMuW_lhcb_alt"
 #split   = "ds_perp"
 #split   = "q2_coll"
 #split = "score4"
-split = "score2"
+#split = "score2"
 #split   = "m2_miss_lhcb_alt"
 #split   = "q2_lhcb_alt"
 #split   = "class"
@@ -205,8 +219,8 @@ split = "score2"
 #binning = [[-0.01,0.01],[0.99,1.01],[1.99,2.01],[2.99,3.01],[3.99,4.01],[4.99,5.01]]
 #binning = [[0.99,1.01]]
 #binning = [[4.99,5.01]]
-#binning = [[-99,99]]
-binning = [[0,0.7],[0.7,1]]
+binning = [[-99,99]]
+#binning = [[0,0.7],[0.7,1]]
 #binning = [[0.0,0.3],[0.3,0.6],[0.6,1.0]]
 #binning = [[0,6],[6,12]]
 #binning = [[0,0.25],[0.25,0.5],[0.5,0.75],[0.75,1.0],[1.0,1.25],[1.25,1.5],[1.5,1.75],[1.75,2.0],[2.0,2.5]]
@@ -354,50 +368,50 @@ mass_sb     = "    ((phiPi_m <  1.92) || (phiPi_m >  2.02))"
 mass_center = " && ((phiPi_m >= 1.92) && (phiPi_m <= 2.02))"
 
 #comb control region
-binning_str.append( mass_sb                                                                                                          ); fitted_vars[0]  = "phiPi_m";
-
-#dsmu control region
-#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[1]  = "score2";
-#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[2]  = "score2";
-#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[3]  = "score2";
-#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 6)  && (q2_coll < 8) "  + mass_center); fitted_vars[4]  = "score2";
-#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[5]  = "score2";
-binning_str.append("(score2 > 0.6)                                       "  + mass_center); fitted_vars[1]  = "q2_coll";
-
-#ds*mu center region
-#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[6]  = "score2";
-#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[7]  = "score2";
-#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[8]  = "score2";
-#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 6)  && (q2_coll < 8)"  + mass_center); fitted_vars[9]   = "score2";
-#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[10] = "score2";
-binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     "  + mass_center); fitted_vars[2]  = "q2_coll";
-
-#hb control region
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 > 0.35)                                              "  + mass_center); fitted_vars[3] = "score1";
-
-#sr
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 2) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 4) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 4)  && (q2_coll < 5) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 6) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 6)  && (q2_coll < 7) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 7)  && (q2_coll < 8) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 8)  && (q2_coll < 9) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[7] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 9)  && (q2_coll < 10)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[8] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 10) && (q2_coll < 12)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[9] = "score1";
-
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 2) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 2)  && (q2_coll < 3) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 3)  && (q2_coll < 4) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
-#binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 4)  && (q2_coll < 5) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[16] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 6) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[10] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 6)  && (q2_coll < 7) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[11] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 7)  && (q2_coll < 8) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[12] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 8)  && (q2_coll < 9) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 9)  && (q2_coll < 10)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
-binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 10) && (q2_coll < 12)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
+#binning_str.append( mass_sb                                                                                                          ); fitted_vars[0]  = "phiPi_m";
+##
+###dsmu control region
+##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[1]  = "score2";
+##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[2]  = "score2";
+##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[3]  = "score2";
+##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 6)  && (q2_coll < 8) "  + mass_center); fitted_vars[4]  = "score2";
+##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[5]  = "score2";
+#binning_str.append("(score2 > 0.6)                                       "  + mass_center); fitted_vars[1]  = "q2_coll";
+##
+##ds*mu center region
+##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[6]  = "score2";
+##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[7]  = "score2";
+##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[8]  = "score2";
+##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 6)  && (q2_coll < 8)"  + mass_center); fitted_vars[9]   = "score2";
+##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[10] = "score2";
+#binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     "  + mass_center); fitted_vars[2]  = "q2_coll";
+##
+##hb control region
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 > 0.35)                                              "  + mass_center); fitted_vars[3] = "score1";
 #
-## signal region
+###sr
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 2) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 4) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 4)  && (q2_coll < 5) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 6) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 6)  && (q2_coll < 7) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 7)  && (q2_coll < 8) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 8)  && (q2_coll < 9) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[7] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 9)  && (q2_coll < 10)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[8] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 10) && (q2_coll < 12)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[9] = "score1";
+##
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 2) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 2)  && (q2_coll < 3) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 3)  && (q2_coll < 4) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
+###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 4)  && (q2_coll < 5) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[16] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 6) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[10] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 6)  && (q2_coll < 7) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[11] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 7)  && (q2_coll < 8) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[12] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 8)  && (q2_coll < 9) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 9)  && (q2_coll < 10)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
+#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 10) && (q2_coll < 12)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
+##
+# signal region
 #sr = " (score2 < 0.3) && (score3 < 0.3) && (score4 < 0.3)"
 
 # ---> bin in q2
@@ -427,12 +441,12 @@ binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_c
 
 ##########################################
 
-#for b in binning:
-#  
-#  # b is a list
-#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
-#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
-#  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
+for b in binning:
+  
+  # b is a list
+  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
+  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
+  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
 
 ##overwrite
 binning = binning_str
@@ -460,16 +474,16 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
   print(dateTimes)
   chain = ROOT.TChain("tree")
 
-  #if ((not pastNN) and (not isinstance(dateTimes, list))):
-  #  print("dateTimes must be a list of strings")
+
+  ## NN and no systematics and no sf weights2
 
   if (pastNN and not rdfSys and not sf_weights2):
     print(f"picking past NN files ...")
     #dateTimes here is a string like: "data_26Sep..._cons"
-    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}/*"
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/{dateTimes}/*"
 
     #new
-    file_pattern = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{dateTimes}/*.root"
+    file_pattern = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/{dateTimes}/*.root"
     all_files = sorted(glob.glob(file_pattern))
     print(f"Found {len(all_files)} files")
 
@@ -493,23 +507,45 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
 
     print(files)
     n = chain.Add(files)
-    print(f"Chaining {n} files for this channel")
-
     if debug: 
-      reduced_chain = chain.CloneTree(debug); 
-      rdf = ROOT.RDataFrame(reduced_chain,debug)
-      return (reduced_chain,rdf)
+      #reduced_chain = chain.CloneTree(debug); 
+      #rdf = ROOT.RDataFrame(reduced_chain,debug)
+      files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/{dateTimes}/*1*.root"
+      rdf = ROOT.RDataFrame("tree", files)
+      print(f"Chaining {n} files for this channel")
+      return (chain,rdf)
 
     else:     
       #rdf = ROOT.RDataFrame(chain)
       rdf = ROOT.RDataFrame("tree", files)
       return (chain,rdf)
 
-  if (pastNN and not rdfSys and sf_weights2):
+  ## NN and no systematics and no sf weights2
+
+  #if (pastNN and not rdfSys and sf_weights2):
  
+  #  print(f"picking past NN files with bdt2 weights...")
+  #  #dateTimes here is a string like: "data_26Sep..._cons"
+  #  files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{dateTimes}/*"
+
+  #  print(files)
+  #  n = chain.Add(files)
+  #  print(f"Chaining {n} files for this channel")
+  #  if debug:
+  #    reduced_chain = chain.CloneTree(debug);
+  #    rdf = ROOT.RDataFrame(reduced_chain,debug)
+  #    return (reduced_chain,rdf)
+  #  else:
+  #    #rdf = ROOT.RDataFrame(chain)
+  #    rdf = ROOT.RDataFrame("tree", files)
+  #    return (chain,rdf)
+    
+ 
+  if sf_weights2:
+
     print(f"picking past NN files with bdt2 weights...")
     #dateTimes here is a string like: "data_26Sep..._cons"
-    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{dateTimes}/*"
+    files = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{bdt_data_afternn}/*"
 
     print(files)
     n = chain.Add(files)
@@ -522,7 +558,6 @@ def getRdf(dateTimes, debug = None, skimmed = None, rdfSys = False, sf_weights =
       #rdf = ROOT.RDataFrame(chain)
       rdf = ROOT.RDataFrame("tree", files)
       return (chain,rdf)
-    
 
   if (not pastNN and rdfSys):
     print(f"picking pre NN files with hammer weights...")
@@ -607,10 +642,10 @@ class selections:
     self.bs =        selec + mc_selec + " && (300 <= gen_sig) && (gen_sig < 400) "
     self.b0 =        selec + mc_selec + " && (200 <= gen_sig) && (gen_sig < 300) "
     self.bplus =     selec + mc_selec + " && (100 <= gen_sig) && (gen_sig < 200) "
-    self.dsMu =      selec + mc_selec + " && (gen_sig == 0)" 
-    self.dsTau =     selec + mc_selec + " && (gen_sig == 1)"
-    self.dsStarMu =  selec + mc_selec + " && (gen_sig == 10)" 
-    self.dsStarTau = selec + mc_selec + " && (gen_sig == 11)"
+    self.dsMu =      selec + mc_selec + " && (gen_sig == 0)"   
+    self.dsTau =     selec + mc_selec + " && (gen_sig == 1)"  
+    self.dsStarMu =  selec + mc_selec + " && (gen_sig == 10)"  
+    self.dsStarTau = selec + mc_selec + " && (gen_sig == 11)" 
     self.bare =      selec + data_selec
 
 #######################################
@@ -653,25 +688,14 @@ if pastNN:
   print("Producing post-NN plots")
 
   #save the NN name
-  import re
-  pattern = r"\d{2}[A-Za-z]{3}\d{4}_\d{2}h\d{2}m\d{2}s"
-  try:
-    match = re.search(pattern,sig_cons_pastNN)
-    nnModel = match.group(0)
-  except: 
-    nnModel = sig_cons_pastNN.split("_")[1]
+  nnModel = pastNN_sig.split("_")[1]
 
-
-
-  sig_sample = sig_cons_pastNN
-  print("sample is:", sig_cons_pastNN)
-
-  chainSigSB, rdfSigSB     = getRdf(sig_cons_pastNN                , debug = debug)
-  chainSig,   rdfSig       = getRdf(sig_cons_pastNN                , debug = debug)
-  chainHb,    rdfHb        = getRdf(hb_cons_pastNN                 , debug = debug)
-  _,          rdfHbHammer  = getRdf(hb_cons_pastNN                 , debug = debug)
-  chainData,  rdfData      = getRdf(data_cons_pastNN               , sf_weights2 = sf_weights2 , debug = debug)
-
+  chainSigSB, rdfSigSB     = getRdf( pastNN_sig, debug = debug)
+  chainSig,   rdfSig       = getRdf( pastNN_sig, debug = debug)
+  chainHb,    rdfHb        = getRdf( pastNN_hb , debug = debug)
+  _,          rdfHbHammer  = getRdf( pastNN_hb , debug = debug)
+  chainData,  rdfData      = getRdf( pastNN_data, sf_weights2 = sf_weights2 , debug = debug)
+  pdb.set_trace()
   print("rdf data has events: ", rdfData.Count().GetValue() )
   print("rdf sig has events: ", rdfSig.Count().GetValue() )
 
@@ -945,6 +969,8 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
 
   print(" ====> We are in Region", region)
+  print(" ====> hammer_sys is: ", hammer_sys)
+  print(" ====> selection is: ", selection)
 
 
 
@@ -1036,12 +1062,15 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("total_sf_weights", total_sf_weights).Histo1D(model[0], "m_corr" ,"total_sf_weights")
 
         else:
-          #fill without any weights
-          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr" )
+          #fill only with sf_weights
+          histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr", "trigger_sf" )
+          #histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Histo1D(model[0], "m_corr")
 
 
         if hammer_sys:
           #add also systematical shape variations as variables 
+
+          print("====> AAAAAH, we are adding hammer systematics :))")
 
           if "star" not in sig: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
           else:                 sys_dir = sys_vector #take e1-e10
@@ -1060,10 +1089,9 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
             # fill histogram with weight "s"
             histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_up"   )
             histos[var + "_" + s + "Up"].Scale(1.0 / var_up_av)
-
-            histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_down"   )
+            histos[var + "_" + s + "Down"] = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_down"   )
             histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
-
+            
 
       ##############################################
       # Histo creation of other variables          #
@@ -1097,10 +1125,16 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
           total_sf_weights = "sf_weights * sf_weights2"
           histos[var] = rdf.Filter(selection).Define("m_corr",tofill).Define("total_sf_weights", total_sf_weights).Histo1D(model[0], "m_corr" ,"total_sf_weights")
 
+        elif (data == False):
+          #apply trigger sf for MC
+          histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill, "trigger_sf")
+          #histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
+
         else:
           histos[var] = rdf.Filter(selection).Histo1D(model[0], tofill)
 
         if hammer_sys:
+          print("====> AAAAAH, we are adding hammer systematics :))")
           #add also systematical shape variations as variables 
           # fill sysmetatic up and down variations
           if "star" not in sig: sys_dir = sys_scalar     #only take e1 - e6 for scalar signals (BCL)
@@ -1119,7 +1153,7 @@ def createHistos(selection,rdf, linewidth = 2, gen = True, data = False , variab
             # fill histogram with weight "s"
             histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Histo1D(model[0], tofill, s + "_up"   )
             histos[var + "_" + s + "Up"].Scale(1.0 / var_up_av)
-            histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Histo1D(model[0], tofill, s + "_down"   )
+            histos[var + "_" + s + "Down"] = rdf.Filter(selection).Histo1D(model[0], tofill, s + "_down"   )
             histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
 
 
@@ -1187,17 +1221,28 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   print("---> before asking for selec_M")
 
   ## Signal and Hb (Hammer variations are never needed for the massfit)
-  selec_M_DsMu            = createHistos(selec_massfit.dsMu      + score_cut ,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsmu"     )
-  selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu      + score_cut ,    rdfSig       ,variables = ["phiPi_m"], gen = False)
-  selec_M_DsTau           = createHistos(selec_massfit.dsTau     + score_cut ,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dstau"    )
-  selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu  + score_cut ,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstarmu" )
-  selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau + score_cut ,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstartau")
+  print("---> filling DsMu")
+  selec_M_DsMu            = createHistos(selec_massfit.dsMu      + score_cut + hammer_str,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsmu"     )
+  print("---> filling DsMu")
+  selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu      + score_cut + hammer_str,    rdfSig       ,variables = ["phiPi_m"], gen = False)
+  print("---> filling DsTau")
+  selec_M_DsTau           = createHistos(selec_massfit.dsTau     + score_cut + hammer_str,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dstau"    )
+  print("---> filling DsStarMu")
+  selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu  + score_cut + hammer_str,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstarmu" )
+  print("---> filling DsStarTau")
+  selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau + score_cut + hammer_str,    rdfSig       ,variables = ["phiPi_m"], gen = False, hammer_central = hammer_central, hammer_sys = False ,sig = "dsstartau")
+
+
+  print("---> filling Hb")
   selec_M_Hb              = createHistos(selec_massfit.hb        + score_cut ,    rdfHb        ,variables = ["phiPi_m"], gen = False)
-  selec_M_Mu_in_Hb        = createHistos(selec_massfit.dsMu      + score_cut ,    rdfHb        ,variables = ["phiPi_m"], gen = False)
-  selec_M_Data            = createHistos(selec_massfit.bare      + score_cut ,    rdfData      ,variables = ["phiPi_m"], gen = False)
+  print("---> filling Hb")
+  selec_M_Mu_in_Hb        = createHistos(selec_massfit.dsMu      + score_cut ,    rdfHb        ,variables = ["phiPi_m"], gen = False, hammer_sys = False)
+  print("---> filling Data")
+  selec_M_Data            = createHistos(selec_massfit.bare      + score_cut ,    rdfData      ,variables = ["phiPi_m"], gen = False, data = True)
 
   selec_M_DsTau_blind     = { key: selec_M_DsTau[key].Clone()      for key in selec_M_DsTau.keys()     }
   selec_M_DsStarTau_blind = { key: selec_M_DsStarTau[key].Clone()  for key in selec_M_DsStarTau.keys() }
+
 
   #selec_M_DsTau["phiPi_m"].Scale(0.3)
   #selec_M_DsStarTau["phiPi_m"].Scale(0.3)
@@ -1215,8 +1260,9 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
   selec_M_Data_sf_pimu = createHistos(  baseline + data_selec + pimu_wrong    + score_cut + low_mass,    rdfData       , variables= ["phiPi_m"], gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
   selec_M_Data_sf_kk   = createHistos(  baseline + data_selec + kk_wrong_incl + score_cut + low_mass,    rdfData       , variables= ["phiPi_m"], gen = False, sf_weights = sf_weights, sf_weights2 = sf_weights2, data = True, massfit = True)
 
+  kk_prefit   = selec_M_Data_sf_kk  ["phiPi_m"].Clone().Integral()
+  pimu_prefit = selec_M_Data_sf_pimu["phiPi_m"].Clone().Integral() 
 
-  print("---> after asking for selec_M")
 
   # get the signflip scale by fitting the ds mass peak of sf data against hb + signal (called hRest)
 
@@ -1225,17 +1271,10 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
                                   selec_M_DsStarMu        ["phiPi_m"].Clone()  , 
                                   selec_M_DsTau_blind     ["phiPi_m"].Clone()  , 
                                   selec_M_DsStarTau_blind ["phiPi_m"].Clone()] ) 
-  
-  # now get the yiel ratios (postfit/prefit) 
-  global scale_bkg,        scale_kk,       scale_pimu,       scale_n
-  global scale_bkg_blind,  scale_kk_blind, scale_pimu_blind, scale_n_blind
- 
 
-  print("=============> Fit mass again to get signflip ratios")
-  
-  #if args.findcut: 
+  rest_prefit_blind = hRest_blind                    .Clone().Integral() 
 
-  #  bkg_postfit, rest_postfit       , abc = getSignflipRatioTest(selec_M_Data_sf_both["phiPi_m"].Clone(),  hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028, findcut = False, cut = args.cut)
+  kk_postfit_blind, pimu_postfit_blind, rest_postfit_blind, abc = getSignflipRatio(selec_M_Data_sf_kk["phiPi_m"].Clone(),  selec_M_Data_sf_pimu["phiPi_m"].Clone(), hRest_blind      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028)
 
 
   hRest       = prepareSignFlip(  selec_M_Hb              ["phiPi_m"].Clone()  , hb_scale_massfit,
@@ -1244,22 +1283,23 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
                                    selec_M_DsTau           ["phiPi_m"].Clone()  , 
                                    selec_M_DsStarTau       ["phiPi_m"].Clone()] ) 
 
-  kk_prefit   = selec_M_Data_sf_kk  ["phiPi_m"].Clone().Integral()
-  pimu_prefit = selec_M_Data_sf_pimu["phiPi_m"].Clone().Integral() 
   rest_prefit = hRest                          .Clone().Integral() 
 
-  #hRest = selec_M_hb["phiPi_m"].Clone() 
-  #hRest.Scale(hb_ratio_massfit) #scale ds
+  kk_postfit, pimu_postfit, rest_postfit, abc = getSignflipRatio(selec_M_Data_sf_kk["phiPi_m"].Clone(),  selec_M_Data_sf_pimu["phiPi_m"].Clone(), hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028)
 
-  kk_postfit, pimu_postfit, rest_postfit       , abc = getSignflipRatio(selec_M_Data_sf_kk["phiPi_m"].Clone(),  selec_M_Data_sf_pimu["phiPi_m"].Clone(), hRest      ,selec_M_Data["phiPi_m"].Clone(), mlow, mhigh, mlow2, mhigh2, mlow3, mhigh3, "phiPi_m", 1.91, 2.028)
+  # now get the yiel ratios (postfit/prefit) 
+  global scale_bkg,        scale_kk,       scale_pimu,       scale_n
+  global scale_bkg_blind,  scale_kk_blind, scale_pimu_blind, scale_n_blind
 
 
   scale_kk         = kk_postfit         / kk_prefit 
-  #scale_kk_blind   = kk_blind_postfit   / kk_prefit 
+  scale_kk_blind   = kk_postfit_blind   / kk_prefit 
+
   scale_pimu       = pimu_postfit       / pimu_prefit 
-  #scale_pimu_blind = pimu_blind_postfit / pimu_prefit 
+  scale_pimu_blind = pimu_postfit_blind / pimu_prefit 
+
   scale_rest       = rest_postfit       / rest_prefit 
-  #scale_rest_blind = rest_blind_postfit / rest_prefit 
+  scale_rest_blind = rest_postfit_blind / rest_prefit_blind 
 
 
   # adapt selections for special regions
@@ -1332,8 +1372,11 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     ########################################
 
     norm_params = {
-    "scale_pimu"      : scale_pimu,
-    "scale_rest"      : scale_rest,
+    "scale_pimu"            : scale_pimu,
+    "scale_pimu_blind"      : scale_pimu_blind,
+    "scale_rest"            : scale_rest,
+    "scale_rest_blind"      : scale_rest_blind,
+
     "hb_ratio_massfit": hb_ratio_massfit,
     "hb_scale_massfit": hb_scale_massfit,
     "trigger"         : trigger,
