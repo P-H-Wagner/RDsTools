@@ -1,30 +1,23 @@
 import json
 
 
-################ 
-# 2025 samples #
-################ 
+#data_cons_25     = ["20250915_094746", "20250915_131727", "20250915_131849", "20250915_131952", "20250915_132020"]
 
 
-#### FULLY CONSTRAINED FIT     
+#production with all triggers and pt cut 0.7
 
-#sig_cons_25    = ["16_03_2025_20_56_34"]
-#hb_cons_25     = ["29_08_2025_18_35_52"] #["17_03_2025_08_36_11"]
-#bs_cons_25     = ["17_03_2025_08_37_23"]
-#b0_cons_25     = ["17_03_2025_08_37_03"]
-#bplus_cons_25  = ["17_03_2025_08_36_31"]
-                  #part 1            #part 2            #part 3            #part 4            #part 5
-#data_cons_25     = ["20250227_155416", "20250227_161007", "20250227_161505", "20250227_161842", "20250227_161914"]
 
-#### PARTIALLY UNCONSTRAINED FIT     
+data_cons_25     = [
+# BPH 1,2,3 of part D
+"20260227_105644", 
+"20260227_104615", 
+"20260227_102607"
+] 
 
-# kk constrained
-data_cons_25     = ["20250915_094746", "20250915_131727", "20250915_131849", "20250915_131952", "20250915_132020"]
-sig_cons_25      = ["23_09_2025_13_17_17"]
-hb_cons_25       = ["25_02_2026_16_36_40"] #<-- with new gen labeling #for cms talk: ["29_01_2026_17_35_47"] #["23_09_2025_13_12_55"] #["29_01_2026_17_35_47"] 
+sig_cons_25      = ["17_03_2026_11_31_56"] #["23_09_2025_13_17_17"]
+hb_cons_25       = ["25_02_2026_16_36_40"]  
 
 #### BDT 
-
 bdt_model_25_mu7        = "27_02_2026_08_25_42" #"19_02_2026_13_23_30" #<-- cont. weights #"28_01_2026_09_11_15"   
 bdt_model_afternn_25_mu7= "09_03_2026_10_14_51"   
 #bdt_model_afternn_25_mu7= "12_03_2026_16_46_06"   
@@ -33,6 +26,12 @@ bdt_model_25_mu9        = "27_02_2026_08_40_28" #"19_02_2026_13_28_24" #<-- cont
 bdt_model_afternn_25_mu9= "24_02_2026_09_31_30"   
 #bdt_model_afternn_25_mu9= "12_03_2026_16_50_12"   
 
+bdt_model_afternn = "15_04_2026_09_30_45" #for minimal model: 2026_04_13_12_15_26
+
+
+bdt_model = "23_03_2026_15_05_14" #all triggers, minimal selection
+bdt_data = "23_03_2026_15_30_57" #all triggers, minimal selection
+
 bdt_data_25     = "27_02_2026_08_43_51"#"26_02_2026_11_52_09"#"19_02_2026_14_01_51" # <--- cont. weight "30_01_2026_09_38_39"    
 
 bdt_data_afternn_mu7 ="09_03_2026_10_22_26"
@@ -40,8 +39,8 @@ bdt_data_afternn_mu7 ="09_03_2026_10_22_26"
 bdt_data_afternn_mu9 ="24_02_2026_09_46_20" 
 #bdt_data_afternn_mu9 ="12_03_2026_16_55_15" 
 
-# kk unconstrained
-#bdt_data_25     = "26_11_2025_16_33_07" #"21_11_2025_16_32_00" #less features: missing?  #didnt cut at track pt 1 here: "12_11_2025_13_57_45"
+bdt_data_afternn = "15_04_2026_10_42_07"
+
 
 #### signflip fit for relative normalization used in analysis note     : 08_12_2025_13_34_12 
 
@@ -68,6 +67,25 @@ bdt_data_afternn_mu9 ="24_02_2026_09_46_20"
 nn_25_mu7 = "02Feb2026_13h29m45s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
 nn_25_mu9 = "02Feb2026_09h24m08s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
 
+#nn_25_mu7 = "2026_04_10_15_16_27" #with the same trainer as for the all triggers but only on mu7
+#nn_25_mu7 = "2026_04_10_15_22_39" #with the same trainer as for the all triggers but only on mu9
+
+#all triggers!
+#nn_model = "2026_04_08_15_32_42" #with sf weights on minimal
+#nn_model = "2026_04_09_09_40_49" #without sf weights on minimal
+#nn_model = "2026_04_10_10_18_23" #with sf weights on minimal2
+#nn_model = "2026_04_10_09_05_51" #with sf weights on base_wout_tv
+#nn_model  = "2026_04_10_13_31_41" #with sf weights on base_wout_tv
+#nn_model = "test_10Apr2026_16h48m13s" #mu7 only with old script (before splitting)
+#nn_model = "test_02Feb2026_13h29m45s"
+#nn_model= "2026_04_13_09_46_22" #mu7 only and same arch as 02Feb model but with new script
+
+##nn_model = "2026_04_10_15_16_27" #with the same trainer as for the all triggers but only on mu7
+#nn_model = "2026_04_10_15_22_39" #with the same trainer as for the all triggers but only on mu9
+
+#nn_model= "2026_04_13_12_09_32" #all triggers, odl arch, base_wout_tv_25
+nn_model= "2026_04_13_12_15_26" #all triggers, odl arch, minimal 
+
 #nn_25_mu7 = "09Mar2026_10h05m52s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
 #nn_25_mu9 = "09Mar2026_15h07m00s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
 
@@ -79,6 +97,7 @@ cons_pastNN_25_mu7["b0"   ] = "b0_"     + nn_25_mu7
 cons_pastNN_25_mu7["bplus"] = "bplus_"  + nn_25_mu7
 cons_pastNN_25_mu7["data" ] = "data_"   + nn_25_mu7
 
+
 cons_pastNN_25_mu9    = {}
 cons_pastNN_25_mu9["sig"  ] = "sig_"    + nn_25_mu9
 cons_pastNN_25_mu9["hb"   ] = "hb_"     + nn_25_mu9
@@ -86,6 +105,12 @@ cons_pastNN_25_mu9["bs"   ] = "bs_"     + nn_25_mu9
 cons_pastNN_25_mu9["b0"   ] = "b0_"     + nn_25_mu9
 cons_pastNN_25_mu9["bplus"] = "bplus_"  + nn_25_mu9
 cons_pastNN_25_mu9["data" ] = "data_"   + nn_25_mu9
+
+
+pastNN_sig  = "sig_"    + nn_model
+pastNN_hb   = "hb_"     + nn_model
+pastNN_data = "data_"   + nn_model
+
 
 #baseline selection
 base_wout_tv_25 = ' && '.join([ #remove the charge and ds+mu mass cuts!
@@ -103,9 +128,50 @@ f'(mu_pt > 8.0)',
 '(ds_vtx_cosine_xyz_pv > 0.8)',
 ])
 
+offline = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 7.0)', 
+'(k1_pt > 0.7)',
+'(k2_pt > 0.7)',
+'(pi_pt > 0.7)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(rel_iso_03_pv < 0.3)',
+'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
+])
+
+minimal = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 7.0)', 
+'(k1_pt > 0.7)',
+'(k2_pt > 0.7)',
+'(pi_pt > 0.7)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+#'(rel_iso_03_pv < 0.3)',
+#'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
+])
+
+minimal2 = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 7.0)', 
+'(k1_pt > 0.7)',
+'(k2_pt > 0.7)',
+'(pi_pt > 0.7)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(rel_iso_03_pv < 0.3)',
+#'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
+])
+
 # kk constrained 
 #sig_cons_hammer_25 = "signal_default_17_10_2025_16_16_23" 
-sig_cons_hammer_25 = "signal_default_16_03_2026_13_34_54" #same as line above but with scale factors :D! 
+#sig_cons_hammer_25 = "signal_default_16_03_2026_13_34_54" #same as line above but with scale factors :D! 
+#sig_cons_hammer_25 = "signal_default_17_03_2026_18_28_42" #same as line above but with scale factors :D! 
+sig_cons_hammer_25 = "signal_default_20_03_2026_09_37_22" #same as line above but with minimal selection :D! 
 
 isoflip = ' && '.join([ #remove the charge and ds+mu mass cuts! 
 '(rel_iso_03_pv > 0.3)',
@@ -174,6 +240,11 @@ averageWeightsYaml = "20_10_2025_09_57_12" #the old (wrong factor 2 weights) "01
 # /work/pahwagne/RDsTools/hammercpp/development_branch/weights/plots/09_12_2025_09_16_52/ #mu9
 
 
+#unfiltered gen lvl sample including pv,sv, beta etc. used to calc. Bs decay time
+dsmu_for_time = "19_03_2026_12_19_50" #inside pnfs/.../flatNano
+#unfiltered gen lvl sample including time 
+dsmu_with_time = "19_03_2026_16_32_11"
+
 # prefit plots
 # 09_12_2025_11_37_43 #mu7
 # 09_12_2025_11_37_40 #mu9
@@ -197,7 +268,10 @@ sbWidth       = 2 # sideband region is 1 sigma broad
 
 #fill all relevant into dictionary
 baselines = {
-"base_wout_tv_25": base_wout_tv_25
+"base_wout_tv_25": base_wout_tv_25,
+"offline"        : offline, 
+"minimal"        : minimal,
+"minimal2"        : minimal2,
 }
 
 # need this when we want to import (some)
