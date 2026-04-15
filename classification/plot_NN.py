@@ -110,8 +110,12 @@ def loadData(dt,fold):
   with open(f"{path_work}/history_{fold}.pck", 'rb') as f:
     history = pickle.load(f)
 
+  with open(f"{path_work}/input_features.pck", 'rb') as f:
+    features = pickle.load(f)
 
-  return xx_train, y_train, w_train, xx_val, y_val, w_val, history
+
+
+  return xx_train, y_train, w_train, xx_val, y_val, w_val, history, features
 
 
 def saveFig(plt, name):
@@ -250,6 +254,41 @@ def plotScore(model, xx_train, y_train, xx_val, y_val, sig, class_label, fold = 
   plt.clf()
   plt.close()
   return hists
+
+def plotCorr(model, xx_train, y_train, xx_val, y_val, class_label, features, fold = None):
+
+  #get the score
+  score  =  model.predict(xx_val)#this is a list of length #classes!
+  test_x = xx_val.copy()
+  test_x = pd.DataFrame(test_x, columns=list(set(features)))
+
+  #append it to pd such that we can plot it in the corr matrix
+  test_x["score0"] = score[:,0]
+  test_x["score1"] = score[:,1]
+  test_x["score2"] = score[:,2]
+  test_x["score3"] = score[:,3]
+  test_x["score4"] = score[:,4]
+  test_x["score5"] = score[:,5]
+  corr = test_x.corr()
+  # Set up the matplotlib figure
+  f, ax = plt.subplots(figsize=(11, 9))
+  # Generate a custom diverging colormap
+  cmap = seaborn.diverging_palette(220, 10, as_cmap=True)
+  # Draw the heatmap with the mask and correct aspect ratio
+  g = seaborn.heatmap(corr, cmap=cmap, vmax=1., vmin=-1, center=0, annot=True, fmt='.1f', square=True, linewidths=.8, cbar_kws={"shrink": .8}, annot_kws={"size": 2})
+  # force all ticklabels to show (otherwise it gives an error with set_xticklabels(..)
+  g.set_xticks(range(len(test_x.keys())))
+  g.set_yticks(range(len(test_x.keys())))
+  # rotate axis labels
+  g.set_xticklabels(test_x.keys().tolist(), rotation='vertical')
+  g.set_yticklabels(test_x.keys().tolist(), rotation='horizontal')
+  # plt.show()
+  #plt.figure(figsize=(12, 12))
+  plt.title(f'Linear correlation matrix - Fold {fold}')
+  plt.tight_layout()
+  saveFig(plt, f'corr_fold_{fold}')
+  plt.clf()
+  plt.close()
 
 
 
@@ -417,7 +456,7 @@ for fold in range(nfolds):
 
 
   #load data to train on for fold {fold}
-  xx_train, y_train, w_train, xx_val, y_val, w_val, history = loadData(dt,fold)
+  xx_train, y_train, w_train, xx_val, y_val, w_val, history, features = loadData(dt,fold)
   
   epochs, toPlot_loss     = plotMetric(history, "loss"      ,"Training Loss"       , "Loss"   , fold = fold)
   epochs, toPlot_acc      = plotMetric(history, "acc"       ,"Training Accuracy"   , "Acc."   , fold = fold)
@@ -437,6 +476,8 @@ for fold in range(nfolds):
   score_3 = plotScore (model, xx_train, y_train, xx_val, y_val, 3, class_label, fold = fold)
   score_4 = plotScore (model, xx_train, y_train, xx_val, y_val, 4, class_label, fold = fold)
   score_5 = plotScore (model, xx_train, y_train, xx_val, y_val, 5, class_label, fold = fold)
+
+  plotCorr(model,  xx_train, y_train, xx_val, y_val,class_label, features, fold = fold)
 
 
   dict_epochs         [fold] = epochs         
