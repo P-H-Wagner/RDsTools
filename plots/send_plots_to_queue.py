@@ -270,7 +270,8 @@ def getRdf(files, path, debug = None, bph_part = None, isData = None):
     n = chain.Add(files_str)
 
   rdf = ROOT.RDataFrame("tree", files_str)
-  print(f"====> Adding {n} files for plotting")
+  print(f"====> Adding {n} files for plotting:")
+  print(files_str)
 
   return (chain,rdf)
 
@@ -338,12 +339,20 @@ path_sig  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/"
 path_hb   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/"
 path_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/"
 
-if (not pastNN and hammer_central):
+#update sig
+if hammer_central:
 
   files_sig  = [sig_hammer_flatNano]
-  path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
+  path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/" 
 
-if (pastNN and not bdt and not bdt2):
+#update data
+if (bdt and not bdt2):
+
+  files_data = [bdt_data] 
+  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
+
+#update sig and data (includes hammer weights and bdt weights anyways)
+if pastNN:
 
   files_sig  = [sig_pastNN ]
   files_hb   = [hb_pastNN  ]
@@ -353,19 +362,14 @@ if (pastNN and not bdt and not bdt2):
   path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/" 
   path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/" 
 
-
-if (pastNN and bdt and not bdt2):
-
-  file_data  = [bdt_data] 
-  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
-
+#update data again (bdt2 only exists with nn!)
 if (pastNN and bdt and bdt2):
 
-  file_data  = [bdt_data_afternn] 
+  files_data = [bdt_data_afternn] 
   path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
 
 
-if (pastNN and not bdt and bdt2):
+if (pastNN and not bdt and bdt2) or (not pastNN and bdt2):
 
   print("Illegal argument combination bdt {bdt} and bdt2 {bdt2} !")
   sys.exit()
@@ -655,15 +659,11 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
     central_av = averages[ "central_w_" + sig]
     total_w_str = f"trigger_sf * central_w / {central_av}"
  
-  if (data and sf_weights and not sf_weights2):
+  if (sf_weights and not sf_weights2):
     total_w_str = "sf_weights"
 
-  if (data and sf_weights and sf_weights2):
+  if (sf_weights and sf_weights2):
     total_w_str = "sf_weights * sf_weights2"
-
-  if data:
-    #for safety, when we plot data we dont apply any weights!!!
-    total_w_str = ""
 
   print(f"====> Total applied weight is: {total_w_str}" )
 
@@ -714,11 +714,14 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       # Shift mass peak of MC by half permill
       #bool      #true for MC                    #true for data
       mass_expr   = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
+
+      if var == "phiPi_m": tofill = "m_corr"
+      else: tofill = var
  
-      if total_w_str == "":
-        histos[var] = rdf.Filter(selection).Define("m_corr",mass_expr).Histo1D(model[0], var ) 
+      if (total_w_str == "" or data == True):
+        histos[var] = rdf.Filter(selection).Define("m_corr",mass_expr).Histo1D(model[0], tofill) 
       else:
-        histos[var] = rdf.Filter(selection).Define("m_corr",mass_expr).Define("total_w", total_w_str).Histo1D(model[0], var , "total_w") 
+        histos[var] = rdf.Filter(selection).Define("m_corr",mass_expr).Define("total_w", total_w_str).Histo1D(model[0], tofill, "total_w") 
  
       if ff_sys:
 
