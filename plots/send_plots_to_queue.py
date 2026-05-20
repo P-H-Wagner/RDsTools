@@ -78,7 +78,7 @@ control = args.control
 #if args.cut  : score_cut = f" && (score5 <= {args.cut}) && (score1 > 0.1) && (q2_coll > 0) && (q2_coll < 12) && (score1 < 0.25)"
 if args.cut and not pastNN : raise ValueError ("Error: Cannot interpret cut before NN")
 elif args.cut and pastNN   : score_cut = f" && (score5 <= {args.cut}) "
-#elif args.cut and pastNN   : score_cut = f" && (fv_prob > 0.1) && (rel_iso_03_pv < 0.3) && (bs_pt_lhcb_alt > 8) && (abs(cosPiK1) > 0.9) && (cosMuW_lhcb_alt < -0.2) && (bs_pt_lhcb_alt > 20) && (bs_mass_corr < 7) "
+#elif args.cut and pastNN   : score_cut = f" && (bs_pt_lhcb_alt > 8) && (abs(cosPiK1) > 0.9) && (cosMuW_lhcb_alt < -0.2) && (bs_pt_lhcb_alt > 20) && (bs_mass_corr < 7) "
 else                       : score_cut = ""
 
 if args.debug: debug = 1000000
@@ -161,9 +161,10 @@ with open( toSave_plots + f"/info.txt", "a") as f:
 #  mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
 
 #data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
-data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
-#data_selec = " && ((mu7_ip4 == 1)||(mu9_ip6==1))"
-#data_selec = " && ((mu7_ip4 == 1))"
+#data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
+#data_selec = " && ((mu7_ip4 != 1) && (mu9_ip6!=1) && (mu12_ip6 == 1))"
+#data_selec = " && ((mu7_ip4 == 0) && (mu9_ip6==1))"
+data_selec = " && ((mu7_ip4 == 1))"
 #data_selec = " && ((mu8_ip3 == 1))"
 #data_selec = " && ((mu8_ip5 == 1))"
 #data_selec = " && ((mu8_ip6 == 1))"
@@ -174,8 +175,10 @@ data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9
 #data_selec = " "
 
 #mc_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
-mc_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
-#mc_selec = " && ((mu7_ip4 == 1))"
+#mc_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
+#mc_selec = " && ((mu7_ip4 != 1) && (mu9_ip6==1))"
+#mc_selec = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
+mc_selec = " && ((mu7_ip4 == 1))"
 #mc_selec = " && ((mu8_ip3 == 1))"
 #mc_selec = " && ((mu8_ip5 == 1))"
 #mc_selec = " && ((mu8_ip6 == 1))"
@@ -183,7 +186,7 @@ mc_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_i
 #mc_selec = " && ((mu9_ip5 == 1))"
 #mc_selec = " && ((mu9_ip6 == 1))"
 #mc_selec  = " && ((mu12_ip6 == 1))"
-#mc_selec   = " "
+##mc_selec   = " "
 
 # set the to be splitter variable and binning
 #split   = "cosMuW_lhcb_alt"
@@ -205,57 +208,57 @@ sb_string = " && ((phiPi_m < 1.94 ) || (phiPi_m > 1.995  ) )"
 mass_sb     = "    ((phiPi_m <  1.92) || (phiPi_m >  2.02))" 
 mass_center = " && ((phiPi_m >= 1.92) && (phiPi_m <= 2.02))"
 
-binning_str.append( "(score5<0.05) && (class == 0)");              fitted_vars[0]  = "score1";
-binning_str.append( "(score5<0.05) && (class == 1)");              fitted_vars[1]  = "score1";
-binning_str.append( "(score5<0.05) && (class == 2)");              fitted_vars[2]  = "score1";
-binning_str.append( "(score5<0.05) && (class == 3)");              fitted_vars[3]  = "score1";
-binning_str.append( "(score5<0.05) && (class == 4)");              fitted_vars[4]  = "score1";
-binning_str.append( "(score5>0.05)                ");              fitted_vars[5]  = "score1";
+#binning_str.append( "(score5<0.05) && (class == 0)");              fitted_vars[0]  = "score0";
+#binning_str.append( "(score5<0.05) && (class == 1)");              fitted_vars[1]  = "score0";
+#binning_str.append( "(score5<0.05) && (class == 2)");              fitted_vars[2]  = "score2";
+#binning_str.append( "(score5<0.05) && (class == 3)");              fitted_vars[3]  = "score2";
+#binning_str.append( "(score5<0.05) && (class == 4)");              fitted_vars[4]  = "ds_perp";
+#binning_str.append( "(score5>0.05)                ");              fitted_vars[5]  = "score5";
 
-###comb control region
-#binning_str.append( mass_sb                                                                                                          ); fitted_vars[0]  = "phiPi_m";
-##
-###dsmu control region
-##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[1]  = "score2";
-##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[2]  = "score2";
-##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[3]  = "score2";
-##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 6)  && (q2_coll < 8) "  + mass_center); fitted_vars[4]  = "score2";
-##binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[5]  = "score2";
-#binning_str.append("(score2 > 0.6)                                       "  + mass_center); fitted_vars[1]  = "q2_coll";
-##
-##ds*mu center region
-##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[6]  = "score2";
-##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[7]  = "score2";
-##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[8]  = "score2";
-##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 6)  && (q2_coll < 8)"  + mass_center); fitted_vars[9]   = "score2";
-##binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[10] = "score2";
-#binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     "  + mass_center); fitted_vars[2]  = "q2_coll";
-##
-##hb control region
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 > 0.35)                                              "  + mass_center); fitted_vars[3] = "score1";
+##comb control region
+binning_str.append( mass_sb                                                                                                          ); fitted_vars[0]  = "phiPi_m";
 #
-###sr
-###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 2) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
-###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 4) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
-###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 4)  && (q2_coll < 5) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 6) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 6)  && (q2_coll < 7) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 7)  && (q2_coll < 8) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 8)  && (q2_coll < 9) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[7] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 9)  && (q2_coll < 10)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[8] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 10) && (q2_coll < 12)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[9] = "score1";
+##dsmu control region
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[1]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[2]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[3]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 6)  && (q2_coll < 8) "  + mass_center); fitted_vars[4]  = "score2";
+#binning_str.append("(score2 > 0.3)                                       && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[5]  = "score2";
+binning_str.append("(score2 > 0.6)                                       "  + mass_center); fitted_vars[1]  = "q2_coll";
+#
+#ds*mu center region
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 0)  && (q2_coll < 2) "  + mass_center); fitted_vars[6]  = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 2)  && (q2_coll < 4) "  + mass_center); fitted_vars[7]  = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 4)  && (q2_coll < 6) "  + mass_center); fitted_vars[8]  = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 6)  && (q2_coll < 8)"  + mass_center); fitted_vars[9]   = "score2";
+#binning_str.append("(score2 < 0.3) && (score3 > 0.4)                     && (q2_coll >= 8)  && (q2_coll < 10)"  + mass_center); fitted_vars[10] = "score2";
+binning_str.append("(score2 < 0.6) && (score3 > 0.4)                     "  + mass_center); fitted_vars[2]  = "q2_coll";
+#
+#hb control region
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 > 0.35)                                              "  + mass_center); fitted_vars[3] = "score1";
+
+##sr
+##binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 2) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
+##binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 4) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
+##binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 4)  && (q2_coll < 5) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 0)  && (q2_coll < 6) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[4] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 6)  && (q2_coll < 7) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[5] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 7)  && (q2_coll < 8) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[6] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 8)  && (q2_coll < 9) "  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[7] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 9)  && (q2_coll < 10)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[8] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35)  && (q2_coll >= 10) && (q2_coll < 12)"  + " && (phiPi_m > 1.96) && (phiPi_m < 1.976) "); fitted_vars[9] = "score1";
 ##
 ###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 2) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
 ###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 2)  && (q2_coll < 3) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
 ###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 3)  && (q2_coll < 4) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
 ###binning_str.append("(score2 < 0.3) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 4)  && (q2_coll < 5) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[16] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 6) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[10] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 6)  && (q2_coll < 7) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[11] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 7)  && (q2_coll < 8) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[12] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 8)  && (q2_coll < 9) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 9)  && (q2_coll < 10)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
-#binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 10) && (q2_coll < 12)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
-#
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 0)  && (q2_coll < 6) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[10] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 6)  && (q2_coll < 7) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[11] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 7)  && (q2_coll < 8) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[12] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 8)  && (q2_coll < 9) " + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[13] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 9)  && (q2_coll < 10)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[14] = "score1";
+binning_str.append("(score2 < 0.6) && (score3 < 0.4) && (score4 < 0.35) && (q2_coll >= 10) && (q2_coll < 12)" + " && (((phiPi_m > 1.92) && (phiPi_m < 1.96)) || ((phiPi_m > 1.976) && (phiPi_m < 2.02))) "); fitted_vars[15] = "score1";
+
 ##########################################
 
 #for b in binning:
@@ -382,7 +385,8 @@ if hammer_central:
 #update data
 if (bdt and not bdt2):
 
-  files_data = [bdt_data] 
+  #files_data = [bdt_data] 
+  files_data = [bdt_model] 
   path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
 
 #update sig and data (includes hammer weights and bdt weights anyways)
@@ -390,11 +394,11 @@ if pastNN:
 
   files_sig  = [sig_pastNN ]
   files_hb   = [hb_pastNN  ]
-  #files_data = [data_pastNN]
+  files_data = [data_pastNN]
 
-  path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/" 
-  path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees_test/" 
-  #path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
+  path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
+  path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
+  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
 
 #update data again (bdt2 only exists with nn!)
 if (pastNN and bdt and bdt2):
@@ -686,14 +690,14 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   total_w_str = ""
 
   if (mc and not ff_central):
-    total_w_str = "trigger_sf"
-    #total_w_str = ""
+    #total_w_str = "trigger_sf"
+    total_w_str = ""
   
   if (mc and ff_central):
 
     central_av = averages[ "central_w_" + mc]
-    total_w_str = f"trigger_sf * central_w / {central_av}"
-    #total_w_str = f"central_w / {central_av}"
+    #total_w_str = f"trigger_sf * central_w / {central_av}"
+    total_w_str = f"central_w / {central_av}"
  
   if (sf_weights and not sf_weights2):
     total_w_str = "sf_weights"
@@ -757,23 +761,62 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
       # Shift mass peak of MC by half permill
       #bool      #true for MC                    #true for data
-      mass_expr   = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
+      mass_expr    = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
       #mass_expr   = f"(run==1) * 1.000 * phiPi_m + (run!=1) * phiPi_m"
+      dxy_err_expr = f"(run==1) * 1.10 * dxy_mu_err_pv + (run!=1) * dxy_mu_err_pv"
+      dxy_sig_expr = f" dxy_mu_pv / dxy_mu_err_pv_corr "
 
-      if var == "phiPi_m": tofill = "m_corr"
+      if   var == "phiPi_m"      : tofill = "m_corr"
+      elif var == "dxy_mu_err_pv": tofill = "dxy_mu_err_pv_corr"
+      elif var == "dxy_mu_sig_pv": tofill = "dxy_mu_sig_pv_corr"
       else: tofill = var
  
       if (total_w_str == "" or data == True):
         print("filling mass wout hammer weights :D")
-        histos[var] = rdf.Filter(selection).Define("m_corr",mass_expr).Histo1D(model[0], tofill) 
+        histos[var] = rdf.Filter(selection)\
+                         .Define("m_corr",mass_expr)\
+                         .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
+                         .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+                         .Histo1D(model[0], tofill) 
       else:
         print("filling mass with hammer weights :D")
-        histos[var] = rdf.Filter(selection).Define("m_corr",mass_expr).Define("total_w", total_w_str).Histo1D(model[0], tofill, "total_w") 
+        histos[var] = rdf.Filter(selection)\
+                         .Define("m_corr",mass_expr)\
+                         .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
+                         .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+                         .Define("total_w", total_w_str)\
+                         .Histo1D(model[0], tofill, "total_w")
  
       if ff_sys:
 
         #this is only true for signals
         #add also systematical shape variations as variables 
+
+
+        #add also systematical shape variations as variables 
+
+        #if "star" not in sig: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
+        #else:                 sys_dir = sys_vector #take e1-e10
+
+        #for s in sys_dir:
+
+        #  s_up   = s + "_up"
+        #  s_down = s + "_down"
+
+        #  var_up_av   = averages[s_up   + "_" + sig]
+        #  var_down_av = averages[s_down + "_" + sig]
+
+        #  func_up   = s_up   + f" / ({ var_up_av   })" 
+        #  func_down = s_down + f" / ({ var_down_av })" 
+
+        #  # fill histogram with weight "s"
+        #  histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_up"   )
+        #  histos[var + "_" + s + "Up"].Scale(1.0 / var_up_av)
+
+        #  histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Define("m_corr", tofill).Histo1D(model[0], "m_corr", s + "_down"   )
+        #  histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
+
+
 
         if "star" not in mc: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
         else:                 sys_dir = sys_vector #take e1-e10
@@ -793,16 +836,26 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
           total_w_s_up   = s_up 
           total_w_s_down = s_down
 
-          if mc:
-            total_w_s_up   += " * trigger_sf"
-            total_w_s_down += " * trigger_sf"
+          #if mc:
+          #  total_w_s_up   += " * trigger_sf"
+          #  total_w_s_down += " * trigger_sf"
 
 
           # fill histogram with weight "s"
-          histos[var + "_" + s + "Up"]    = rdf.Filter(selection).Define("m_corr", mass_expr).Define(f"total_w_{s_up}", total_w_s_up).Histo1D(model[0], var, f"total_w_{s_up}")
+          histos[var + "_" + s + "Up"]    = rdf.Filter(selection)\
+                                               .Define("m_corr", mass_expr)\
+                                               .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
+                                               .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+                                               .Define(f"total_w_{s_up}", total_w_s_up)\
+                                               .Histo1D(model[0], tofill , f"total_w_{s_up}")
           histos[var + "_" + s + "Up"]    .Scale(1.0 / var_up_av)
 
-          histos[var + "_" + s + "Down"]  = rdf.Filter(selection).Define("m_corr", mass_expr).Define(f"total_w_{s_down}", total_w_s_down).Histo1D(model[0], var, f"total_w_{s_down}" )
+          histos[var + "_" + s + "Down"]  = rdf.Filter(selection)\
+                                               .Define("m_corr", mass_expr)\
+                                               .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
+                                               .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+                                               .Define(f"total_w_{s_down}", total_w_s_down)\
+                                               .Histo1D(model[0], tofill, f"total_w_{s_down}" )
           histos[var + "_" + s + "Down" ] .Scale(1.0 / var_down_av)
             
 
@@ -973,7 +1026,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     # if we want to do control plots, we want to plot in the sideband region 
     # the splitter must be phiPi mass and the regions leftSB and rightSB      
     splitter     = "phiPi_m"
-    regions      = [[mhigh2,mhigh3]]
+    #regions      = [[mhigh2,mhigh3]]
+    regions      = [[2.02,10.0]]
     print("Doing control plots, change regions to:", regions)
     signalRegion = "" # remove since we are now in the sidebands 
     low_mass     = "" # remove to keep as much background as possible  
@@ -982,7 +1036,8 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
     # if we want to do control plots, we want to plot in the sideband region 
     # the splitter must be phiPi mass and the regions leftSB and rightSB      
     splitter     = "phiPi_m"
-    regions      = [[mlow3,mlow2]]
+    #regions      = [[ml3,mlow2]]
+    regions      = [[0.0,1.92]]
     print("Doing control plots, change regions to:", regions)
     signalRegion = "" # remove since we are now in the sidebands 
     low_mass     = "" # remove to keep as much background as possible  
@@ -1061,7 +1116,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     #submitter command line
     #sh_command = f"sbatch -p short -o {toSave_plots}/log/log{i}.log -e {toSave_plots}/err/err{i}.err"
-    sh_command = f"sbatch -p short --cpus-per-task=8 --mem-per-cpu=2000M  "
+    sh_command = f"sbatch -p short --cpus-per-task=4 --mem-per-cpu=3000M --time=45 "
 
     with open( toSave_plots + f"/submitter_DsMu_ch{i}.sh"         , "w") as f:
       f.write(core)
