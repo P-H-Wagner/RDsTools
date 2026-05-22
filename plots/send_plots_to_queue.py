@@ -394,11 +394,11 @@ if pastNN:
 
   files_sig  = [sig_pastNN ]
   files_hb   = [hb_pastNN  ]
-  files_data = [data_pastNN]
+  #files_data = [data_pastNN]
 
   path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
   path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
-  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
+  #path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/" 
 
 #update data again (bdt2 only exists with nn!)
 if (pastNN and bdt and bdt2):
@@ -735,7 +735,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
         model = special_models_e_star_lhcb_alt[var + f"_bin{region}" ]                                     
 
 
-      if ("score" in var or var == "phiPi_m" or "q2" in var) and (split == "score2" ) and region != None:
+      if ("score1" in var or var == "phiPi_m" or "q2_coll" in var) and (split == "score2" ) and region != None:
         
         #adapt the binning
         print(f"======> Adapt binning for {var} and region {region}")
@@ -1116,7 +1116,7 @@ def createBinnedPlots(splitter, regions, controlPlotsHighMass = None, controlPlo
 
     #submitter command line
     #sh_command = f"sbatch -p short -o {toSave_plots}/log/log{i}.log -e {toSave_plots}/err/err{i}.err"
-    sh_command = f"sbatch -p short --cpus-per-task=4 --mem-per-cpu=3000M --time=45 "
+    sh_command = f"sbatch -p short --cpus-per-task=5 --mem-per-cpu=1000M --time=30 "
 
     with open( toSave_plots + f"/submitter_DsMu_ch{i}.sh"         , "w") as f:
       f.write(core)

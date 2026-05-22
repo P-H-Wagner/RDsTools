@@ -271,11 +271,11 @@ if pastNN:
 
   files_sig  = [sig_pastNN ]
   files_hb   = [hb_pastNN  ]
-  files_data = [data_pastNN]
+  #files_data = [data_pastNN]
 
   path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
   path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
-  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
+  #path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
 
 #update data again (bdt2 only exists with nn!)
 if (pastNN and bdt and bdt2):
@@ -496,6 +496,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
         print(f"======> Adapt binning for {var} and region {region}")
   
         model = special_models_score2[var + f"_bin{region}" ]  
+        print(model)
 
 
       ##############################################
@@ -511,6 +512,8 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       ##############################################
       # Start filling                              #
       ##############################################
+      #pdb.set_trace()
+
 
       print("Filling variable ", var)
 

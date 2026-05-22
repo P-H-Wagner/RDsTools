@@ -1396,7 +1396,8 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
     #if args.findcut:
     #  temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics_binned_cuts.txt", "rt")
     #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned.txt", "rt")
-    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_old.txt", "rt")
+    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_reducedFF.txt", "rt")
+    #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_old.txt", "rt")
 
   else:
     #if args.findcut:
@@ -1424,56 +1425,56 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
   dsStarTauStr  = str(round(histos["DsStarTau"].Integral(), digits))
   dsStarTauStr += " "*(spaces - len(dsStarTauStr))
 
-  hbStr         = str(round(histos["Hb"].Integral(), digits))
-  hbStr        += " "*(spaces - len(hbStr))
+  #hbStr         = str(round(histos["Hb"].Integral(), digits))
+  #hbStr        += " "*(spaces - len(hbStr))
 
-  #hb_bs_fd_Str  = str(round(histos["Hb_bs_fd"].Integral(), digits))
-  #hb_bs_fd_Str += " "*(spaces - len(hb_bs_fd_Str))
+  hb_bs_fd_Str  = str(round(histos["Hb_bs_fd"].Integral(), digits))
+  hb_bs_fd_Str += " "*(spaces - len(hb_bs_fd_Str))
 
-  #hb_bs_dc_Str  = str(round(histos["Hb_bs_dc"].Integral(), digits))
-  #hb_bs_dc_Str += " "*(spaces - len(hb_bs_dc_Str))
+  hb_bs_dc_Str  = str(round(histos["Hb_bs_dc"].Integral(), digits))
+  hb_bs_dc_Str += " "*(spaces - len(hb_bs_dc_Str))
 
-  #hb_bpm_fd_Str  = str(round(histos["Hb_bpm_fd"].Integral(), digits))
-  #hb_bpm_fd_Str += " "*(spaces - len(hb_bpm_fd_Str))
+  hb_bpm_fd_Str  = str(round(histos["Hb_bpm_fd"].Integral(), digits))
+  hb_bpm_fd_Str += " "*(spaces - len(hb_bpm_fd_Str))
 
-  #hb_bpm_dc_Str  = str(round(histos["Hb_bpm_dc"].Integral(), digits))
-  #hb_bpm_dc_Str += " "*(spaces - len(hb_bpm_dc_Str))
+  hb_bpm_dc_Str  = str(round(histos["Hb_bpm_dc"].Integral(), digits))
+  hb_bpm_dc_Str += " "*(spaces - len(hb_bpm_dc_Str))
 
-  #hb_b0_fd_Str  = str(round(histos["Hb_b0_fd"].Integral(), digits))
-  #hb_b0_fd_Str += " "*(spaces - len(hb_b0_fd_Str))
+  hb_b0_fd_Str  = str(round(histos["Hb_b0_fd"].Integral(), digits))
+  hb_b0_fd_Str += " "*(spaces - len(hb_b0_fd_Str))
 
-  #hb_b0_dc_Str  = str(round(histos["Hb_b0_dc"].Integral(), digits))
-  #hb_b0_dc_Str += " "*(spaces - len(hb_b0_dc_Str))
+  hb_b0_dc_Str  = str(round(histos["Hb_b0_dc"].Integral(), digits))
+  hb_b0_dc_Str += " "*(spaces - len(hb_b0_dc_Str))
 
-  #hb_lambdab_fd_Str  = str(round(histos["Hb_lambdab_fd"].Integral(), digits))
-  #hb_lambdab_fd_Str += " "*(spaces - len(hb_lambdab_fd_Str))
+  hb_lambdab_fd_Str  = str(round(histos["Hb_lambdab_fd"].Integral(), digits))
+  hb_lambdab_fd_Str += " "*(spaces - len(hb_lambdab_fd_Str))
 
-  #hb_lambdab_dc_Str  = str(round(histos["Hb_lambdab_dc"].Integral(), digits))
-  #hb_lambdab_dc_Str += " "*(spaces - len(hb_lambdab_dc_Str))
+  hb_lambdab_dc_Str  = str(round(histos["Hb_lambdab_dc"].Integral(), digits))
+  hb_lambdab_dc_Str += " "*(spaces - len(hb_lambdab_dc_Str))
 
-  #hb_others_Str  = str(round(histos["Hb_others"].Integral(), digits))
-  #hb_others_Str += " "*(spaces - len(hb_others_Str))
+  hb_others_Str  = str(round(histos["Hb_others"].Integral(), digits))
+  hb_others_Str += " "*(spaces - len(hb_others_Str))
 
 
 
   combStr       = str(round(histos["comb"].Integral(), digits))  
   #combStr      += " "*(spaces - len(combStr))
 
-  rates = dsMuStr + dsTauStr + dsStarMuStr + dsStarTauStr + hbStr + combStr
-  #rates = dsMuStr  + \
-  #        dsTauStr + \
-  #        dsStarMuStr + \
-  #        dsStarTauStr + \
-  #        hb_bs_fd_Str + \
-  #        hb_bs_dc_Str + \
-  #        hb_bpm_fd_Str + \
-  #        hb_bpm_dc_Str + \
-  #        hb_b0_fd_Str + \
-  #        hb_b0_dc_Str + \
-  #        hb_lambdab_fd_Str + \
-  #        hb_lambdab_dc_Str + \
-  #        hb_others_Str + \
-  #        combStr
+  #rates = dsMuStr + dsTauStr + dsStarMuStr + dsStarTauStr + hbStr + combStr
+  rates = dsMuStr  + \
+          dsTauStr + \
+          dsStarMuStr + \
+          dsStarTauStr + \
+          hb_bs_fd_Str + \
+          hb_bs_dc_Str + \
+          hb_bpm_fd_Str + \
+          hb_bpm_dc_Str + \
+          hb_b0_fd_Str + \
+          hb_b0_dc_Str + \
+          hb_lambdab_fd_Str + \
+          hb_lambdab_dc_Str + \
+          hb_others_Str + \
+          combStr
 
   for line in temp:
     if "HOOK_REGION"            in line: line = line.replace("HOOK_REGION",    str(region))
