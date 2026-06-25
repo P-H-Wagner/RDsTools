@@ -1,3 +1,4 @@
+import array
 import ROOT
 import argparse
 import os
@@ -14,7 +15,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, getSignflipRatioTest, fitAnotherVar
 from helper import * 
-from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models, special_models_q2_coll,special_models_e_star_lhcb_alt, special_models_ds_perp, special_models_score2
+from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models_score2, special_models_bdt
 from blinding import *
 
 import numpy as np
@@ -32,11 +33,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--nn",          required = True,     help = "Specify 'before' or 'past' neural network plots ") 
 parser.add_argument("--hammer",      required = True,     help = "Specify 'true' or 'false' to apply hammer weights") 
 parser.add_argument("--hammer_sys",  required = True,     help = "Specify 'true' or 'false' to save weight variation shapes") 
+parser.add_argument("--bs_tau",      required = True,     help = "Specify 'true' or 'false' to apply bs lifetime weights") 
+parser.add_argument("--bs_tau_sys",  required = True,     help = "Specify 'true' or 'false' to save bs lifetime weight variation shapes") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
 parser.add_argument("--bdt2",         required = True,     help = "Specify 'true' or 'false' to add bdt2 weights") 
 parser.add_argument("--debug",       action='store_true', help = "If given, run plotter with 50k events only") 
-parser.add_argument("--control",                          help = "If given, run control plots, either 'highmass', 'leftsb', 'rightsb' or 'complete' or 'custom' ") 
-parser.add_argument("--cut",                              help = "Cut on the discriminator score 5. ") 
 #parser.add_argument("--findcut",     action='store_true', help = "If given, we run thecut scan") 
 
 parser.add_argument("--bin",   type=int, required = True,     help = "") 
@@ -44,10 +45,12 @@ parser.add_argument("--region",          required = True,     help = "")
 parser.add_argument("--toSave_plots",    required = True,     help = "") 
 parser.add_argument("--selection",       required = True,     help = "") 
 parser.add_argument("--data_selection",  required = True,     help = "") 
-#parser.add_argument("--scale_pimu",      required = True,     help = "") 
-#parser.add_argument("--scale_rest",      required = True,     help = "") 
 parser.add_argument("--channel",         required = True,     help = "") 
-parser.add_argument("--split",         required = True,     help = "") 
+parser.add_argument("--split",           required = True,     help = "") 
+parser.add_argument("--parts",           required = True,     help = "specify which parts to plot, comma separated, f.e.: 1,2,3")
+parser.add_argument("--model",                                help = "overwrite model in helper file")
+
+
 
 args = parser.parse_args()
 
@@ -63,6 +66,15 @@ if args.hammer_sys not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
 else: hammer_sys = (args.hammer_sys == "true")
 
+if args.bs_tau not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --bs_tau, please use 'true' or 'false' (all lowercase!)")
+else: bs_tau_central = (args.bs_tau == "true")
+
+if args.bs_tau_sys not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
+else: bs_tau_sys = (args.bs_tau_sys == "true")
+
+
 if args.bdt not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --bdt , please use 'true' or 'false' (all lowercase!)")
 else: bdt = (args.bdt == "true")
@@ -71,17 +83,22 @@ if args.bdt2 not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --bdt2 , please use 'true' or 'false' (all lowercase!)")
 else: bdt2 = (args.bdt2 == "true")
 
-if args.control and args.control not in ["highmass","leftsb","rightsb", "complete", "custom"]:
-    raise ValueError ("Error: Not a valid key for --control, please use 'highmass', 'sb' or 'complete' or 'custom' ")
-control = args.control
 
-if args.cut and not pastNN : raise ValueError ("Error: Cannot interpret cut before NN")
-elif args.cut and pastNN   : score_cut = f" && (score5 <= {args.cut} ) "
-#elif args.cut and pastNN   : score_cut = f"  && (bs_pt_lhcb_alt > 8) && (abs(cosPiK1) > 0.9) && (cosMuW_lhcb_alt< -0.2) && (bs_pt_lhcb_alt > 20) && (bs_mass_corr < 7) "
-else                       : score_cut = ""
+if args.parts :
+  parts = args.parts.split(",")
+  parts = [int(x) for x in parts]
+else:
+  parts = None
+
+if args.model:
+  print(f"====> Overwriting nn modek, using: {args.model} instead")
+  nn_model = args.model
+
 
 if args.debug: debug = 50000
 else         : debug = None
+
+
 
 
 if pastNN: models.update(pastNN_models)
@@ -122,10 +139,9 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 # Summary of settings
 with open( args.toSave_plots + f"/info.txt", "a") as f:
-  f.write(f"====> Running  {args.nn} neural network and bdt: {bdt} and bdt2: {bdt2} with hammer on: {hammer_central} and sys {hammer_sys} on nn {nn_model}\n")
-  print  (f"====> Running  {args.nn} neural network and bdt: {bdt} and bdt2: {bdt2} with hammer on: {hammer_central} and sys {hammer_sys} on nn {nn_model}\n")
-
-
+  f.write(f"====> Running  {args.nn} neural network and bdt: {bdt} and bdt2: {bdt2} with hammer on: {hammer_central} and sys {hammer_sys} with bs lt: {bs_tau_central} and bs lt sys: {bs_tau_sys} \n")
+  print  (f"====> Running  {args.nn} neural network and bdt: {bdt} and bdt2: {bdt2} with hammer on: {hammer_central} and sys {hammer_sys} with bs lt: {bs_tau_central} and bs lt sys: {bs_tau_sys} \n")
+  
 
 #############
 # Split MC  #
@@ -138,11 +154,13 @@ with open( args.toSave_plots + f"/info.txt", "a") as f:
 #  data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
 #  mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
 
+#data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8p5_3p5)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu10p5_3p5)||(mu12_ip6))"
+#data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #data_selec = " && ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #data_selec = " && ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #data_selec = " && ((mu7_ip4 ==0) && (mu9_ip6==1))"
 #data_selec = " && ((mu7_ip4 != 1) && (mu9_ip6!=1) && (mu12_ip6 == 1))"
-data_selec = " && ((mu7_ip4 == 1))"
+#data_selec = " && ((mu7_ip4 == 1))"
 #data_selec = " && ((mu8_ip3 == 1))"
 #data_selec = " && ((mu8_ip5 == 1))"
 #data_selec = " && ((mu8_ip6 == 1))"
@@ -150,14 +168,16 @@ data_selec = " && ((mu7_ip4 == 1))"
 #data_selec = " && ((mu9_ip5 == 1))"
 #data_selec = " && ((mu9_ip6 == 1))"
 #data_selec = " && ((mu12_ip6 == 1))"
-#data_selec = " "
+data_selec = " "
 
 
+#mc_selec  = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8p5_3p5)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu10p5_3p5)||(mu12_ip6))"
+#mc_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #mc_selec = " && ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #mc_selec = " && ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #mc_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
 #mc_selec = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
-mc_selec = " && ((mu7_ip4 == 1))"
+#mc_selec = " && ((mu7_ip4 == 1))"
 #mc_selec = " && ((mu8_ip3 == 1))"
 #mc_selec = " && ((mu8_ip5 == 1))"
 #mc_selec = " && ((mu8_ip6 == 1))"
@@ -165,7 +185,7 @@ mc_selec = " && ((mu7_ip4 == 1))"
 #mc_selec = " && ((mu9_ip5 == 1))"
 #mc_selec = " && ((mu9_ip6 == 1))"
 #mc_selec  = " && ((mu12_ip6 == 1))"
-#mc_selec  = " "
+mc_selec  = " "
 
 ##############################
 # Load chain into RDataFrame #
@@ -259,23 +279,30 @@ if hammer_central:
   files_sig  = [sig_hammer_flatNano]
   path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/"
 
-#update data
-if (bdt and not bdt2):
-
-  #files_data = [bdt_data]
-  files_data = [bdt_model]
-  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/"
-
 #update sig and data (includes hammer weights and bdt weights anyways)
 if pastNN:
 
-  files_sig  = [sig_pastNN ]
-  files_hb   = [hb_pastNN  ]
-  #files_data = [data_pastNN]
+  files_sig  = [f"sig_{nn_model}"]
+  files_hb   = [f"hb_{nn_model}" ]
+  if parts:
+    files_data = [f"data_bph{part}_{nn_model}" for part in parts]
+  else:
+    files_data = [f"data_{nn_model}" ]
 
   path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
   path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
-  #path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
+  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
+
+#update data
+if (bdt and not bdt2):
+
+  if parts:  
+    files_data = [f"{bdt_model}/data_bph{part}_{bdt_model}/" for part in parts]
+  else:
+    files_data = [f"{bdt_model}" ]
+
+  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
+
 
 #update data again (bdt2 only exists with nn!)
 if (pastNN and bdt and bdt2):
@@ -423,7 +450,7 @@ def addSystematics(hist_dict, var, selec_DsTau, selec_DsMu, selec_DsStarTau, sel
 #########################################
 
 
-def createHistos(selection, rdf, data = False , variables = None, ff_central = False, ff_sys = False, mc = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False):
+def createHistos(selection, rdf, data = False , variables = None, ff_central = False, ff_sys = False, lt_central = False, lt_sys = False, mc = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False, comb = None, combSys = False):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
@@ -441,14 +468,14 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   total_w_str = ""
 
   if (mc and not ff_central):
-    #total_w_str = "trigger_sf"
-    total_w_str = ""
+    total_w_str = "trigger_sf"
+    #total_w_str = ""
 
   if (mc and ff_central):
 
     central_av = averages[ "central_w_" + mc]
-    #total_w_str = f"trigger_sf * central_w / {central_av}"
-    total_w_str = f"central_w / {central_av}"
+    total_w_str = f"trigger_sf * central_w / {central_av}"
+    #total_w_str = f"central_w / {central_av}"
 
   if (sf_weights and not sf_weights2):
     total_w_str = "sf_weights"
@@ -456,7 +483,69 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   if (sf_weights and sf_weights2):
     total_w_str = "sf_weights * sf_weights2"
 
+  #apply bs lifetime weights for signal (mc given, but not hb)
+  if (mc and mc != "hb" and lt_central):
+
+     if total_w_str != "": total_w_str += " * w_bs_tau"
+     else                : total_w_str += "   w_bs_tau"
+
+
   print(f"====> Total applied weight is: {total_w_str}" )
+
+  ################################################################
+  # Filter rdf and modify rdf once and for all for all variables #
+  ################################################################
+
+  # Shift mass peak of MC by half permill --> weights that change along x
+
+  # This is not a per-event weight! Just a change along x, only applied for the mass itself
+  #bool          #true for MC                            #true for data
+  mass_shifted         = f"(run==1) * 0.9995 * phiPi_m         + (run!=1) * phiPi_m"
+  mass_shifted_smeared = f"(run==1) * 0.9995 * smear * phiPi_m + (run!=1) * phiPi_m"
+  #mass_expr    = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
+
+  # Tilt mass shape of combinatorial --> weights that change along y
+  # This is a per event weights! Change along y, needs to be applied for all variables
+  if comb:
+
+    y0 = n0_exp * np.exp(tau * m0)
+    y1 = n0_exp * np.exp(tau * m1)
+
+    y0_new = y0 - tilt * y0
+    y1_new = y1 + tilt * y1
+
+    #define a linear function, tilted
+    a  = (y1_new - y0_new) / (m1 - m0)
+    b  = y0_new - a * m0
+
+    if total_w_str != "":
+      total_w_str  += f" * (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
+    else:
+      total_w_str  += f"   (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
+
+
+
+    print(f"====> tilting combinatorial by applying weight {total_w_str}")
+
+  #correct dxy
+  dxy_err_expr = f"(run==1) * 1.0 * dxy_mu_err_pv + (run!=1) * dxy_mu_err_pv"
+  dxy_sig_expr = f" dxy_mu_pv / dxy_mu_err_pv_corr "
+
+  #re-order k1 and k2 after pt
+  k1_expr      = f" k1_pt * (k1_pt > k2_pt) + k2_pt * (k1_pt <= k2_pt) "
+  k2_expr      = f" k2_pt * (k1_pt > k2_pt) + k1_pt * (k1_pt <= k2_pt) "
+
+  rdf_filt = rdf\
+             .Define("m_shifted",mass_shifted)\
+             .Filter(selection)\
+             .Define("smear","gRandom->Gaus(1.0, 0.001)")\
+             .Define("m_corr"   ,mass_shifted_smeared)\
+             .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
+             .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+             .Define("k1_corr",k1_expr)\
+             .Define("k2_corr",k2_expr)\
+
+
 
   for var,model in models.items():
 
@@ -468,36 +557,17 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       # Special binnings             #
       ################################
 
-      if var == "score1" and (args.split == "class") and region != None:
-
-        #adapt the binning
-        print(f"Adapt binning for {var} and region {region}")
-
-        model = special_models[var + f"_bin{region}" ]
-
-      if var == "score1" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
-
-        #adapt the binning
-        print(f"======> Adapt binning for {var} and region {region}")
-
-        model = special_models_q2_coll[var + f"_bin{region}" ]
-
-      if var == "e_star_lhcb_alt" and (args.split == "q2_coll" or args.split == "q2_lhcb_alt") and region != None:
-
-        #adapt the binning
-        print(f"======> Adapt binning for {var} and region {region}")
-
-        model = special_models_e_star_lhcb_alt[var + f"_bin{region}" ]
-
-
-      if ("score" in var or var == "phiPi_m" or "q2" in var) and (args.split == "score2" ) and region != None:
-        
-        #adapt the binning
-        print(f"======> Adapt binning for {var} and region {region}")
+      #if ("score" in var or var == "phiPi_m" or "q2" in var) and (args.split == "score2" ) and region != None:
+      #  
+      #  #adapt the binning
+      #  print(f"======> Adapt binning for {var} and region {region}")
   
-        model = special_models_score2[var + f"_bin{region}" ]  
-        print(model)
+      #  model = special_models_score2[var + f"_bin{region}" ]  
+      #  print(model)
 
+
+      model = special_models_bdt[var + f"_bin{region}" ]
+      
 
       ##############################################
       # Fill only variables, if explicitly given!  #
@@ -508,24 +578,63 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
           print(f"Skip plotting variable {var}");
           continue
 
+      ##############################################
+      # Assign combinatorial systematic            #
+      #############################################
+
+      # this has to happen in the variable loop bc the histograms are per variable!
+
+      if combSys:
+  
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/25_06_2026_13_41_29/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
+          comb_up = json.load(f) 
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/25_06_2026_13_41_29/combSys/comb_sys_weights_down_{var}_ch{region}.json","r") as f:
+          comb_down = json.load(f) 
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/25_06_2026_13_41_29/combSys/comb_sys_edges_{var}_ch{region}.json"       ,"r") as f:
+          comb_edges = json.load(f) 
+   
+        #build a th1d out of it
+        comb_edges = array.array("d", comb_edges)
+  
+        hWeightsUp   = ROOT.TH1D("wHistUp","wHistUp", len(comb_up), comb_edges)
+        hWeightsDown = ROOT.TH1D("wHistDown","wHistDown", len(comb_down), comb_edges)
+    
+        for i, w in enumerate(comb_up, start=1):
+          hWeightsUp  .SetBinContent(i, w)
+  
+        for i, w in enumerate(comb_down, start=1):
+          hWeightsDown.SetBinContent(i, w)
+  
+  
+        ROOT.gInterpreter.Declare("""
+        TH1D* hWUp = nullptr;
+
+        double getWeightUp(double x) {
+          return hWUp->GetBinContent(hWUp->FindBin(x));
+        }
+        """)
+ 
+        ROOT.gInterpreter.Declare("""
+        TH1D* hWDown = nullptr;
+
+        double getWeightDown(double x) {
+          return hWDown->GetBinContent(hWDown->FindBin(x));
+        }
+        """)
+ 
+ 
+        ROOT.hWUp = hWeightsUp
+        rdf_filt = rdf_filt.Define(f"comb_w_up"  , f"getWeightUp({var})")
+
+        ROOT.hWDown = hWeightsDown
+        rdf_filt = rdf_filt.Define(f"comb_w_down", f"getWeightDown({var})")
+
+        print("====> Defined weights for combinatorial")
+
 
       ##############################################
       # Start filling                              #
       ##############################################
-      #pdb.set_trace()
-
-
-      print("Filling variable ", var)
-
-      # Shift mass peak of MC by half permill
-      #bool      #true for MC                    #true for data
-      mass_expr   = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
-      #mass_expr   = f"(run==1) * 1.000 * phiPi_m + (run!=1) * phiPi_m"
-      dxy_err_expr = f"(run==1) * 1.10 * dxy_mu_err_pv + (run!=1) * dxy_mu_err_pv"
-      dxy_sig_expr = f" dxy_mu_pv / dxy_mu_err_pv_corr "
-      k1_expr      = f" k1_pt * (k1_pt > k2_pt) + k2_pt * (k1_pt <= k2_pt) "
-      k2_expr      = f" k2_pt * (k1_pt > k2_pt) + k1_pt * (k1_pt <= k2_pt) "
-
 
       if   var == "phiPi_m": tofill = "m_corr"
       elif var == "dxy_mu_err_pv": tofill = "dxy_mu_err_pv_corr"
@@ -533,59 +642,20 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       elif var == "k1_pt": tofill = "k1_corr"
       elif var == "k2_pt": tofill = "k2_corr"
       else: tofill = var
+      print(f"filling variable {tofill}")
 
       if (total_w_str == "" or data == True):
 
-        histos[var] = rdf.Filter(selection)\
-                 .Define("m_corr",mass_expr)\
-                 .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
-                 .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
-                 .Define("k1_corr",k1_expr)\
-                 .Define("k2_corr",k2_expr)\
+        histos[var] = rdf_filt\
                  .Histo1D(model[0], tofill)
 
       else:
-        histos[var] = rdf.Filter(selection)\
-                 .Define("m_corr",mass_expr)\
-                 .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
-                 .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
-                 .Define("k1_corr",k1_expr)\
-                 .Define("k2_corr",k2_expr)\
+        histos[var] = rdf_filt\
                  .Define("total_w", total_w_str)\
                  .Histo1D(model[0], tofill, "total_w")
-
-
-
+        print(f"filling central curve with weight {total_w_str}")
 
       if ff_sys:
-
-        #this is only true for signals
-        #add also systematical shape variations as variables 
-
-
-
-        #add also systematical shape variations as variables 
-
-        #if "star" not in mc: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
-        #else:                 sys_dir = sys_vector #take e1-e10
-
-        #for s in sys_dir:
-
-        #  s_up   = s + "_up"
-        #  s_down = s + "_down"
-
-        #  var_up_av   = averages[s_up   + "_" + mc]
-        #  var_down_av = averages[s_down + "_" + mc]
-
-        #  func_up   = s_up   + f" / ({ var_up_av   })" 
-        #  func_down = s_down + f" / ({ var_down_av })" 
-
-        #  # fill histogram with weight "s"
-        #  histos[var + "_" + s + "Up"]   = rdf.Filter(selection).Define("m_corr", mass_expr).Histo1D(model[0], tofill, s + "_up"   )
-        #  histos[var + "_" + s + "Up"].Scale(1.0 / var_up_av)
-
-        #  histos[var + "_" + s + "Down"]   = rdf.Filter(selection).Define("m_corr", mass_expr).Histo1D(model[0], tofill, s + "_down"   )
-        #  histos[var + "_" + s + "Down" ].Scale(1.0 / var_down_av)
 
 
         if "star" not in mc: sys_dir = sys_scalar #only take e1 - e6 for scalar signals (BCL)
@@ -599,34 +669,78 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
           var_up_av   = averages[s_up   + "_" + mc]
           var_down_av = averages[s_down + "_" + mc]
 
-          func_up   = s_up   + f" / ({ var_up_av   })"
-          func_down = s_down + f" / ({ var_down_av })"
-
           total_w_s_up   = s_up
           total_w_s_down = s_down
-          #if mc:
-          #  total_w_s_up   += " * trigger_sf"
-          #  total_w_s_down += " * trigger_sf"
+
+          if mc:
+            total_w_s_up   += " * trigger_sf"
+            total_w_s_down += " * trigger_sf"
 
 
-          # fill histogram with weight "s"
+          ########################################
+          # Note: Apply bs tau central here too? #
+          ########################################
+
+          if lt_central:
+
+            total_w_s_up   += " * w_bs_tau"
+            total_w_s_down += " * w_bs_tau"
  
-          histos[var + "_" + s + "Up"]    = rdf.Filter(selection)\
-                                     .Define("m_corr", mass_expr)\
-                                     .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
-                                     .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+          print(f"filling variational curve with weight {total_w_s_up}")
+          print(f"filling variational curve with weight {total_w_s_down}")
+
+ 
+          histos[var + "_" + s + "Up"]    = rdf_filt\
                                      .Define(f"total_w_{s_up}", total_w_s_up)\
                                      .Histo1D(model[0], tofill, f"total_w_{s_up}")
           histos[var + "_" + s + "Up"]    .Scale(1.0 / var_up_av)
 
-          histos[var + "_" + s + "Down"]  = rdf.Filter(selection)\
-                                     .Define("m_corr", mass_expr)\
-                                     .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
-                                     .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
+          histos[var + "_" + s + "Down"]  = rdf_filt\
                                      .Define(f"total_w_{s_down}", total_w_s_down)\
                                      .Histo1D(model[0], tofill, f"total_w_{s_down}" )
           histos[var + "_" + s + "Down" ] .Scale(1.0 / var_down_av)
 
+
+      if lt_sys:
+
+          total_w_bs_up   = " w_bs_tau_up "
+          total_w_bs_down = " w_bs_tau_down "
+
+          if ff_central:
+            total_w_bs_up   += f" * central_w  / {central_av}"
+            total_w_bs_down += f" * central_w  / {central_av}"
+
+
+          histos[var + "_bsTauUp"]    = rdf_filt\
+                                          .Define(f"total_w_bs_up"    ,total_w_bs_up)\
+                                          .Histo1D(model[0], tofill , "total_w_bs_up" )
+
+
+
+          histos[var + "_bsTauDown"]  = rdf_filt\
+                                          .Define(f"total_w_bs_down"    ,total_w_bs_down)\
+                                          .Histo1D(model[0], tofill , "total_w_bs_down" )
+
+      if combSys: 
+
+          total_w_comb_up   = total_w_str 
+          total_w_comb_down = total_w_str 
+
+          total_w_comb_up   += f" * (comb_w_up  )"
+          total_w_comb_down += f" * (comb_w_down)"
+
+          print(total_w_comb_up)
+      
+
+          histos[var + "_combUp"]       = rdf_filt\
+                                          .Define(f"total_w_comb_up"    ,total_w_comb_up)\
+                                          .Histo1D(model[0], tofill , "total_w_comb_up" )
+
+
+
+          histos[var + "_combDown"]     = rdf_filt\
+                                          .Define(f"total_w_comb_down"    ,total_w_comb_down)\
+                                          .Histo1D(model[0], tofill , "total_w_comb_down" )
 
 
 
@@ -637,6 +751,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       color,_ = getColorAndLabel(var)
       histos[var].SetLineColor(color)
       histos[var].SetLineWidth(2)
+
 
   return histos
 
@@ -660,24 +775,34 @@ def saveHisto1D(hist_dict, name):
 with open(f"{args.toSave_plots}/fitted_vars.json", "r") as f:
   fitted_vars = json.load(f)
   print(f" ====> JSON file loaded: {fitted_vars}")
- 
+
+with open(f"{args.toSave_plots}/normalization_parameters.json", "r") as f:
+  norm_params = json.load(f)
+  print(f" ====> JSON file loaded: {norm_params}")
+
+global tau, n0_exp 
+tau    = norm_params["tau"]
+n0_exp = norm_params["n0_exp"]
+m0     = norm_params["m0"]
+m1     = norm_params["m1"]
+tilt   = norm_params["tilt"]
 
 #make this a class 
 selec = selections(args.selection)
 
 if args.channel == "DsMu":
-  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsmu",      region = args.bin)
+  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsmu",      region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys)
   print(histo1d)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsMu_{args.bin}.root")
 
 if args.channel == "DsMu_woHammer":
-  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,                                                     mc = "dsmu",      region = args.bin) 
+  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,                                                     mc = "dsmu",      region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys) 
   print(histo1d)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsMu_woHammer_{args.bin}.root")
 
 if args.channel == "DsTau":
 
-  histo1d       = createHistos(selec.dsTau + hammer_str       ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dstau",     region = args.bin)
+  histo1d       = createHistos(selec.dsTau + hammer_str       ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dstau",     region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsTau_{args.bin}.root")
   
   histo1d_blind = { key: histo1d[key].Clone()  for key in histo1d.keys() }
@@ -685,11 +810,11 @@ if args.channel == "DsTau":
   saveHisto1D(histo1d_blind, f"{args.toSave_plots}/histos_DsTau_blind_{args.bin}.root")
 
 if args.channel == "DsStarMu":
-  histo1d       = createHistos(selec.dsStarMu + hammer_str    ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstarmu",  region = args.bin)
+  histo1d       = createHistos(selec.dsStarMu + hammer_str    ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstarmu",  region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsStarMu_{args.bin}.root")
 
 if args.channel == "DsStarTau":
-  histo1d       = createHistos(selec.dsStarTau + hammer_str   ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstartau", region = args.bin)
+  histo1d       = createHistos(selec.dsStarTau + hammer_str   ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstartau", region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsStarTau_{args.bin}.root")
 
   histo1d_blind = { key: histo1d[key].Clone()  for key in histo1d.keys() }
@@ -781,7 +906,7 @@ if args.channel == "Data":
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Data_{args.bin}.root")
 
 if args.channel == "Data_sf_pimu":
-  histo1d       = createHistos(args.data_selection,  rdfData         ,  sf_weights = bdt, sf_weights2 = bdt2,            region = args.bin)
+  histo1d       = createHistos(args.data_selection,  rdfData         ,  sf_weights = bdt, sf_weights2 = bdt2,            region = args.bin, comb = "comb", combSys = True)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Data_sf_pimu_{args.bin}.root")
 
 
