@@ -15,36 +15,36 @@ pastNN_models = {}
 pastNN_2Dmodels = {}
 
 ##masses 
-models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   25,   1.91, 2.028), r"m(KK#pi) (GeV)"                           ,    0)
+models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   50,   1.91, 2.028), r"m(KK#pi) (GeV)"                           ,    0)
 #models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"                           , '',   40,   1.91, 1.925), r"m(KK#pi) (GeV)"                           ,    0)
 #models["kk_m"    ]                   = (ROOT.RDF.TH1DModel("kk_m"                              , '',   30,   1.0,  1.040), r"m(KK) (GeV)"                           ,    0)
-##models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   25,      2,   8), r" m(KK#pi#mu) (GeV)"                       ,    0)
+###models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   25,      2,   8), r" m(KK#pi#mu) (GeV)"                       ,    0)
 #models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      2,   5.366), r"m(KK#pi#mu)(GeV)"                       ,    0)
-##models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      5.366,   8), r"m(KK#pi#mu)(GeV)"                       ,    0)
-#####
-#models["dxy_mu_sig_pv" ]             = (ROOT.RDF.TH1DModel("dxy_mu_sig_pv"                     , '',   41,      0,    20  ), r" IP(#mu)_{sig} "                         ,    0)
-#models["dxy_mu_pv" ]                 = (ROOT.RDF.TH1DModel("dxy_mu_pv"                         , '',   41,      0,    0.12   ), r" IP(#mu)  "                         ,    0)
-#models["dxy_mu_err_pv" ]             = (ROOT.RDF.TH1DModel("dxy_mu_err_pv"                     , '',   41,      0,    0.006), r" IP(#mu) Err "                         ,    0)
-###
-####models["dxy_mu_sig_beamSpot" ]             = (ROOT.RDF.TH1DModel("dxy_mu_sig_beamSpot"                     , '',   41,      0,    20  ), r" IP(#mu)_{sig} "                         ,    0)
-####models["dxy_mu_beamSpot" ]                 = (ROOT.RDF.TH1DModel("dxy_mu_beamSpot"                         , '',   41,      0,    0.12   ), r" IP(#mu)  "                         ,    0)
-####models["dxy_mu_err_beamSpot" ]             = (ROOT.RDF.TH1DModel("dxy_mu_err_beamSpot"                     , '',   41,      0,    0.006), r" IP(#mu) Err "                         ,    0)
-###
-###
-###
-models["mu_pt" ]                     = (ROOT.RDF.TH1DModel("mu_pt"                             , '',   41,      7,    15), r" #mu(p_{T}) (GeV)"                         ,    0)
-####models["mu_pt" ]                     = (ROOT.RDF.TH1DModel("mu_pt"                             , '',   41,      7,    12), r" #mu(p_{T}) (GeV)"                         ,    0)
+###models["dsMu_m" ]                   = (ROOT.RDF.TH1DModel("dsMu_m"                             , '',   30,      5.366,   8), r"m(KK#pi#mu)(GeV)"                       ,    0)
+######
+##models["dxy_mu_sig_pv" ]             = (ROOT.RDF.TH1DModel("dxy_mu_sig_pv"                     , '',   41,      0,    20  ), r" IP(#mu)_{sig} "                         ,    0)
+##models["dxy_mu_pv" ]                 = (ROOT.RDF.TH1DModel("dxy_mu_pv"                         , '',   41,      0,    0.12   ), r" IP(#mu)  "                         ,    0)
+##models["dxy_mu_err_pv" ]             = (ROOT.RDF.TH1DModel("dxy_mu_err_pv"                     , '',   41,      0,    0.006), r" IP(#mu) Err "                         ,    0)
+####
+#####models["dxy_mu_sig_beamSpot" ]             = (ROOT.RDF.TH1DModel("dxy_mu_sig_beamSpot"                     , '',   41,      0,    20  ), r" IP(#mu)_{sig} "                         ,    0)
+#####models["dxy_mu_beamSpot" ]                 = (ROOT.RDF.TH1DModel("dxy_mu_beamSpot"                         , '',   41,      0,    0.12   ), r" IP(#mu)  "                         ,    0)
+#####models["dxy_mu_err_beamSpot" ]             = (ROOT.RDF.TH1DModel("dxy_mu_err_beamSpot"                     , '',   41,      0,    0.006), r" IP(#mu) Err "                         ,    0)
+####
+####
+####
+#models["mu_pt" ]                     = (ROOT.RDF.TH1DModel("mu_pt"                             , '',   41,      7,    15), r" #mu(p_{T}) (GeV)"                         ,    0)
+#####models["mu_pt" ]                     = (ROOT.RDF.TH1DModel("mu_pt"                             , '',   41,      7,    12), r" #mu(p_{T}) (GeV)"                         ,    0)
 #models["pi_pt" ]                     = (ROOT.RDF.TH1DModel("pi_pt"                             , '',   41,      0,    5), r" #pi(p_{T}) (GeV)"                         ,    0)
 #models["k1_pt" ]                     = (ROOT.RDF.TH1DModel("k1_pt"                             , '',   41,      0,    5), r" K1(p_{T}) (GeV)"                         ,    0)
 #models["k2_pt" ]                     = (ROOT.RDF.TH1DModel("k2_pt"                             , '',   41,      0,    5), r" K2(p_{T}) (GeV)"                         ,    0)
-########
-########
+#########
+#########
 #models["mu_eta" ]                     = (ROOT.RDF.TH1DModel("mu_eta"                             , '',   21,      0,   2.5), r" #eta(#mu)"                         ,    0)
 #models["pi_eta" ]                     = (ROOT.RDF.TH1DModel("pi_eta"                             , '',   21,      0,   2.5), r" #eta(#pi)"                         ,    0)
 #models["k1_eta" ]                     = (ROOT.RDF.TH1DModel("k1_eta"                             , '',   21,      0,   2.5), r" #eta(K1)"                         ,    0)
 #models["k2_eta" ]                     = (ROOT.RDF.TH1DModel("k2_eta"                             , '',   21,      0,   2.5), r" #eta(K2)"                         ,    0)
-#######
-#######
+########
+########
 #models["m2_miss_coll" ]              = (ROOT.RDF.TH1DModel("m2_miss_coll"                      , '',   21,      0,     6), r"m^{2}_{miss,coll} (GeV^{2})"                     ,    0)
 #models["m2_miss_lhcb_alt" ]          = (ROOT.RDF.TH1DModel("m2_miss_lhcb_alt"                  , '',   20,      -2,     8), r"m^{2}_{miss,xyz} (GeV^{2})"                     ,    0)
 #models["m2_miss_reco_1" ]            = (ROOT.RDF.TH1DModel("m2_miss_reco_1"                    , '',   21,      0,     6), r"m^{2}_{miss,math,1} (GeV^{2})"                     ,    0)
@@ -66,8 +66,8 @@ models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                
 #models["q2_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                   , '',   20,       0,     15), r"q^{2}_{xyz} (GeV)"                             ,    0)
 #models["q2_reco_1" ]             = (ROOT.RDF.TH1DModel("q2_reco_1"                     , '',   31,      0,     12), r"q^{2}_{math,1} (GeV)"                             ,    0)
 #models["q2_reco_2" ]             = (ROOT.RDF.TH1DModel("q2_reco_2"                     , '',   31,      0,     12), r"q^{2}_{math,2} (GeV)"                             ,    0)
-###models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      -12,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
-###models["q2_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                   , '',   31,      -12,     12), r"q^{2}_{xyz} (GeV)"                             ,    0)
+#####models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      -12,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
+####models["q2_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                   , '',   31,      -12,     12), r"q^{2}_{xyz} (GeV)"                             ,    0)
 ###models["q2_reco_1" ]             = (ROOT.RDF.TH1DModel("q2_reco_1"                     , '',   31,      -12,     12), r"q^{2}_{math,1} (GeV)"                             ,    0)
 ###models["q2_reco_2" ]             = (ROOT.RDF.TH1DModel("q2_reco_2"                     , '',   31,      -12,     12), r"q^{2}_{math,2} (GeV)"                             ,    0)
 ########
@@ -121,20 +121,20 @@ models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                
 #######
 #models["rel_iso_03_pv" ]                   = (ROOT.RDF.TH1DModel("rel_iso_03_pv"                           , '',   50,    0.0,  1.0), r"Iso^{rel}_{#mu}(PV)"                  ,    0)
 ######
-#####models["dsPhoton_m" ]                      = (ROOT.RDF.TH1DModel("dsPhoton_m"                              , '',   30,    2.0,  2.3), r"m(Ds + #gamma)"                     ,    0)
-######models["photon_pt" ]                      = (ROOT.RDF.TH1DModel("photon_pt"                              , '',   30,    0.0,  2.0), r"p_{T}(#gamma) (GeV)"                     ,    0)
+#models["dsPhoton_m" ]                      = (ROOT.RDF.TH1DModel("dsPhoton_m"                              , '',   30,    2.0,  2.3), r"m(Ds + #gamma)"                     ,    0)
+#models["photon_pt" ]                      = (ROOT.RDF.TH1DModel("photon_pt"                              , '',   30,    0.0,  2.0), r"p_{T}(#gamma) (GeV)"                     ,    0)
 ######
 ###models["signed_decay_ip3d_mu_ds_sig_sv" ]             = (ROOT.RDF.TH1DModel("signed_decay_ip3d_mu_ds_sv"                     , '',   30,    -0.5, 0.5), r"IP3D"                      ,    0)
 #####
 #models["ds_perp" ]                      = (ROOT.RDF.TH1DModel("ds_perp"                              , '',   30,    0,  2.5), r"m_{#perp}(KK #pi) (GeV)"                     ,    0)
 #models["ds_mu_perp" ]                   = (ROOT.RDF.TH1DModel("ds_mu_perp"                           , '',   30,    0,  3.0), r"m_{#perp}(KK #pi #mu) (GeV)"                 ,    0)
-###models["kappa" ]                   = (ROOT.RDF.TH1DModel("kappa"                                     , '',   30,    0,  0.7), r"#kappa"                 ,    0)
-####models["ds_perp_photon" ]               = (ROOT.RDF.TH1DModel("ds_perp_photon"                       , '',   30,    0,  5), r"m_{#perp}(KK #pi #gamma) (GeV)"              ,    0)
+#models["kappa" ]                   = (ROOT.RDF.TH1DModel("kappa"                                     , '',   30,    0,  0.7), r"#kappa"                 ,    0)
+#models["ds_perp_photon" ]               = (ROOT.RDF.TH1DModel("ds_perp_photon"                       , '',   30,    0,  5), r"m_{#perp}(KK #pi #gamma) (GeV)"              ,    0)
 #####models["ds_mu_perp_photon" ]            = (ROOT.RDF.TH1DModel("ds_mu_perp_photon"                    , '',   30,    0,  8), r"m_{#perp}(KK #pi #mu #gamma) (GeV)"          ,    0)
 #####
 #models["bs_mass_corr" ]            = (ROOT.RDF.TH1DModel("bs_mass_corr"                    , '',   30,    2.0,  12), r"m_{corr}(KK #pi #mu ) (GeV)"          ,    0)
 ####models["bs_mass_corr_photon" ]     = (ROOT.RDF.TH1DModel("bs_mass_corr_photon"             , '',   30,    2.0,  12), r"m_{corr}(KK #pi #mu #gamma) (GeV)"          ,    0)
-#####
+######
 ###
 ####models["mu7_ip4" ]            = (ROOT.RDF.TH1DModel("mu7_ip4"                    , '',   2,    -0.5,  1.5), r"Mu7_IP4"          ,    0)
 ####models["mu8_ip3" ]            = (ROOT.RDF.TH1DModel("mu8_ip3"                    , '',   2,    -0.5,  1.5), r"Mu8_IP3"          ,    0)
@@ -199,11 +199,11 @@ models["phiPi_pt" ]               = (ROOT.RDF.TH1DModel("phiPi_pt"              
 #pastNN_models["class" ]                    = (ROOT.RDF.TH1DModel("class"                            , '',   6,       0,    5.9999), r"Class"                            ,    0)
 #pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    0.6), r"Score 0"                            ,    0)
 pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    0.8), r"Score 1"                            ,    0)
-##pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   3,       0.1,    0.25), r"Score 1"                            ,    0)
+###pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   3,       0.1,    0.25), r"Score 1"                            ,    0)
 #pastNN_models["score2" ]                   = (ROOT.RDF.TH1DModel("score2"                           , '',   31,       0,    1.0), r"Score 2"                            ,    0)
 #pastNN_models["score3" ]                   = (ROOT.RDF.TH1DModel("score3"                           , '',   31,       0,    1.0), r"Score 3"                            ,    0)
-pastNN_models["score4" ]                   = (ROOT.RDF.TH1DModel("score4"                           , '',   31,       0,    0.8), r"Score 4"                            ,    0)
-#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   41,       0,    0.05), r"Score 5"                            ,    0)
+#pastNN_models["score4" ]                   = (ROOT.RDF.TH1DModel("score4"                           , '',   31,       0,    0.8), r"Score 4"                            ,    0)
+#pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   41,       0,    1.0), r"Score 5"                            ,    0)
 #pastNN_models["score5" ]                   = (ROOT.RDF.TH1DModel("score5"                           , '',   41,       0,    1.0), r"Score 5"                            ,    0)
 #pastNN_models["score5" ]                = (ROOT.RDF.TH1DModel("score5_WP_lower"                           , '',   100,      0,    0.1), r"Score 5"                            ,    0)
 #pastNN_models["score0" ]                = (ROOT.RDF.TH1DModel("score0_WP_upper"                           , '',   200,      0,    0.2), r"Score 0"                            ,    0)
@@ -238,7 +238,7 @@ special_models_bdt = {}
 
 ####################################################################################################################################
 
-edges = list(np.linspace(0.35,0.6,11))  
+edges = list(np.linspace(0.4,0.6,11))  
 edgescpp = array('d', edges)
 special_models_score2[f"score4_bin4" ] = (ROOT.RDF.TH1DModel("score4_bin4", '', len(edges)-1, edgescpp  ), r"Score 4" ,    0) 
 
@@ -246,6 +246,10 @@ edges = list(np.linspace(0.0, 2.5,11))
 edgescpp = array('d', edges)
 special_models_score2[f"ds_perp_bin4" ] = (ROOT.RDF.TH1DModel("ds_perp_bin4", '', len(edges)-1, edgescpp  ), r"Ds perp" ,    0) 
 
+
+edges = list(np.linspace(0.0,0.4,9))
+edgescpp = array('d', edges)
+special_models_score2[f"score1_bin4" ] = (ROOT.RDF.TH1DModel("score1_bin4", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0)
 
 edges = list(np.linspace(0.0,0.25,11))  
 edgescpp = array('d', edges)
@@ -434,13 +438,117 @@ edges = list(np.linspace(2,10,21))
 edgescpp = array('d', edges)
 special_models_bdt[f"q2_coll_bin3" ] = (ROOT.RDF.TH1DModel("q2_coll_bin3", '', len(edges)-1, edgescpp  ), r"q2 coll" ,    0) 
 
+edges = list(np.linspace(3,12,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"q2_coll_bin4" ] = (ROOT.RDF.TH1DModel("q2_coll_bin4", '', len(edges)-1, edgescpp  ), r"q2 coll" ,    0) 
+
+#ds perp photon
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin5" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin5", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin6" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin6", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin7" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin7", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin8" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin8", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin9" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin9", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin10" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin10", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin11" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin11", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin12" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin12", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+edges = list(np.linspace(2.0,9.0,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"ds_perp_photon_bin13" ] = (ROOT.RDF.TH1DModel("ds_perp_photon_bin13", '', len(edges)-1, edgescpp  ), r"ds_perp_photon" ,    0) 
+
+
+
+
+
+
+
+
+
+
+#adapt dsPhoton_m
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin2" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin2", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin3" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin3", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin6" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin6", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin7" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin7", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin8" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin8", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin9" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin9", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin10" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin10", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin11" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin11", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin12" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin12", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+edges = list(np.linspace(2.0,2.3,15))  
+edgescpp = array('d', edges)
+special_models_bdt[f"dsPhoton_m_bin13" ] = (ROOT.RDF.TH1DModel("dsPhoton_m_bin13", '', len(edges)-1, edgescpp  ), r"ds Photon m" ,    0) 
+
+
+#adapt score4
+
 edges = list(np.linspace(0.35,1.0,21))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score4_bin4" ] = (ROOT.RDF.TH1DModel("score4_bin4", '', len(edges)-1, edgescpp  ), r"Score 4" ,    0) 
 
+
+#adapt score0
+
+edges = list(np.linspace(0.5,0.7,21))  
+edgescpp = array('d', edges)
+special_models_bdt[f"score0_bin5" ] = (ROOT.RDF.TH1DModel("score0_bin5", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
+
+
+
 #adapt score1
 
-edges = list(np.linspace(0.0,0.25,21))  
+edges = list(np.linspace(0.0,0.55,21))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin5" ] = (ROOT.RDF.TH1DModel("score1_bin5", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
@@ -448,19 +556,19 @@ edges = list(np.linspace(0.05,0.40,21))
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin6" ] = (ROOT.RDF.TH1DModel("score1_bin6", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.05,0.50,21))  
+edges = list(np.linspace(0.05,0.60,15))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin7" ] = (ROOT.RDF.TH1DModel("score1_bin7", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.05,0.50,21))  
+edges = list(np.linspace(0.05,0.50,15))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin8" ] = (ROOT.RDF.TH1DModel("score1_bin8", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.05,0.45,21))  
+edges = list(np.linspace(0.05,0.6,21))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin9" ] = (ROOT.RDF.TH1DModel("score1_bin9", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.1,0.55,21))  
+edges = list(np.linspace(0.05,0.6,21))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin10" ] = (ROOT.RDF.TH1DModel("score1_bin10", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
@@ -468,11 +576,11 @@ edges = list(np.linspace(0.05,0.55,21))
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin11" ] = (ROOT.RDF.TH1DModel("score1_bin11", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.05,0.50,21))  
+edges = list(np.linspace(0.05,0.6,21))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin12" ] = (ROOT.RDF.TH1DModel("score1_bin12", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.1,0.6,21))  
+edges = list(np.linspace(0.05,0.6,21))  
 edgescpp = array('d', edges)
 special_models_bdt[f"score1_bin13" ] = (ROOT.RDF.TH1DModel("score1_bin13", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
