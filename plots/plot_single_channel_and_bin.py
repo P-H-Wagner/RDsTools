@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, getSignflipRatioTest, fitAnotherVar
 from helper import * 
-from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models_score2, special_models_bdt
+from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models_score2, special_models_bdt, special_models_cmsweek,special_models_class
 from blinding import *
 
 import numpy as np
@@ -47,7 +47,7 @@ parser.add_argument("--selection",       required = True,     help = "")
 parser.add_argument("--data_selection",  required = True,     help = "") 
 parser.add_argument("--channel",         required = True,     help = "") 
 parser.add_argument("--split",           required = True,     help = "") 
-parser.add_argument("--parts",           required = True,     help = "specify which parts to plot, comma separated, f.e.: 1,2,3")
+parser.add_argument("--parts",           required = False,     help = "specify which parts to plot, comma separated, f.e.: 1,2,3")
 parser.add_argument("--model",                                help = "overwrite model in helper file")
 
 
@@ -108,7 +108,8 @@ if hammer_sys:
   sys_scalar = systematics_scalar
   sys_vector = systematics_vector
 
-with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/20_10_2025_09_57_12/average_weights.yaml","r") as f:
+with open(f"/work/pahwagne/RDsTools/hammercpp/development_branch/weights/{averageWeightsYaml}/average_weights.yaml","r") as f:
+#with open(f"/work/pahwagne/RDsTools/hammercpp/development_branch/weights/20_10_2025_09_57_12/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
 
 
@@ -148,11 +149,11 @@ with open( args.toSave_plots + f"/info.txt", "a") as f:
 #############
 
 #if trigger == "mu7":
-#  data_selec   = " && (mu7_ip4 == 1)"
-#  mc_selec     = " && (mu7_ip4 == 1) && (static_cast<int>(event) % 20 < 10) " #on mc we use event nr (all triggers are on for mc!)
+#data_selec   = " && (mu7_ip4 == 1)"
+#mc_selec     = " && (mu7_ip4 == 1) && (static_cast<int>(event) % 20 < 10) " #on mc we use event nr (all triggers are on for mc!)
 #else:
-#  data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
-#  mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
+#data_selec   = " && ((mu9_ip6 == 1) && (mu7_ip4 == 0)) "
+#mc_selec     = " && (mu9_ip6 == 1) && (static_cast<int>(event) % 20 >= 10) "
 
 #data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8p5_3p5)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu10p5_3p5)||(mu12_ip6))"
 #data_selec = "&& ((mu7_ip4 == 1)||(mu8_ip3==1)||(mu8_ip5==1)||(mu8_ip6==1)||(mu9_ip4==1)||(mu9_ip5==1)||(mu9_ip6==1)||(mu12_ip6))"
@@ -508,25 +509,37 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   # This is a per event weights! Change along y, needs to be applied for all variables
   if comb:
 
-    y0 = n0_exp * np.exp(tau * m0)
-    y1 = n0_exp * np.exp(tau * m1)
+    
+    y0 = n0_exp * np.exp(tau * m0) 
+    y1 = n0_exp * np.exp(tau * m1) 
 
     y0_new = y0 - tilt * y0
     y1_new = y1 + tilt * y1
 
+    #define a linear function, not tilted
+    a  = (y1 - y0) / (m1 - m0)
+    b  = y0 - a * m0
+
     #define a linear function, tilted
-    a  = (y1_new - y0_new) / (m1 - m0)
-    b  = y0_new - a * m0
+    a_new  = (y1_new - y0_new) / (m1 - m0)
+    b_new  = y0_new - a_new * m0
+
+    mC = (m0+m1)/2
 
     if total_w_str != "":
-      total_w_str  += f" * (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
+      #total_w_str  += f" * (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
+      #total_w_str  += f" * (( {a_new} * phiPi_m + {b_new} ) / ({a} * phiPi_m + {b} ))"
+      total_w_str += f"* (1.0 + {tilt} * (phiPi_m - {mC})/({m1} - {m0}))"
+      #total_w_str += f"* (std::exp({tilt} * (phiPi_m - {mC})) )"#exp tilt  
+
     else:
-      total_w_str  += f"   (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
-
-
+      #total_w_str  += f"   (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
+      #total_w_str  += f"  (( {a_new} * phiPi_m + {b_new} ) / ({a} * phiPi_m + {b} ))"
+      total_w_str += f" (1.0 + {tilt} * (phiPi_m - {mC})/({m1} - {m0}))"
+      #total_w_str += f" (std::exp({tilt} * (phiPi_m - {mC})) )"#exp tilt  
 
     print(f"====> tilting combinatorial by applying weight {total_w_str}")
-
+    
   #correct dxy
   dxy_err_expr = f"(run==1) * 1.0 * dxy_mu_err_pv + (run!=1) * dxy_mu_err_pv"
   dxy_sig_expr = f" dxy_mu_pv / dxy_mu_err_pv_corr "
@@ -566,7 +579,10 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       #  print(model)
 
 
-      model = special_models_bdt[var + f"_bin{region}" ]
+      #model = special_models_bdt[var + f"_bin{region}" ]
+      #model = special_models_score2[var + f"_bin{region}" ]
+      #model = special_models_cmsweek[var + f"_bin{region}" ]
+      model = special_models_class[var + f"_bin{region}" ]
       
 
       ##############################################
@@ -585,12 +601,17 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       # this has to happen in the variable loop bc the histograms are per variable!
 
       if combSys:
-  
-        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/25_06_2026_13_41_29/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
+        #combFolder="03_07_2026_15_56_21" 
+        #combFolder="17_07_2026_14_29_34"#for the old binnning
+        #combFolder="23_07_2026_07_57_05"#for the new binning 
+        #combFolder="23_07_2026_16_40_41"#for the new binning with cut 0.01 and more bins
+        combFolder="24_07_2026_15_01_12"#for the new binning with cut 0.01 and more bins
+        #combFolder="24_07_2026_12_50_08"
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
           comb_up = json.load(f) 
-        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/25_06_2026_13_41_29/combSys/comb_sys_weights_down_{var}_ch{region}.json","r") as f:
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_down_{var}_ch{region}.json","r") as f:
           comb_down = json.load(f) 
-        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/25_06_2026_13_41_29/combSys/comb_sys_edges_{var}_ch{region}.json"       ,"r") as f:
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_edges_{var}_ch{region}.json"       ,"r") as f:
           comb_edges = json.load(f) 
    
         #build a th1d out of it
@@ -706,6 +727,11 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
           total_w_bs_up   = " w_bs_tau_up "
           total_w_bs_down = " w_bs_tau_down "
 
+          if mc:
+            total_w_bs_up   += " * trigger_sf"
+            total_w_bs_down += " * trigger_sf"
+
+
           if ff_central:
             total_w_bs_up   += f" * central_w  / {central_av}"
             total_w_bs_down += f" * central_w  / {central_av}"
@@ -785,6 +811,8 @@ tau    = norm_params["tau"]
 n0_exp = norm_params["n0_exp"]
 m0     = norm_params["m0"]
 m1     = norm_params["m1"]
+#y0     = norm_params["y0"]
+#y1     = norm_params["y1"]
 tilt   = norm_params["tilt"]
 
 #make this a class 

@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath("/work/pahwagne/RDsTools/help"))
 from sidebands import getSigma, getABCS
 from signflip  import getSignflipRatio, getSignflipRatioTest, fitAnotherVar
 from helper import * 
-from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models_score2, special_models_bdt 
+from histModels import models, modelsSR, pastNN_models, pastNN_2Dmodels, special_models_score2, special_models_bdt, special_models_class
 from blinding import *
 
 import numpy as np
@@ -107,7 +107,7 @@ if hammer_sys:
   sys_scalar = systematics_scalar
   sys_vector = systematics_vector
 
-with open("/work/pahwagne/RDsTools/hammercpp/development_branch/weights/20_10_2025_09_57_12/average_weights.yaml","r") as f:
+with open(f"/work/pahwagne/RDsTools/hammercpp/development_branch/weights/{averageWeightsYaml}/average_weights.yaml","r") as f:
   averages = yaml.safe_load(f)
 
 
@@ -562,7 +562,9 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   
       ##  model = special_models_score2[var + f"_bin{region}" ]  
 
-      model = special_models_bdt[var + f"_bin{region}" ]  
+      #model = special_models_bdt[var + f"_bin{region}" ]  
+      #model = special_models_score2[var + f"_bin{region}" ]  
+      model = special_models_class[var + f"_bin{region}" ]  
 
       ##############################################
       # Fill only variables, if explicitly given!  #

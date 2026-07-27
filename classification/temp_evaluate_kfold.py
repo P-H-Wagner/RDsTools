@@ -3,6 +3,8 @@ import sys
 from os import path
 import uproot
 import ROOT
+import fnmatch
+import pdb
 
 #from root_pandas import read_root
 from root_numpy import tree2array
@@ -271,7 +273,7 @@ class createDf(object):
     #concat all folds
     df_tot = pd.concat([ x_folds[n] for n in range(self.nfolds) ]) 
 
-    root_filename = f"/scratch/pahwagne/score_trees/HOOK_CHANNEL/HOOK_CHANNEL_HOOK_MODELPATH_flatChunk_HOOK_CHUNK.root"
+    root_filename = f"/scratch/pahwagne/score_trees_test/HOOK_CHANNEL/HOOK_CHANNEL_HOOK_MODELPATH_flatChunk_HOOK_CHUNK.root"
 
     with uproot.recreate(root_filename) as f:
         f["tree"] = df_tot 
@@ -284,6 +286,8 @@ if __name__ == '__main__':
    files = [HOOK_FILES]
 
    # training path/model 
+   #training_path = f'/work/pahwagne/RDsTools/classification/outputs/test_HOOK_MODELPATH' 
+   #training_path = f'/work/pahwagne/RDsTools/classification/nn_training/HOOK_MODELPATH' 
    training_path = f'/work/pahwagne/RDsTools/classification/outputs/test_HOOK_MODELPATH' 
    print("training path: ", training_path)
 
@@ -308,7 +312,7 @@ if __name__ == '__main__':
    
 
    #append sf weights for data
-   if   ("HOOK_CHANNEL" == "data" ) :  
+   if   ("data" in "HOOK_CHANNEL" ) :  
      # data variables which we would like to save in the new trees (just take one file)
      test_file_data = ROOT.TFile(files[0])
      test_tree_data = test_file_data.Get("tree")
@@ -347,9 +351,11 @@ if __name__ == '__main__':
 
    # remove all gen variables, except the signal info
    extra_vars = [e for e in extra_vars if "gen_"      not in e ]
-   if "HOOK_CHANNEL" != "data": 
+   if "data" not in "HOOK_CHANNEL": 
      extra_vars.append("gen_sig")
      extra_vars.append("gen_match_success")
+   if "HOOK_CHANNEL" == "hb": 
+     extra_vars.append("gen_same_mother")
 
    # remove all the PV info, except the custom one
    extra_vars = [e for e in extra_vars if "pv_general" not in e and "pv_dz" not in e]
@@ -379,8 +385,8 @@ if __name__ == '__main__':
    #remove cosPlanesBs (what is this even!?)
    extra_vars = [e for e in extra_vars if "cosPlaneBs" not in e]
 
-   #remove dxy 
-   extra_vars = [e for e in extra_vars if "dxy" not in e]
+   #remove dxy  calculations wrt sv
+   extra_vars = [e for e in extra_vars if not fnmatch.fnmatch(e, "dxy*sv")]
 
    print("Branches after clipping:", len(extra_vars))
 

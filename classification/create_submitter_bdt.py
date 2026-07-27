@@ -9,15 +9,14 @@ from helper import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--nFiles", help = "Specify #files to process")
+parser.add_argument("--part",        help = "specify part to process (i.e. 1,2,3, ...)")
 args = parser.parse_args()
 
-#if args.trigger not in ["7", "9"]:
-#  raise ValueError ("Error: Not a valid key for --trigger, please use '7' or '9'")
-#else: trig = args.trigger
-
-folder = ""
 now       = datetime.now()
 dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
+
+dt_string = bdt_model #use the same name as the model!
+
 
 ######################################
 
@@ -26,9 +25,9 @@ dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 #default
 queue = 'short' 
-time = 30
+time = 15 
 
-filesPerJob = 6
+filesPerJob = 1
 
 ######################################
 
@@ -57,11 +56,22 @@ def filesFromTxt(txtFile):
 
 #loop over all bph parts
 inputfiles = []
-for dt in data_cons_25:
-  directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/{dt}/' #
-  inputfiles +=  filesFromFolder(directory)
+if args.part:
+  files_data = f"data_bph{args.part}_{nn_model}"
+else:
+  files_data = f"data_{nn_model}" 
+#
+print(f"====> evaluating BDT on {files_data}")
+directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/{files_data}/' #
+inputfiles +=  filesFromFolder(directory)
 
-naming = 'data'
+#for f in split_by_parts[f"data_bph{args.part}"]:
+#
+#  directory = f'/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/{f}_fullBPark/' 
+#  print(f"Adding files of {directory}")
+#  inputfiles +=  filesFromFolder(directory)
+
+naming = f'data_bph{args.part}'
 
 #####################################
 
@@ -69,9 +79,10 @@ if nFiles != -1:
   #process not the whole dataset but only nFiles
   inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
 
-os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/"+ folder + "/" +dt_string, exist_ok=True)
-os.makedirs(dt_string + "/" + folder  + "/logs" , exist_ok=True)
-os.makedirs(dt_string + "/" + folder  + "/errs" , exist_ok=True)
+outdir = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{dt_string}/{naming}_{dt_string}/"
+os.makedirs(outdir, exist_ok=True)
+os.makedirs(f"{dt_string}/{naming}_{dt_string}/logs" , exist_ok=True)
+os.makedirs(f"{dt_string}/{naming}_{dt_string}/errs" , exist_ok=True)
 
 
 for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
@@ -81,9 +92,9 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
   #template
   temp = open("temp_evaluate_bdt.py", "rt")
   #file to write to
-  cfg = open(dt_string+"/{0}/eval_chunk_{1}.py".format(folder,i),"wt")
+  cfg = open(f"{dt_string}/{naming}_{dt_string}/eval_chunk_{i}.py","wt")
   #file to save things
-  fout = "/scratch/pahwagne/{0}/{1}_chunk_{2}.root".format(dt_string,naming,i)  
+  fout = f"/scratch/pahwagne/{naming}_{dt_string}/{naming}_chunk_{i}.root"  
 
   import pdb
   for line in temp:
@@ -99,33 +110,32 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
   cfg.close()
 
   to_write = '\n'.join([
-         '#!/bin/bash',
-         'eval "$(conda shell.bash hook)"',
-         'conda activate /work/pahwagne/environments/gpu_bdt',
-         'cd /work/pahwagne/RDsTools/classification/'+dt_string + "/" + folder ,
-         'mkdir -p /scratch/pahwagne/'+dt_string,
-         'ls /scratch/pahwagne/',
-         'python eval_chunk_{1}.py'.format(dt_string,i),
-         'xrdcp /scratch/pahwagne/{1}/{2}_chunk_{3}.root root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/{0}/{1}/{2}_chunk_{3}.root'.format(folder,dt_string,naming,i),
-         'rm /scratch/pahwagne/{0}/{1}_chunk_{2}.root'.format(dt_string,naming,i),
-         '',
+         f'#!/bin/bash',
+         f'eval "$(conda shell.bash hook)"',
+         f'conda activate /work/pahwagne/environments/gpu_bdt',
+         f'cd /work/pahwagne/RDsTools/classification/{dt_string}/{naming}_{dt_string}',
+         f'mkdir -p /scratch/pahwagne/{naming}_{dt_string}/',
+         f'ls /scratch/pahwagne/',
+         f'python eval_chunk_{i}.py',
+         f'xrdcp {fout}  root://t3dcachedb03.psi.ch:1094//{outdir}/{naming}_chunk_{i}.root',
+         f'rm {fout}',
+         f'',
      ])
 
-  with open("{0}/{1}/submitter_chunk_{2}.sh".format(dt_string,folder,i), "wt") as flauncher:
+  with open(f"{dt_string}/{naming}_{dt_string}/submitter_chunk_{i}.sh", "wt") as flauncher:
     flauncher.write(to_write)
-
 
   command_sh_batch = ' '.join([
 
-        'sbatch',
-        '-p '+queue,
-        '--account=t3',
-        '-o {0}/{1}/logs/chunk_{2}.log'.format(dt_string,folder,i),
-        '-e {0}/{1}/errs/chunk_{2}.err'.format(dt_string,folder,i),
-        '--mem=3000M',
-        '--job-name=BDT_{0}'.format(i),
-        '--time={0}'.format(time),
-        '{0}/{1}/submitter_chunk_{2}.sh'.format(dt_string,folder,i),
+        f'sbatch',
+        f'-p '+queue,
+        f'--account=t3',
+        f'-o {dt_string}/{naming}_{dt_string}/logs/chunk_{i}.log',
+        f'-e {dt_string}/{naming}_{dt_string}/errs/chunk_{i}.err',
+        #f'--mem=6000M',
+        f'--job-name=BDT_{i}',
+        f'--time={time}',
+        f'{dt_string}/{naming}_{dt_string}/submitter_chunk_{i}.sh',
      ])
 
   print(command_sh_batch)

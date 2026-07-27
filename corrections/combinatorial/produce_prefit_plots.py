@@ -451,8 +451,8 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   hComb = histos["Data_sf_pimu"].Clone()
   hComb.Scale(scale_pimu)
 
-  hComb.SetLineColor(ROOT.kGray + 1)
-  hComb.SetFillColor(ROOT.kGray + 1)
+  hComb.SetLineColor(ROOT.kBlue)
+  hComb.SetFillColor(ROOT.kBlue)
 
   nComb = hComb.Integral()
   histos["comb"] = hComb # append to create datacard later
@@ -503,6 +503,9 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   hRest         .SetLineColor(ROOT.kAzure)
   hComb_expected.SetLineColor(ROOT.kRed)
 
+  hComb_expected.SetLineWidth(2)
+  hComb         .SetLineWidth(2)
+
 
 
   ###################################
@@ -543,8 +546,18 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   #leg.AddEntry(hRest                            ,'Signals + Hb' ,'L' )
   leg.AddEntry(hComb_expected                   ,'Comb. + Fakes Expectation (Exp.)' ,'L' )
   leg.AddEntry(hComb                            ,'Comb. + Fakes Estimation (Est.)'  ,'L' )
-  leg.AddEntry(histos["Data"]                   ,'Data'  ,'L' )
-  
+  #leg.AddEntry(histos["Data"]                   ,'Data'  ,'L' )
+ 
+
+  ###############
+  # text        #
+  ###############
+  txt = ROOT.TLatex(0.82, 0.92, f"{region}");
+  txt.SetNDC();
+  txt.SetTextFont(43);
+  txt.SetTextSize(24);
+
+ 
   #plot mainpad
   if logy:
     ROOT.gPad.SetLogy()
@@ -568,12 +581,13 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   #hRest         .Draw("HIST")
   hComb         .Draw("HIST ")
   hComb_expected.Draw("HIST SAME")
-  histos["Data"].Draw("HIST SAME")
+  #histos["Data"].Draw("HIST SAME")
+  txt.Draw("SAME")
 
   leg.Draw("SAME")
   ROOT.gPad.RedrawAxis()
   
-  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Private Work', lumi_13TeV = f'')
+  CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = f'       Private Work', lumi_13TeV = f'')
  
   #plot ratiopad
   ratio_pad.cd()
@@ -581,12 +595,13 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   #ROOT.gPad.SetLogy()
   ratio = hComb_expected.Clone()
   ratio.SetName('ratio')
+  ratio.SetLineColor(ROOT.kBlack)
   ratio.Divide(hComb)
   #ratio_stats = hErr.Clone()
   #ratio_stats.SetName('ratiostats')
   #ratio_stats.Divide(hErr)
-  ratio.SetMaximum(1.299) # avoid displaying 2, that overlaps with 0 in the main_pad
-  ratio.SetMinimum(0.7) # and this is for symmetry
+  ratio.SetMaximum(1.999) # avoid displaying 2, that overlaps with 0 in the main_pad
+  ratio.SetMinimum(0.001) # and this is for symmetry
   ratio.GetYaxis().SetTitle('Exp./ Est.')
   ratio.GetXaxis().SetTitle(ratio.GetXaxis().GetTitle())
 
@@ -613,6 +628,14 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
 
     #if the ratio (bin content) is further away than one sigma from 1, we consider the bin as shape affected.
     diff = ratio.GetBinContent(i) - 1.0
+
+    #if  ( ratio.GetBinContent(i) > 1e-5):
+    #  weights_up  .append(ratio.GetBinContent(i))
+    #  weights_down.append(1.0/ratio.GetBinContent(i))
+
+    #else:
+    #  weights_up  .append(1.0)
+    #  weights_down.append(1.0)
 
 
     if ( abs(diff) > abs(ratio.GetBinError(i))) and not ( ratio.GetBinContent(i) < 1e-5):

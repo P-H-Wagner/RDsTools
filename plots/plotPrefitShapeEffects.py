@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--file",         required = True,     help = "Specify dt of file")
 args = parser.parse_args()
 
-include_lifetime=False
+include_lifetime=True
 
 #inside here we have all the root files, containing all signal shapes + up/down variation
 shapes_dir= f"/work/pahwagne/RDsTools/fit/shapes_binned/{args.file}/*"
@@ -49,6 +49,11 @@ for f in files:
     #print(var_bin)
 
 
+correctedBinsDsTau = 0
+correctedBinsDsMu  = 0
+correctedBinsDsStarTau = 0
+correctedBinsDsStarMu  = 0
+
 def createCanvas(name):
 
 
@@ -74,6 +79,8 @@ def createCanvas(name):
   return c
 
 def plotHammer(rf, sig, var, chan):
+
+  correctedBins = 0
 
   if "Star" in sig: 
     model = "Bgl"
@@ -177,16 +184,37 @@ def plotHammer(rf, sig, var, chan):
       nC    = int(hC   .GetBinContent(j))
 
       if ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)): 
-        print(f"ALERT !!! - There is some one-sided variation in signal {sig} and channel e{i} - abort")
+        print(f"ALERT !!! - There is some one-sided variation in signal {sig}, channel {chan}, variation e{i} in bin {j}  - abort")
         print(f"Bin content: \nup = {nUp} \ndown = {nDown} \ncentral = {nC}")
-        sys.exit()
+        correctedBins += 1
+        #sys.exit()
 
+  return correctedBins
 
 def plotLifetime(rf,sig, var):
 
     #lifetime
     c = createCanvas(f"{sig}_bs_tau")
+    c.Draw()
     c.cd()
+
+    main_pad = ROOT.TPad('main_pad', '', 0., 0.25, 1. , 1.  )
+    main_pad.Draw()
+    ratio_pad = ROOT.TPad('ratio_pad', '', 0., 0., 1., 0.25)
+    ratio_pad.Draw()
+
+    main_pad.SetTicks(True)
+    main_pad.SetBottomMargin(0.)
+    main_pad.SetLeftMargin(.16)
+
+    ratio_pad.SetTopMargin(0.)
+    ratio_pad.SetLeftMargin(.16)
+    ratio_pad.SetGridy()
+    ratio_pad.SetBottomMargin(0.45)
+
+    #############################
+    main_pad.cd()
+
     hUp   = rf.Get(f"{sig}_bsTauUp_ch{chan}")
     hUp.SetLineColor(ROOT.kRed)
     hC    = rf.Get(f"{sig}_ch{chan}")
@@ -212,7 +240,41 @@ def plotLifetime(rf,sig, var):
     legend.AddEntry(hDown, f"bsTauDown in ch{chan}", "L")  
     legend.AddEntry(hC   , f"Central", "L")  
     legend.Draw("SAME")
-  
+ 
+    ############################# 
+    ratio_pad.cd()
+
+    ratio_up = hUp.Clone()
+    ratio_up.Divide(hC)
+    ratio_up.SetLineColor(ROOT.kRed)
+    ratio_up.SetTitle("")
+    ratio_up.GetYaxis().SetTitle("Up(Down) / Central")
+
+    ratio_down = hDown.Clone()
+    ratio_down.Divide(hC)
+    ratio_down.SetLineColor(ROOT.kBlue)
+
+    ratio_up.GetYaxis().SetNdivisions(505)
+    ratio_up.GetYaxis().SetTitleSize(0.1)
+    ratio_up.GetYaxis().SetLabelSize(0.08)
+    ratio_up.GetXaxis().SetTitleSize(0.1)
+    ratio_up.GetXaxis().SetLabelSize(0.08)
+
+    ratio_max = max([ratio_up.GetMaximum(), ratio_down.GetMaximum()])
+    ratio_min = min([ratio_up.GetMinimum(), ratio_down.GetMinimum()])
+
+    ratio_up.SetMinimum(0.9)
+    ratio_up.SetMaximum(1.099)
+    ratio_up.GetYaxis().SetTitleOffset(0.5)
+
+    ROOT.gPad.RedrawAxis()
+    
+    ratio_up.Draw("E")
+    ratio_down.Draw("E SAME")
+ 
+    c.Modified()
+    c.Update()
+ 
     c    .SaveAs(f"{dest}/{sig}/{var}_in_bin_ch{chan}_{sig}_bsTau_variations.pdf")
 
 def plotCombSys(rf,sig, var, chan):
@@ -222,7 +284,26 @@ def plotCombSys(rf,sig, var, chan):
 
     #lifetime
     c = createCanvas(f"{sig}_comb")
+    c.Draw()
     c.cd()
+
+    main_pad = ROOT.TPad('main_pad', '', 0., 0.25, 1. , 1.  )
+    main_pad.Draw()
+    ratio_pad = ROOT.TPad('ratio_pad', '', 0., 0., 1., 0.25)
+    ratio_pad.Draw()
+
+    main_pad.SetTicks(True)
+    main_pad.SetBottomMargin(0.)
+    main_pad.SetLeftMargin(.16)
+
+    ratio_pad.SetTopMargin(0.)
+    ratio_pad.SetLeftMargin(.16)
+    ratio_pad.SetGridy()
+    ratio_pad.SetBottomMargin(0.45)
+
+    #############################
+    main_pad.cd()
+
     hUp   = rf.Get(f"{sig}_combSysUp_ch{chan}")
     hUp.SetLineColor(ROOT.kRed)
     hC    = rf.Get(f"{sig}_ch{chan}")
@@ -248,6 +329,40 @@ def plotCombSys(rf,sig, var, chan):
     legend.AddEntry(hDown, f"combDown in ch{chan}", "L")  
     legend.AddEntry(hC   , f"Central", "L")  
     legend.Draw("SAME")
+ 
+    ############################# 
+    ratio_pad.cd()
+
+    ratio_up = hUp.Clone()
+    ratio_up.Divide(hC)
+    ratio_up.SetLineColor(ROOT.kRed)
+    ratio_up.SetTitle("")
+    ratio_up.GetYaxis().SetTitle("Up(Down) / Central")
+
+    ratio_down = hDown.Clone()
+    ratio_down.Divide(hC)
+    ratio_down.SetLineColor(ROOT.kBlue)
+
+    ratio_up.GetYaxis().SetNdivisions(505)
+    ratio_up.GetYaxis().SetTitleSize(0.1)
+    ratio_up.GetYaxis().SetLabelSize(0.08)
+    ratio_up.GetXaxis().SetTitleSize(0.1)
+    ratio_up.GetXaxis().SetLabelSize(0.08)
+
+    ratio_max = max([ratio_up.GetMaximum(), ratio_down.GetMaximum()])
+    ratio_min = min([ratio_up.GetMinimum(), ratio_down.GetMinimum()])
+
+    ratio_up.SetMinimum(0.5)
+    ratio_up.SetMaximum(1.5)
+    ratio_up.GetYaxis().SetTitleOffset(0.5)
+
+    ROOT.gPad.RedrawAxis()
+    
+    ratio_up.Draw("E")
+    ratio_down.Draw("E SAME")
+ 
+    c.Modified()
+    c.Update()
   
     c    .SaveAs(f"{dest}/{sig}/{var}_in_bin_ch{chan}_{sig}_comb_variations.pdf")
 
@@ -279,11 +394,10 @@ for f in files:
   for k in keys:
     key = k.GetName() 
 
-
-  plotHammer(rf,"dsMu",      var, chan)
-  plotHammer(rf,"dsStarMu",  var, chan)
-  plotHammer(rf,"dsTau",     var, chan)
-  plotHammer(rf,"dsStarTau", var, chan)
+  correctedBinsDsMu      +=   plotHammer(rf,"dsMu",      var, chan)
+  correctedBinsDsStarMu  +=   plotHammer(rf,"dsStarMu",  var, chan)
+  correctedBinsDsTau     +=   plotHammer(rf,"dsTau",     var, chan)
+  correctedBinsDsStarTau +=   plotHammer(rf,"dsStarTau", var, chan)
 
   plotCombSys  (rf,"comb", var, chan)
 
@@ -295,5 +409,14 @@ for f in files:
     plotLifetime(rf,"dsStarMu",  var)
     plotLifetime(rf,"dsTau",     var)
     plotLifetime(rf,"dsStarTau", var)
+
+
+print("#########################################################")
+print(f"In total corrected bins for signal DsMu: {correctedBinsDsMu}")
+print(f"In total corrected bins for signal DsTau: {correctedBinsDsTau}")
+print(f"In total corrected bins for signal DsStarMu: {correctedBinsDsStarMu}")
+print(f"In total corrected bins for signal DsStarTau: {correctedBinsDsStarTau}")
+print("#########################################################")
+
 
 

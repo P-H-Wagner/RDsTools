@@ -62,7 +62,7 @@ models["phiPi_m" ]                   = (ROOT.RDF.TH1DModel("phiPi_m"            
 #models["bs_pt_reco_1" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_1"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
 #models["bs_pt_reco_2" ]              = (ROOT.RDF.TH1DModel("bs_pt_reco_2"                      , '',   21,      0,    80), r"p_{T}(B_{s}) (GeV)"                         ,    0)
 ##########
-#models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      0,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
+models["q2_coll" ]               = (ROOT.RDF.TH1DModel("q2_coll"                       , '',   31,      0,     12), r"q^{2}_{coll} (GeV)"                             ,    0)
 #models["q2_lhcb_alt" ]           = (ROOT.RDF.TH1DModel("q2_lhcb_alt"                   , '',   20,       0,     15), r"q^{2}_{xyz} (GeV)"                             ,    0)
 #models["q2_reco_1" ]             = (ROOT.RDF.TH1DModel("q2_reco_1"                     , '',   31,      0,     12), r"q^{2}_{math,1} (GeV)"                             ,    0)
 #models["q2_reco_2" ]             = (ROOT.RDF.TH1DModel("q2_reco_2"                     , '',   31,      0,     12), r"q^{2}_{math,2} (GeV)"                             ,    0)
@@ -199,8 +199,8 @@ models["phiPi_pt" ]               = (ROOT.RDF.TH1DModel("phiPi_pt"              
 
 
 #pastNN_models["class" ]                    = (ROOT.RDF.TH1DModel("class"                            , '',   6,       0,    5.9999), r"Class Prediction"                            ,    0)
-#pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    0.6), r"Score 0"                            ,    0)
-#pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    0.7), r"Score 1"                            ,    0)
+pastNN_models["score0" ]                   = (ROOT.RDF.TH1DModel("score0"                           , '',   31,       0,    0.6), r"Score 0"                            ,    0)
+pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   31,       0,    0.7), r"Score 1"                            ,    0)
 ###pastNN_models["score1" ]                   = (ROOT.RDF.TH1DModel("score1"                           , '',   3,       0.1,    0.25), r"Score 1"                            ,    0)
 #pastNN_models["score2" ]                   = (ROOT.RDF.TH1DModel("score2"                           , '',   31,       0,    1.0), r"Score 2"                            ,    0)
 #pastNN_models["score3" ]                   = (ROOT.RDF.TH1DModel("score3"                           , '',   31,       0,    1.0), r"Score 3"                            ,    0)
@@ -830,81 +830,86 @@ edgescpp = array('d', edges)
 special_models_class[f"q2_coll_bin3" ] = (ROOT.RDF.TH1DModel("q2_coll_bin3", '', len(edges)-1, edgescpp  ), r"q2 coll" ,    0) 
 
 #constrain hb
-edges = list(np.linspace(0.0,0.4,11))
+edges = list(np.linspace(0.0,0.4,20))
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin4" ] = (ROOT.RDF.TH1DModel("score1_bin4", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0)
 
-edges = list(np.linspace(0.025,0.4,11))  
+edges = list(np.linspace(3.0,11.5,15))
 edgescpp = array('d', edges)
-special_models_class[f"score1_bin5" ] = (ROOT.RDF.TH1DModel("score1_bin5", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+special_models_class[f"q2_coll_bin4" ] = (ROOT.RDF.TH1DModel("q2_coll_bin4", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0)
 
-edges = list(np.linspace(0.00,0.42,11))  
-edgescpp = array('d', edges)
-special_models_class[f"score1_bin6" ] = (ROOT.RDF.TH1DModel("score1_bin6", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.05,0.44,11))  
-edgescpp = array('d', edges)
-special_models_class[f"score1_bin7" ] = (ROOT.RDF.TH1DModel("score1_bin7", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+#edges = list(np.linspace(0.025,0.4,11))  
+#edgescpp = array('d', edges)
+#special_models_class[f"score1_bin5" ] = (ROOT.RDF.TH1DModel("score1_bin5", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+#
+#edges = list(np.linspace(0.00,0.42,11))  
+#edgescpp = array('d', edges)
+#special_models_class[f"score1_bin6" ] = (ROOT.RDF.TH1DModel("score1_bin6", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+#
+#edges = list(np.linspace(0.05,0.44,11))  
+#edgescpp = array('d', edges)
+#special_models_class[f"score1_bin7" ] = (ROOT.RDF.TH1DModel("score1_bin7", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+#
+#edges = list(np.linspace(0.00,0.37,11))  
+#edgescpp = array('d', edges)
+#special_models_class[f"score1_bin8" ] = (ROOT.RDF.TH1DModel("score1_bin8", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+#
+#edges = list(np.linspace(0.04,0.45,11))  
+#edgescpp = array('d', edges)
+#special_models_class[f"score1_bin9" ] = (ROOT.RDF.TH1DModel("score1_bin9", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
+#
+#edges = list(np.linspace(0.05,0.45,11))  
+#edgescpp = array('d', edges)
+#special_models_class[f"score1_bin10" ] = (ROOT.RDF.TH1DModel("score1_bin10", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.00,0.37,11))  
-edgescpp = array('d', edges)
-special_models_class[f"score1_bin8" ] = (ROOT.RDF.TH1DModel("score1_bin8", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
-
-edges = list(np.linspace(0.04,0.45,11))  
-edgescpp = array('d', edges)
-special_models_class[f"score1_bin9" ] = (ROOT.RDF.TH1DModel("score1_bin9", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
-
-edges = list(np.linspace(0.05,0.45,11))  
-edgescpp = array('d', edges)
-special_models_class[f"score1_bin10" ] = (ROOT.RDF.TH1DModel("score1_bin10", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
-
-edges = list(np.linspace(0.2,0.55,11))  
+edges = list(np.linspace(0.2,0.55,20))  
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin11" ] = (ROOT.RDF.TH1DModel("score1_bin11", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.2,0.65,11))  
+edges = list(np.linspace(0.2,0.65,20))  
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin12" ] = (ROOT.RDF.TH1DModel("score1_bin12", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.2,0.65,11))  
+edges = list(np.linspace(0.2,0.65,20))  
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin13" ] = (ROOT.RDF.TH1DModel("score1_bin13", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.2,0.55,11))  
+edges = list(np.linspace(0.2,0.55,20))  
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin14" ] = (ROOT.RDF.TH1DModel("score1_bin14", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.2,0.62,11))  
+edges = list(np.linspace(0.2,0.62,20))  
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin15" ] = (ROOT.RDF.TH1DModel("score1_bin15", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
-edges = list(np.linspace(0.2,0.7,11))  
+edges = list(np.linspace(0.2,0.7,20))  
 edgescpp = array('d', edges)
 special_models_class[f"score1_bin16" ] = (ROOT.RDF.TH1DModel("score1_bin16", '', len(edges)-1, edgescpp  ), r"Score 1" ,    0) 
 
 
 #score0 instead of 1
-edges = list(np.linspace(0.2,0.6,11))  
+edges = list(np.linspace(0.2,0.6,15))  
 edgescpp = array('d', edges)
 special_models_class[f"score0_bin5" ] = (ROOT.RDF.TH1DModel("score0_bin5", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
 
-edges = list(np.linspace(0.2,0.6,11))  
+edges = list(np.linspace(0.2,0.6,15))  
 edgescpp = array('d', edges)
 special_models_class[f"score0_bin6" ] = (ROOT.RDF.TH1DModel("score0_bin6", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
 
-edges = list(np.linspace(0.24,0.6,11))  
+edges = list(np.linspace(0.24,0.6,15))  
 edgescpp = array('d', edges)
 special_models_class[f"score0_bin7" ] = (ROOT.RDF.TH1DModel("score0_bin7", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
 
-edges = list(np.linspace(0.18,0.6,11))  
+edges = list(np.linspace(0.18,0.6,15))  
 edgescpp = array('d', edges)
 special_models_class[f"score0_bin8" ] = (ROOT.RDF.TH1DModel("score0_bin8", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
 
-edges = list(np.linspace(0.2,0.6,11))  
+edges = list(np.linspace(0.2,0.6,15))  
 edgescpp = array('d', edges)
 special_models_class[f"score0_bin9" ] = (ROOT.RDF.TH1DModel("score0_bin9", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
 
-edges = list(np.linspace(0.25,0.6,11))  
+edges = list(np.linspace(0.25,0.6,15))  
 edgescpp = array('d', edges)
 special_models_class[f"score0_bin10" ] = (ROOT.RDF.TH1DModel("score0_bin10", '', len(edges)-1, edgescpp  ), r"Score 0" ,    0) 
 

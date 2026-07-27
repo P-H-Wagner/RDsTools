@@ -67,6 +67,7 @@ sys_vector = systematics_vector
 
 massYields = {}
 modifyHammer = False
+modifyBsTau  = False
 
 #########################################
 ## COLOR SCHEME                        ##
@@ -115,34 +116,34 @@ def getColorAndLabelSignalDistinction(key):
     colors = {}
    
     labels.append(r"D_{s} #mu"); labels.append(r"D_{s} #tau"); labels.append(r"D*_{s} #mu");   labels.append(r"D*_{s} #tau"); labels.append(r"H_{b}"); labels.append(r"Data");
-    colors = {"DsMu":            ROOT.TColor.GetColor("#92dadd"), #ROOT.kBlue - 2,
-              "DsMu_woHammer":   ROOT.TColor.GetColor("#92dadd"), #ROOT.kBlue - 2,
-              "Mu_in_Hb":        ROOT.TColor.GetColor("#92dadd"), #ROOT.kBlue - 2,
+    colors = {"DsMu":            ROOT.TColor.GetColor("#5790fc"), #ROOT.kBlue - 2,
+              "DsMu_woHammer":   ROOT.TColor.GetColor("#5790fc"), #ROOT.kBlue - 2,
+              "Mu_in_Hb":        ROOT.TColor.GetColor("#5790fc"), #ROOT.kBlue - 2,
               "DsTau":           ROOT.TColor.GetColor("#ffa90e"), #ROOT.kGreen,
-              "DsStarMu":        ROOT.TColor.GetColor("#3f90da"), #ROOT.kCyan,
+              "DsStarMu":        ROOT.TColor.GetColor("#92dadd"), #ROOT.kCyan,
               "DsStarTau":       ROOT.TColor.GetColor("#e76300"), #ROOT.kOrange,
 
-              "Hb":              ROOT.TColor.GetColor("#bd1f01"), #ROOT.kRed,
-              "Hb_fd":           ROOT.TColor.GetColor("#bd1f01"), #ROOT.kRed -7,
-              "Hb_dc":           ROOT.TColor.GetColor("#bd1f01"), #ROOT.kRed -2,
+              "Hb":              ROOT.TColor.GetColor("#a96b59"), #ROOT.kRed,
+              "Hb_fd":           ROOT.TColor.GetColor("#a96b59"), #ROOT.kRed -7,
+              "Hb_dc":           ROOT.TColor.GetColor("#a96b59"), #ROOT.kRed -2,
 
-              "Hb_others":       ROOT.TColor.GetColor("#bd1f01"), #ROOT.kRed -5,
+              "Hb_others":       ROOT.TColor.GetColor("#94a4a2"), #ROOT.kRed -5,
 
-              "Hb_bs":           ROOT.TColor.GetColor("#bd1f01"), #ROOT.kRed +2,
-              "Hb_bs_fd":        ROOT.TColor.GetColor("#832db6"), #ROOT.kRed +2,
-              "Hb_bs_dc":        ROOT.TColor.GetColor("#a96b59"), #ROOT.kRed -7,
+              "Hb_bs":           ROOT.TColor.GetColor("#7a21dd"), #ROOT.kRed +2,
+              "Hb_bs_fd":        ROOT.TColor.GetColor("#7a21dd"), #ROOT.kRed +2,
+              "Hb_bs_dc":        ROOT.TColor.GetColor("#964a8b"), #ROOT.kRed -7,
 
-              "Hb_b0":           ROOT.TColor.GetColor("#bd1f01"), #ROOT.kMagenta,
+              "Hb_b0":           ROOT.TColor.GetColor("#b9ac70"), #ROOT.kMagenta,
               "Hb_b0_fd":        ROOT.TColor.GetColor("#b9ac70"), #ROOT.kMagenta,
-              "Hb_b0_dc":        ROOT.TColor.GetColor("#94a4a2"), #ROOT.kMagenta -7,
+              "Hb_b0_dc":        ROOT.TColor.GetColor("#b9ac70"), #ROOT.kMagenta -7,
 
-              "Hb_bpm":          ROOT.TColor.GetColor("#bd1f01"), #ROOT.kOrange + 7,
-              "Hb_bpm_fd":       ROOT.TColor.GetColor("#e42536"), #ROOT.kOrange + 7,
-              "Hb_bpm_dc":       ROOT.TColor.GetColor("#964a8b"), #ROOT.kOrange + 5,
+              "Hb_bpm":          ROOT.TColor.GetColor("#832db6"), #ROOT.kOrange + 7,
+              "Hb_bpm_fd":       ROOT.TColor.GetColor("#832db6"), #ROOT.kOrange + 7,
+              "Hb_bpm_dc":       ROOT.TColor.GetColor("#832db6"), #ROOT.kOrange + 5,
 
-              "Hb_lambdab":      ROOT.TColor.GetColor("#bd1f01"), #ROOT.kViolet,
-              "Hb_lambdab_fd":   ROOT.TColor.GetColor("#7a21dd"), #ROOT.kViolet,
-              "Hb_lambdab_dc":   ROOT.TColor.GetColor("#9c9ca1"), #ROOT.kViolet-7,
+              "Hb_lambdab":      ROOT.TColor.GetColor("#a96b59"), #ROOT.kViolet,
+              "Hb_lambdab_fd":   ROOT.TColor.GetColor("#a96b59"), #ROOT.kViolet,
+              "Hb_lambdab_dc":   ROOT.TColor.GetColor("#a96b59"), #ROOT.kViolet-7,
 
               "bs":              ROOT.TColor.GetColor("#3f90da"), #ROOT.kRed - 9,
               "b0":              ROOT.TColor.GetColor("#3f90da"), #ROOT.kRed - 6,
@@ -379,9 +380,16 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
     # we skip the blind keys and rename the DsTau_blind to DsTau for the corresponding cases
     if "blind" in key: continue
 
-    if   (key == "DsTau"     and blind == True) : histos[key] = histos2["DsTau_blind"].Clone()
-    elif (key == "DsStarTau" and blind == True) : histos[key] = histos2["DsStarTau_blind"].Clone()
-    else                                        : histos[key] = hist.Clone()
+    # are of type DsStarTau_blind_e1Up
+    if   ("DsTau"     in key and blind == True) : 
+      key2 = key.replace("DsTau","DsTau_blind")
+      histos[key] = histos2[key2].Clone()
+
+    elif ("DsStarTau" in key and blind == True) : 
+      key2 = key.replace("DsStarTau","DsStarTau_blind")
+      histos[key] = histos2[key2].Clone()
+    else                                        : 
+      histos[key] = hist.Clone()
     #print(histos) 
 
   #print("==========> number of hb events right calling stackedPlot", histos["Hb"].Integral())
@@ -395,10 +403,10 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
   #supress data plotting in SR. region is a string of type: ch0
   dataBlind = False
-  if ((int(region[2:]) > 5) and (int(region[2:]) < 30)): 
+  if ((int(region[2:]) > 5) and (int(region[2:]) != 8) and (int(region[2:]) != 14)): 
     dataBlind = True 
-    #color["DsTau"] = color["DsMu"]
-    #color["DsStarTau"] = color["DsStarMu"]
+  #  color["DsTau"] = color["DsMu"]
+  #  color["DsStarTau"] = color["DsStarMu"]
 
   # if we are anyway using the blinded histos (with a blind scale, no need do hide data)
   if (blind == True): dataBlind = False
@@ -509,14 +517,17 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   hs.Add(histos["Hb_bs_fd"     ])
   hs.Add(histos["Hb_bs_dc"     ])
 
-  hs.Add(histos["Hb_b0_fd"     ])
-  hs.Add(histos["Hb_b0_dc"     ])
+  hs.Add(histos["Hb_b0"     ])
+  #hs.Add(histos["Hb_b0_fd"     ])
+  #hs.Add(histos["Hb_b0_dc"     ])
 
-  hs.Add(histos["Hb_bpm_fd"    ])
-  hs.Add(histos["Hb_bpm_dc"    ])
+  hs.Add(histos["Hb_bpm"    ])
+  #hs.Add(histos["Hb_bpm_fd"    ])
+  #hs.Add(histos["Hb_bpm_dc"    ])
 
-  hs.Add(histos["Hb_lambdab_fd"])
-  hs.Add(histos["Hb_lambdab_dc"])
+  hs.Add(histos["Hb_lambdab"])
+  #hs.Add(histos["Hb_lambdab_fd"])
+  #hs.Add(histos["Hb_lambdab_dc"])
 
   hs.Add(histos["Hb_others" ])
 
@@ -530,14 +541,17 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   hErr.Add(histos["Hb_bs_fd"     ])
   hErr.Add(histos["Hb_bs_dc"     ])
 
-  hErr.Add(histos["Hb_b0_fd"     ])
-  hErr.Add(histos["Hb_b0_dc"     ])
+  hErr.Add(histos["Hb_b0"     ])
+  #hErr.Add(histos["Hb_b0_fd"     ])
+  #hErr.Add(histos["Hb_b0_dc"     ])
 
-  hErr.Add(histos["Hb_bpm_fd"    ])
-  hErr.Add(histos["Hb_bpm_dc"    ])
+  hErr.Add(histos["Hb_bpm"    ])
+  #hErr.Add(histos["Hb_bpm_fd"    ])
+  #hErr.Add(histos["Hb_bpm_dc"    ])
 
-  hErr.Add(histos["Hb_lambdab_fd"])
-  hErr.Add(histos["Hb_lambdab_dc"])
+  hErr.Add(histos["Hb_lambdab"])
+  #hErr.Add(histos["Hb_lambdab_fd"])
+  #hErr.Add(histos["Hb_lambdab_dc"])
 
   hErr.Add(histos["Hb_others" ])
 
@@ -584,17 +598,20 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   #leg.AddEntry(histos["Hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'F' )
   #leg.AddEntry(histos["Hb_fd"]       ,'B^{#pm 0}_{(s)}, #Lambda_{b} #rightarrow feed-down'   ,'F' )
   #leg.AddEntry(histos["Hb_dc"]       ,'B^{#pm 0}_{(s)}, #Lambda_{b} #rightarrow double-charm','F' )
-  leg.AddEntry(histos["Hb_bs_fd"]       ,'B_{s} #rightarrow feed-down','F' )
-  leg.AddEntry(histos["Hb_bs_dc"]       ,'B_{s} #rightarrow double-charm','F' )
+  leg.AddEntry(histos["Hb_bs_fd"]       ,'B_{s} #rightarrow D_{s} + #mu (fd)','F' )
+  leg.AddEntry(histos["Hb_bs_dc"]       ,'B_{s} #rightarrow D_{s} + #mu (cc)','F' )
 
-  leg.AddEntry(histos["Hb_bpm_fd"]      ,'B^{#pm} #rightarrow feed-down','F' )
-  leg.AddEntry(histos["Hb_bpm_dc"]      ,'B^{#pm} #rightarrow double-charm','F' )
+  leg.AddEntry(histos["Hb_bpm"]      ,'B^{#pm} #rightarrow D_{s} + #mu','F' )
+  #leg.AddEntry(histos["Hb_bpm_fd"]      ,'B^{#pm} #rightarrow feed-down','F' )
+  #leg.AddEntry(histos["Hb_bpm_dc"]      ,'B^{#pm} #rightarrow double-charm','F' )
 
-  leg.AddEntry(histos["Hb_b0_fd"]       ,'B^{0} #rightarrow feed-down','F' )
-  leg.AddEntry(histos["Hb_b0_dc"]       ,'B^{0} #rightarrow double-charm','F' )
+  leg.AddEntry(histos["Hb_b0"]       ,'B^{0} #rightarrow D_{s} + #mu','F' )
+  #leg.AddEntry(histos["Hb_b0_fd"]       ,'B^{0} #rightarrow feed-down','F' )
+  #leg.AddEntry(histos["Hb_b0_dc"]       ,'B^{0} #rightarrow double-charm','F' )
 
-  leg.AddEntry(histos["Hb_lambdab_fd"]  ,'#Lambda_{b} #rightarrow feed-down','F' )
-  leg.AddEntry(histos["Hb_lambdab_dc"]  ,'#Lambda_{b} #rightarrow double-charm','F' )
+  leg.AddEntry(histos["Hb_lambdab"]  ,'#Lambda_{b} #rightarrow D_{s} + #mu','F' )
+  #leg.AddEntry(histos["Hb_lambdab_fd"]  ,'#Lambda_{b} #rightarrow feed-down','F' )
+  #leg.AddEntry(histos["Hb_lambdab_dc"]  ,'#Lambda_{b} #rightarrow double-charm','F' )
  
   leg.AddEntry(histos["Hb_others"]   ,'other b #rightarrow D_{s} + #mu','F' )
   leg.AddEntry(histos["Data"]        ,'Data','LEP')
@@ -696,14 +713,17 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
     "Hb_bs_fd",
     "Hb_bs_dc",
 
-    "Hb_bpm_fd",
-    "Hb_bpm_dc",
+    "Hb_bpm",
+    #"Hb_bpm_fd",
+    #"Hb_bpm_dc",
 
-    "Hb_b0_fd",
-    "Hb_b0_dc",
+    "Hb_b0",
+    #"Hb_b0_fd",
+    #"Hb_b0_dc",
 
-    "Hb_lambdab_fd",
-    "Hb_lambdab_dc",
+    "Hb_lambdab",
+    #"Hb_lambdab_fd",
+    #"Hb_lambdab_dc",
 
     "Hb_others"]:
 
@@ -737,6 +757,7 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
     pass 
   else:
     ratio.Draw('EP same')
+  #ratio.Draw('EP same')
 
   ROOT.gPad.RedrawAxis()
   
@@ -845,7 +866,7 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
 
   #supress data plotting in SR. region is a string of type: ch0
   dataBlind = False
-  if ((int(region[2:]) > 6) and (int(region[2:]) < 11)): 
+  if ((int(region[2:]) < 5) and (int(region[2:]) != 8) and (int(region[2:]) != 14)): 
     dataBlind = True 
     color["DsTau"] = color["DsMu"]
     color["DsStarTau"] = color["DsStarMu"]
@@ -1621,14 +1642,17 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
       outputFile.WriteObject(hist_dict["Hb_bs_fd"],       "hb_bs_fd"        + binned * f"_ch{channel}" )
       outputFile.WriteObject(hist_dict["Hb_bs_dc"],       "hb_bs_dc"        + binned * f"_ch{channel}" )
 
-      outputFile.WriteObject(hist_dict["Hb_b0_fd"],       "hb_b0_fd"        + binned * f"_ch{channel}" )
-      outputFile.WriteObject(hist_dict["Hb_b0_dc"],       "hb_b0_dc"        + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["Hb_b0"],       "hb_b0"        + binned * f"_ch{channel}" )
+      #outputFile.WriteObject(hist_dict["Hb_b0_fd"],       "hb_b0_fd"        + binned * f"_ch{channel}" )
+      #outputFile.WriteObject(hist_dict["Hb_b0_dc"],       "hb_b0_dc"        + binned * f"_ch{channel}" )
 
-      outputFile.WriteObject(hist_dict["Hb_bpm_fd"],      "hb_bpm_fd"       + binned * f"_ch{channel}" )
-      outputFile.WriteObject(hist_dict["Hb_bpm_dc"],      "hb_bpm_dc"       + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["Hb_bpm"],      "hb_bpm"       + binned * f"_ch{channel}" )
+      #outputFile.WriteObject(hist_dict["Hb_bpm_fd"],      "hb_bpm_fd"       + binned * f"_ch{channel}" )
+      #outputFile.WriteObject(hist_dict["Hb_bpm_dc"],      "hb_bpm_dc"       + binned * f"_ch{channel}" )
 
-      outputFile.WriteObject(hist_dict["Hb_lambdab_fd"],  "hb_lambdab_fd"   + binned * f"_ch{channel}" )
-      outputFile.WriteObject(hist_dict["Hb_lambdab_dc"],  "hb_lambdab_dc"   + binned * f"_ch{channel}" )
+      outputFile.WriteObject(hist_dict["Hb_lambdab"],  "hb_lambdab"   + binned * f"_ch{channel}" )
+      #outputFile.WriteObject(hist_dict["Hb_lambdab_fd"],  "hb_lambdab_fd"   + binned * f"_ch{channel}" )
+      #outputFile.WriteObject(hist_dict["Hb_lambdab_dc"],  "hb_lambdab_dc"   + binned * f"_ch{channel}" )
 
       outputFile.WriteObject(hist_dict["Hb_others"],      "hb_others"   + binned * f"_ch{channel}" )
 
@@ -1695,25 +1719,10 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
     if "combUp" in key: comb_sys = True
 
 
-  if hammer_sys and not bs_tau_sys:
-    #if args.findcut:
-    #  temp = open("/work/pahwagne/RDsTools/fit/datacardTemplateSystematics_binned_cuts.txt", "rt")
-    #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned.txt", "rt")
-    #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_starVSnonstar_hbYields.txt", "rt")
-    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_starVSnonstar_hbYields_comb.txt", "rt")
-    #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_hb_varies.txt", "rt")
-    #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_reducedFF.txt", "rt")
-    #temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_old.txt", "rt")
-
-  elif hammer_sys and bs_tau_sys:
-    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_reducedFF_and_bsTau.txt", "rt")
-  elif not hammer_sys and bs_tau_sys:
-    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateSystematics_binned_bsTau.txt", "rt")
-
+  if hammer_sys:
+    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal_hammer.txt", "rt")
   else:
-    #if args.findcut:
-    #  temp = open("/work/pahwagne/RDsTools/fit/datacardTemplate_binned_cuts.txt", "rt")
-    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplate_binned.txt", "rt")
+    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal.txt", "rt")
 
   card_dir = toSave + f"/datacard_binned_{var}_ch{region}.txt"
   card = open(card_dir, "wt")
@@ -1745,23 +1754,32 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
   hb_bs_dc_Str  = str(round(histos["Hb_bs_dc"].Integral(), digits))
   hb_bs_dc_Str += " "*(spaces - len(hb_bs_dc_Str))
 
-  hb_bpm_fd_Str  = str(round(histos["Hb_bpm_fd"].Integral(), digits))
-  hb_bpm_fd_Str += " "*(spaces - len(hb_bpm_fd_Str))
+  hb_bpm_Str  = str(round(histos["Hb_bpm"].Integral(), digits))
+  hb_bpm_Str += " "*(spaces - len(hb_bpm_Str))
 
-  hb_bpm_dc_Str  = str(round(histos["Hb_bpm_dc"].Integral(), digits))
-  hb_bpm_dc_Str += " "*(spaces - len(hb_bpm_dc_Str))
 
-  hb_b0_fd_Str  = str(round(histos["Hb_b0_fd"].Integral(), digits))
-  hb_b0_fd_Str += " "*(spaces - len(hb_b0_fd_Str))
+  #hb_bpm_fd_Str  = str(round(histos["Hb_bpm_fd"].Integral(), digits))
+  #hb_bpm_fd_Str += " "*(spaces - len(hb_bpm_fd_Str))
 
-  hb_b0_dc_Str  = str(round(histos["Hb_b0_dc"].Integral(), digits))
-  hb_b0_dc_Str += " "*(spaces - len(hb_b0_dc_Str))
+  #hb_bpm_dc_Str  = str(round(histos["Hb_bpm_dc"].Integral(), digits))
+  #hb_bpm_dc_Str += " "*(spaces - len(hb_bpm_dc_Str))
+  hb_b0_Str  = str(round(histos["Hb_b0"].Integral(), digits))
+  hb_b0_Str += " "*(spaces - len(hb_b0_Str))
 
-  hb_lambdab_fd_Str  = str(round(histos["Hb_lambdab_fd"].Integral(), digits))
-  hb_lambdab_fd_Str += " "*(spaces - len(hb_lambdab_fd_Str))
+  #hb_b0_fd_Str  = str(round(histos["Hb_b0_fd"].Integral(), digits))
+  #hb_b0_fd_Str += " "*(spaces - len(hb_b0_fd_Str))
 
-  hb_lambdab_dc_Str  = str(round(histos["Hb_lambdab_dc"].Integral(), digits))
-  hb_lambdab_dc_Str += " "*(spaces - len(hb_lambdab_dc_Str))
+  #hb_b0_dc_Str  = str(round(histos["Hb_b0_dc"].Integral(), digits))
+  #hb_b0_dc_Str += " "*(spaces - len(hb_b0_dc_Str))
+
+  hb_lambdab_Str  = str(round(histos["Hb_lambdab"].Integral(), digits))
+  hb_lambdab_Str += " "*(spaces - len(hb_lambdab_Str))
+
+  #hb_lambdab_fd_Str  = str(round(histos["Hb_lambdab_fd"].Integral(), digits))
+  #hb_lambdab_fd_Str += " "*(spaces - len(hb_lambdab_fd_Str))
+
+  #hb_lambdab_dc_Str  = str(round(histos["Hb_lambdab_dc"].Integral(), digits))
+  #hb_lambdab_dc_Str += " "*(spaces - len(hb_lambdab_dc_Str))
 
   hb_others_Str  = str(round(histos["Hb_others"].Integral(), digits))
   hb_others_Str += " "*(spaces - len(hb_others_Str))
@@ -1778,12 +1796,9 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
           dsStarTauStr + \
           hb_bs_fd_Str + \
           hb_bs_dc_Str + \
-          hb_bpm_fd_Str + \
-          hb_bpm_dc_Str + \
-          hb_b0_fd_Str + \
-          hb_b0_dc_Str + \
-          hb_lambdab_fd_Str + \
-          hb_lambdab_dc_Str + \
+          hb_bpm_Str + \
+          hb_b0_Str + \
+          hb_lambdab_Str + \
           hb_others_Str + \
           combStr
 
@@ -1904,6 +1919,7 @@ with open(f"{toSave_plots}/normalization_parameters.json", "r") as f:
 
 for i in range(num_bins+1):
 
+  #if i == 11: continue
   writeThisBin = True
 
   ###############################
@@ -2033,8 +2049,13 @@ for i in range(num_bins+1):
     hammer_sys = False
     for key in histos_reshuffled[var].keys():
       if "e1Up"    in key: hammer_sys = True
+      if "bsTau"   in key: bsTau_sys  = True
   
-  
+ 
+    #TODO include modification for blinding here!
+
+    pdb.set_trace()
+ 
     if var == "phiPi_m" and i == 0 and hammer_sys:
   
       answer = input("Skip ch0 and use it for yield estimation only (mass hammer systematics)? (y/n): ").strip().lower()
@@ -2048,16 +2069,51 @@ for i in range(num_bins+1):
         modifyHammer = True
         writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
 
-        #save yields globally
+        #hammer
         for s in sys_scalar:
           for direc in ["Up", "Down"]:
+
             massYields["DsTau_"    + s + direc] = histos_reshuffled[var]["DsTau_"    + s + direc].Integral()/ histos_reshuffled[var]["DsTau"].Integral() 
             massYields["DsMu_"     + s + direc] = histos_reshuffled[var]["DsMu_"     + s + direc].Integral()/ histos_reshuffled[var]["DsMu" ].Integral() 
+ 
+            massYields["DsTau_blind_"    + s + direc] = histos_reshuffled[var]["DsTau_blind_"    + s + direc].Integral()/ histos_reshuffled[var]["DsTau_blind"].Integral() 
                                       
         for s in sys_vector:          
           for direc in ["Up", "Down"]:
+
             massYields["DsStarTau_"+ s + direc] = histos_reshuffled[var]["DsStarTau_"+ s + direc].Integral()/ histos_reshuffled[var]["DsStarTau"].Integral() 
             massYields["DsStarMu_" + s + direc] = histos_reshuffled[var]["DsStarMu_" + s + direc].Integral()/ histos_reshuffled[var]["DsStarMu" ].Integral() 
+
+            massYields["DsStarTau_blind_"+ s + direc] = histos_reshuffled[var]["DsStarTau_blind_"+ s + direc].Integral()/ histos_reshuffled[var]["DsStarTau_blind"].Integral() 
+
+
+      elif answer == "n":
+        print("You chose no!")
+      else:
+        print("Invalid input!")
+   
+ 
+
+ 
+    if var == "phiPi_m" and i == 0 and bsTau_sys:
+
+      answer = input("Skip ch0 and use it for yield estimation only (bsTau systematics)? (y/n): ").strip().lower()
+      if answer == "y":
+
+        print("You chose yes!")
+        modifyBsTau  = True
+        writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
+ 
+        #lifetime
+        for direc in ["Up", "Down"]:
+          massYields["DsTau_"    + "bsTau" + direc] = histos_reshuffled[var]["DsTau_"     + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsTau"].Integral() 
+          massYields["DsMu_"     + "bsTau" + direc] = histos_reshuffled[var]["DsMu_"      + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsMu" ].Integral() 
+          massYields["DsStarTau_"+ "bsTau" + direc] = histos_reshuffled[var]["DsStarTau_" + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsStarTau"].Integral() 
+          massYields["DsStarMu_" + "bsTau" + direc] = histos_reshuffled[var]["DsStarMu_"  + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsStarMu" ].Integral() 
+ 
+          massYields["DsTau_blind_"    + "bsTau" + direc] = histos_reshuffled[var]["DsTau_blind_"     + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsTau_blind"].Integral() 
+          massYields["DsStarTau_blind_"+ "bsTau" + direc] = histos_reshuffled[var]["DsStarTau_blind_" + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsStarTau_blind"].Integral() 
+
         print(massYields)
       
       elif answer == "n":
@@ -2065,8 +2121,6 @@ for i in range(num_bins+1):
       else:
         print("Invalid input!")
    
- 
-  
     if var == "phiPi_m" and i == 1 and hammer_sys and modifyHammer:
  
         print("====> Redefining the ch1 (mass) hammer sys uncert.)") 
@@ -2080,7 +2134,11 @@ for i in range(num_bins+1):
             clone = histos_reshuffled[var]["DsMu"     ].Clone()
             clone.Scale( massYields["DsMu_"     + s + direc])
             histos_reshuffled[var]["DsMu_"     + s + direc] = clone
-                                                                        
+ 
+            clone = histos_reshuffled[var]["DsTau_blind"    ].Clone()
+            clone.Scale( massYields["DsTau_blind_"    + s + direc]) 
+            histos_reshuffled[var]["DsTau_blind_"    + s + direc] = clone 
+  
         for s in sys_vector:                                            
           for direc in ["Up", "Down"]:                                  
   
@@ -2091,7 +2149,40 @@ for i in range(num_bins+1):
             clone = histos_reshuffled[var]["DsStarMu"     ].Clone()
             clone.Scale( massYields["DsStarMu_" + s + direc])
             histos_reshuffled[var]["DsStarMu_" + s + direc] = clone
+ 
+            clone = histos_reshuffled[var]["DsStarTau_blind"    ].Clone()
+            clone.Scale( massYields["DsStarTau_blind_"+ s + direc])
+            histos_reshuffled[var]["DsStarTau_blind_"+ s + direc] = clone
   
+
+    if var == "phiPi_m" and i == 1 and bsTau_sys and modifyBsTau:
+        for direc in ["Up", "Down"]:                                  
+ 
+            clone = histos_reshuffled[var]["DsTau"    ].Clone()
+            clone.Scale( massYields["DsTau_"   + "bsTau" + direc]) 
+            histos_reshuffled[var]["DsTau_"    + "bsTau" + direc] = clone 
+  
+            clone = histos_reshuffled[var]["DsMu"     ].Clone()
+            clone.Scale( massYields["DsMu_"    + "bsTau" + direc])
+            histos_reshuffled[var]["DsMu_"     + "bsTau" + direc] = clone
+
+            clone = histos_reshuffled[var]["DsStarTau"    ].Clone()
+            clone.Scale( massYields["DsStarTau_" + "bsTau" + direc])
+            histos_reshuffled[var]["DsStarTau_"  + "bsTau" + direc] = clone
+  
+            clone = histos_reshuffled[var]["DsStarMu"     ].Clone()
+            clone.Scale( massYields["DsStarMu_"  + "bsTau" + direc])
+            histos_reshuffled[var]["DsStarMu_"   + "bsTau" + direc] = clone
+
+            clone = histos_reshuffled[var]["DsTau_blind"    ].Clone()
+            clone.Scale( massYields["DsTau_blind_"   + "bsTau" + direc]) 
+            histos_reshuffled[var]["DsTau_blind_"    + "bsTau" + direc] = clone 
+  
+            clone = histos_reshuffled[var]["DsStarTau_blind"    ].Clone()
+            clone.Scale( massYields["DsStarTau_blind_" + "bsTau" + direc])
+            histos_reshuffled[var]["DsStarTau_blind_"  + "bsTau" + direc] = clone
+  
+
  
     #create root file for every variable which holds shapes
     shapes_name = f"/{var}_shapes_ch{i}.root"
@@ -2099,7 +2190,7 @@ for i in range(num_bins+1):
     myFile       = ROOT.TFile.Open(shapes_folder       + shapes_name, "RECREATE")
     myFile_blind = ROOT.TFile.Open(shapes_folder_blind + shapes_name, "RECREATE")
     print(f"===> Producing stacked plot for variable: {var} in channel {i}") 
-
+ 
     histosScaled        , _ = stackedPlot(histos_reshuffled[var],       var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False )
     histosScaled_blind  , _ = stackedPlot(histos_reshuffled[var],       var, scale_hb,   scale_pimu = scale_pimu_blind, scale_rest = scale_rest_blind,  region = f"ch{i}", blind = True  )
     histosScaledLogx    , _ = stackedPlot(histos_reshuffled[var],       var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False, logx = True )
@@ -2115,62 +2206,61 @@ for i in range(num_bins+1):
     ###############################################################
 
 
-    tol = 0.001
-    if hammer_sys :
+    #tol = 0.001
+    #if hammer_sys :
  
-        # get nBins wlog from central curve
-        nBinsX = histosScaled["DsTau"].GetNbinsX()
+    #    # get nBins wlog from central curve
+    #    nBinsX = histosScaled["DsTau"].GetNbinsX()
 
-        for s in sys_scalar:
-          for j in range(1,nBinsX+1):
+    #    for s in sys_scalar:
+    #      for j in range(1,nBinsX+1):
 
-            nC    = histosScaled["DsTau"                 ].GetBinContent(j) 
-            nUp   = histosScaled["DsTau_"    + s + "Up"  ].GetBinContent(j) 
-            nDown = histosScaled["DsTau_"    + s + "Down"].GetBinContent(j) 
+    #        nC    = int(histosScaled["DsTau"                 ].GetBinContent(j)) 
+    #        nUp   = int(histosScaled["DsTau_"    + s + "Up"  ].GetBinContent(j)) 
+    #        nDown = int(histosScaled["DsTau_"    + s + "Down"].GetBinContent(j)) 
 
-            if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-              print(f"===> Detected one sided error for direction {s} in bin {j} of dsTau due to numerical precision! \nFix it!") 
-              if abs((nC - nUp)   / nC ) < tol: histosScaled["DsTau_"    + s + "Up"  ].SetBinContent(j,nC)
-              if abs((nC - nDown) / nC ) < tol: histosScaled["DsTau_"    + s + "Down"].SetBinContent(j,nC)
-
-
-            nC    = histosScaled["DsMu"                 ].GetBinContent(j) 
-            nUp   = histosScaled["DsMu_"    + s + "Up"  ].GetBinContent(j) 
-            nDown = histosScaled["DsMu_"    + s + "Down"].GetBinContent(j) 
-                                                                                                                                   
-            if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-              print(f"===> Detected one sided error for direction {s} in bin {j} of dsMu due to numerical precision! \nFix it!") 
-              if abs((nC - nUp)   / nC ) < tol: histosScaled["DsMu_"    + s + "Up"  ].SetBinContent(j,nC)
-              if abs((nC - nDown) / nC ) < tol: histosScaled["DsMu_"    + s + "Down"].SetBinContent(j,nC)
+    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
+    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsTau due to numerical precision! \nFix it!") 
+    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsTau_"    + s + "Up"  ].SetBinContent(j,nC)
+    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsTau_"    + s + "Down"].SetBinContent(j,nC)
 
 
-                                                                        
-        for s in sys_vector:                                            
-          for j in range(1,nBinsX+1):
+    #        nC    = int(histosScaled["DsMu"                 ].GetBinContent(j)) 
+    #        nUp   = int(histosScaled["DsMu_"    + s + "Up"  ].GetBinContent(j)) 
+    #        nDown = int(histosScaled["DsMu_"    + s + "Down"].GetBinContent(j)) 
+    #                                                                                                                               
+    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
+    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsMu due to numerical precision! \nFix it!") 
+    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsMu_"    + s + "Up"  ].SetBinContent(j,nC)
+    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsMu_"    + s + "Down"].SetBinContent(j,nC)
+
+
+    #                                                                    
+    #    for s in sys_vector:                                            
+    #      for j in range(1,nBinsX+1):
   
-            nC    = histosScaled["DsStarTau"                 ].GetBinContent(j) 
-            nUp   = histosScaled["DsStarTau_"    + s + "Up"  ].GetBinContent(j) 
-            nDown = histosScaled["DsStarTau_"    + s + "Down"].GetBinContent(j) 
+    #        nC    = int(histosScaled["DsStarTau"                 ].GetBinContent(j)) 
+    #        nUp   = int(histosScaled["DsStarTau_"    + s + "Up"  ].GetBinContent(j)) 
+    #        nDown = int(histosScaled["DsStarTau_"    + s + "Down"].GetBinContent(j)) 
 
-            if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-              print(f"===> Detected one sided error for direction {s} in bin {j} of dsTau due to numerical precision! \nFix it!") 
-              if abs((nC - nUp)   / nC ) < tol: histosScaled["DsStarTau_"    + s + "Up"  ].SetBinContent(j,nC)
-              if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarTau_"    + s + "Down"].SetBinContent(j,nC)
+    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
+    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsTau due to numerical precision! \nFix it!") 
+    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsStarTau_"    + s + "Up"  ].SetBinContent(j,nC)
+    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarTau_"    + s + "Down"].SetBinContent(j,nC)
 
 
 
-            nC    = histosScaled["DsStarMu"                 ].GetBinContent(j) 
-            nUp   = histosScaled["DsStarMu_"    + s + "Up"  ].GetBinContent(j) 
-            nDown = histosScaled["DsStarMu_"    + s + "Down"].GetBinContent(j) 
-                                                                                                                                   
-            if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-              print(f"===> Detected one sided error for direction {s} in bin {j} of dsMu due to numerical precision! \nFix it!") 
-              if abs((nC - nUp)   / nC ) < tol: histosScaled["DsStarMu_"    + s + "Up"  ].SetBinContent(j,nC)
-              if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarMu_"    + s + "Down"].SetBinContent(j,nC)
+    #        nC    = int(histosScaled["DsStarMu"                 ].GetBinContent(j)) 
+    #        nUp   = int(histosScaled["DsStarMu_"    + s + "Up"  ].GetBinContent(j)) 
+    #        nDown = int(histosScaled["DsStarMu_"    + s + "Down"].GetBinContent(j)) 
+    #                                                                                                                               
+    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
+    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsMu due to numerical precision! \nFix it!") 
+    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsStarMu_"    + s + "Up"  ].SetBinContent(j,nC)
+    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarMu_"    + s + "Down"].SetBinContent(j,nC)
 
 
  
-   
     if writeThisBin:   
 
       print("====> Writing shapes and datacards")
