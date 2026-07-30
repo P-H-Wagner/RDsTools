@@ -2054,7 +2054,6 @@ for i in range(num_bins+1):
  
     #TODO include modification for blinding here!
 
-    pdb.set_trace()
  
     if var == "phiPi_m" and i == 0 and hammer_sys:
   
