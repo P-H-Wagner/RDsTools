@@ -5,75 +5,100 @@ import json
 
 
 #production with all triggers and pt cut 0.7
+data_flatNanos=[
+# BPH 1 total skimmed: 22087190 (with iso)
+"22_05_2026_11_24_52", # part A skimmed: 1174665 (with iso)
+"24_05_2026_17_46_53", # part B skimmed: 2388069 (with iso) 
+"25_05_2026_11_46_22", # part C skimmed: 2344270 (with iso) 
+"20260227_105644"    , # part D skimmed: 16180186 (with iso)
+
+# BPH 2 total skimmed: 22370503 (with iso)
+"27_05_2026_17_18_28", # part A skimmed: 1875601 (with iso)
+"27_05_2026_22_31_02", # part B skimmed: 2389219 (with iso)  
+"29_05_2026_07_05_38", # part C skimmed: 2324820 (with iso)  
+"20260227_104615"    , # part D skimmed: 15780863 (with iso) 
+
+# BPH 3 total skimmed: 22946220 (with iso)
+"30_05_2026_09_11_47", # part A skimmed: 1887908 (with iso)
+"31_05_2026_12_52_37", # part B skimmed: 2485389 (with iso)
+"01_06_2026_02_11_46", # part C skimmed: 2334498 (with iso)
+"20260227_102607"    ,  # part D skimmed: 16238425 (with iso)
+
+# BPH 4 total skimmed 22929931 (with_iso):
+"20260618_145647", # part A skimmed: 1933081 (with iso) 
+"20260618_145823", # part B skimmed: 2512963 (with iso) 
+"20260618_145947", # part C skimmed: 2426333 (with iso) 
+"20260603_144926", # part D skimmed: 16057554 (with iso) 
 
 
-data_flatNanos    = [
+# BPH 5 total skimmed: 21842060 (with_iso)
+"02_06_2026_22_55_03", # part A skimmed: 1903193 (with_iso)
+"03_06_2026_17_34_42", # part B skimmed: 2475207 (with_iso)
+"04_06_2026_22_26_54", # part C skimmed: 1931850 (with_iso)
+"20260409_141324"    , # part D skimmed: 15531810 (with_iso)
 
-# BPH 1
-#"minimal/20260323_105131", # part B skimmed: (3801182)
-#"minimal/20260323_105203", # part C skimmed: (5856007)
-"20260227_105644", # part D: skimmed (39962697)
+#BPH 6
+"20260702_112403", # part A
+"20260702_112800", # part B
 
-# BPH 2
-#"minimal/20260505_062618", # part A
-#"minimal/20260324_160954", # part B skimmed: (3784924)
-#"minimal/20260324_161028", # part C skimmed: (5899586)
-"20260227_104615", # part D skimmed: (38967726)
-
-# BPH 3
-#"minimal/20260326_105108", # part B skimmed: (3800282)
-#"minimal/20260326_105235", # part C skimmed: (5815038)
-"20260227_102607"  # part D skimmed: (40104879)
-
-# BPH 5
-#"20260409_141324" # part D
 ] 
 
-sig_flatNanos     = ["17_03_2026_11_31_56"] #["23_09_2025_13_17_17"]
-hb_flatNanos      = ["25_02_2026_16_36_40"]  
+split_by_parts = {
+"data_bph1" : data_flatNanos[ :4  ],
+"data_bph2" : data_flatNanos[4:8  ],
+"data_bph3" : data_flatNanos[8:12 ],
+"data_bph4" : data_flatNanos[12:16],
+"data_bph5" : data_flatNanos[16:20],
+"data_bph6" : data_flatNanos[20:22],
+}
+
+#split_by_parts = {
+#"data_bph1" :[ data_flatNanos[ 3  ]],
+#"data_bph2" :[ data_flatNanos[ 7  ]],
+#"data_bph3" :[ data_flatNanos[ 11 ]],
+#"data_bph4" :[ data_flatNanos[ 15 ]],
+#"data_bph5" :[ data_flatNanos[ 19 ]],
+#}
+
+
+#sig_flatNanos     = ["17_03_2026_11_31_56"] 
+#sig_flatNanos     = ["check_sf_full/26_05_2026_17_56_10_fullBPark"] #including 8p5 and 10p5 
+sig_flatNanos     = ["26_05_2026_17_56_10"] #including 8p5 and 10p5 
+#hb_flatNanos      = ["25_02_2026_16_36_40"]  
+#hb_flatNanos      = ["minimal/25_02_2026_16_36_40_D_only"]  
+hb_flatNanos      = ["26_05_2026_17_59_33"] #including 8p5 and 10p5   
 
 #### BDT 
-bdt_model_25_mu7        = "27_02_2026_08_25_42" #"19_02_2026_13_23_30" #<-- cont. weights #"28_01_2026_09_11_15"   
-bdt_model_afternn_25_mu7= "09_03_2026_10_14_51"   
-#bdt_model_afternn_25_mu7= "12_03_2026_16_46_06"   
 
-bdt_model_25_mu9        = "27_02_2026_08_40_28" #"19_02_2026_13_28_24" #<-- cont. weights # "28_01_2026_09_49_54"   
-bdt_model_afternn_25_mu9= "24_02_2026_09_31_30"   
-#bdt_model_afternn_25_mu9= "12_03_2026_16_50_12"   
+bdt_model = "27_02_2026_08_25_42" #model for 02Feb2026_13h29m45s
+#bdt_model="27_02_2026_08_43_51" #evaluated data for model 02Feb2026_13h29m45s (back then different filename)
 
-bdt_model_afternn = "15_04_2026_09_30_45" #for minimal model: 2026_04_13_12_15_26
+##bdt_data_afternn = "09_03_2026_10_22_26" #for model 02Feb2026_13h29m45s
+#bdt_data_afternn = "24_02_2026_09_46_20" #for model 02Feb2026_09h24m08s 
 
-
-#bdt_model = "27_04_2026_11_06_32" #for model 00_22_59 
-#bdt_model = "28_04_2026_09_14_54" #for model 10_10_47 
-#bdt_model = "07_05_2026_19_10_34" # for 00_22_59 (new), not overtrained
-#bdt_model= "13_05_2026_08_56_59" #for model 12_05_2026_16_09_52
-#bdt_model ="13_05_2026_14_42_36" #for model 2026_05_13_11_08_34 
-#bdt_model = "18_05_2026_13_08_24" #for model 15_05_2026_09_18_55 
-#bdt_model = "21_05_2026_13_21_49" #for model 15_05_2026_09_18_55 more epochs!
-#bdt_model = "18_05_2026_15_17_02" #for nn model 2026_05_13_16_39_35
-#bdt_model = "19_05_2026_15_07_28" #for nn model 19May2026_10h42m34s 
-bdt_model = "18_05_2026_16_17_30" #for nn 2026_05_14_17_01_24 
-#bdt_model="27_02_2026_08_43_51" #for model 02Feb2026_13h29m45s
 #bdt_model="27_02_2026_08_43_51" #for model 02Feb2026_09h24m08s  
 
-#bdt_data = "23_04_2026_10_21_12"
-#bdt_data = "27_04_2026_11_46_20" # for model 00_22_59 
-#bdt_model = "07_05_2026_19_29_58" # for model 00_22_59 
-#bdt_data = "13_05_2026_09_42_34" # for model 12_05_2026_16_09_52 
-#bdt_data = "13_05_2026_14_56_58" #for model 2026_05_13_11_08_34
-#bdt_data = "28_04_2026_10_30_46" # for model 10_10_47 "
 
-bdt_data_25     = "27_02_2026_08_43_51"#"26_02_2026_11_52_09"#"19_02_2026_14_01_51" # <--- cont. weight "30_01_2026_09_38_39"    
+#bdt_model = "04_06_2026_09_34_56" #correction for 30 epochs NNmodel (2026_06_04_08_08_42), big bdt, bkg closes!
+#bdt_model = "04_06_2026_15_02_06" #correction for 100 epochs NNmodel (2026_06_04_10_48_38)
+#bdt_model = "09_06_2026_16_34_03" #correction for 100 epochs NNmodel (2026_06_04_10_48_38), but only trained in region score5 < 0.1
+#bdt_model = "04_06_2026_16_39_36" #bdt trained with score5<0.9 for NNmodel (2026_06_04_10_48_38)
+#bdt_model = "05_06_2026_07_50_44" #for bdt classifier
+#bdt_model = "10_06_2026_13_33_07" #pre NN correction
+#bdt_model = "11_06_2026_07_13_52" #pre NN correction, trained on high mass region only!
+#bdt_model = "11_06_2026_10_58_47" #pre NN, trained in abs(cosPiK1) < 0.2, without training on mass
+#bdt_model = "11_06_2026_16_28_21" #this is for the nn wout mass training
+#bdt_model = "16_06_2026_08_43_47" # for nn 2026_06_15_10_03_36
+#bdt_model = "18_06_2026_09_59_55" # for bdt 2026_06_15_10_23_15
+#bdt_model = "23_06_2026_09_19_47" #for bdt 2026_06_19_09_32_52
+#bdt_model="01_07_2026_09_22_13" #for bdt 2026_07_01_00_48_47
+#bdt_model = "02_07_2026_07_53_24" #for bdt 2026_07_01_16_29_30
 
-bdt_data_afternn_mu7 ="09_03_2026_10_22_26"
-#bdt_data_afternn_mu7 ="12_03_2026_16_53_36"
-bdt_data_afternn_mu9 ="24_02_2026_09_46_20" 
-#bdt_data_afternn_mu9 ="12_03_2026_16_55_15" 
+bdt_model="20_07_2026_22_07_48" ##for bdt 2026_07_01_00_48_47
 
-#bdt_data_afternn = "15_04_2026_10_42_07"
-#bdt_data_afternn = "09_03_2026_10_22_26" #for model 02Feb2026_13h29m45s
-bdt_data_afternn = "24_02_2026_09_46_20" #for model 02Feb2026_09h24m08s 
+####### REDO OLD LOGIC
+
+#bdt_model = "16_07_2026_08_28_03" # this is a bdt model BEFORE NN training on base_wout and mu7 only
 
 
 #### signflip fit for relative normalization used in analysis note     : 08_12_2025_13_34_12 
@@ -100,55 +125,27 @@ bdt_data_afternn = "24_02_2026_09_46_20" #for model 02Feb2026_09h24m08s
 # kk constrained 
 nn_25_mu7 = "02Feb2026_13h29m45s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
 nn_25_mu9 = "02Feb2026_09h24m08s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
-
 #nn_model = "02Feb2026_13h29m45s"
 
-#nn_25_mu7 = "2026_04_10_15_16_27" #with the same trainer as for the all triggers but only on mu7
-#nn_25_mu7 = "2026_04_10_15_22_39" #with the same trainer as for the all triggers but only on mu9
-
 #all triggers!
-#nn_model = "2026_04_08_15_32_42" #with sf weights on minimal
-#nn_model = "2026_04_09_09_40_49" #without sf weights on minimal
-#nn_model = "2026_04_10_10_18_23" #with sf weights on minimal2
-#nn_model = "2026_04_10_09_05_51" #with sf weights on base_wout_tv
-#nn_model  = "2026_04_10_13_31_41" #with sf weights on base_wout_tv
-#nn_model = "test_10Apr2026_16h48m13s" #mu7 only with old script (before splitting)
-#nn_model = "test_02Feb2026_13h29m45s"
-#nn_model= "2026_04_13_09_46_22" #mu7 only and same arch as 02Feb model but with new script
+#nn_model = "2026_06_04_08_08_42" #small NN, 30 epochs only, closes together with BDT above
+#nn_model = "2026_06_04_10_48_38" #big NN model
+#nn_model = "2026_05_29_16_52_19" #this is actually a bdt!
+#nn_model = "2026_06_10_14_37_21" #trained on 30 epochs with sf weights
+#nn_model = "2026_06_11_13_49_23" #trained on 30 epochs, without sf_weights, and without mass!!
+#nn_model = "2026_06_12_07_12_31" #trained on 30 epochs, without sf_weights, even less kin. information!!
+#nn_model = "2026_06_15_10_03_36" #big NN model, wout mass in training
+#nn_model="2026_06_15_10_23_15" #big BDT model wout mass in training
+#nn_model = "2026_06_19_09_32_52" #even bigger bdt :))
 
-##nn_model = "2026_04_10_15_16_27" #with the same trainer as for the all triggers but only on mu7
-#nn_model = "2026_04_10_15_22_39" #with the same trainer as for the all triggers but only on mu9
+# HAMMER ISGW2  everywhere
+nn_model = "2026_07_01_00_48_47" # bdt with photon info :))
+#nn_model = "2026_07_01_16_29_30" # bdt wout photon info
 
-#nn_model= "2026_04_13_12_09_32" #all triggers, odl arch, base_wout_tv_25
-#nn_model= "2026_04_13_12_15_26" #all triggers, odl arch, minimal 
-#nn_model = "2026_04_16_21_42_51" # with randomized data and no bdt weights, minimal
-#nn_model = "2026_04_17_15_05_50" # only phiPi m as featrue, minimal, bdt weights
-#nn_model = "2026_04_19_20_47_28" #all features, minimal, no bdt weights, all triggers
-#nn_model = "2026_04_20_10_01_16" #all features, minimal, no bdt weights, mu7 only
-#nn_model = "2026_04_20_13_00_17" #contains nans due to log features 
-#nn_model = "2026_04_22_16_40_31" #wout nans -->here the pt matches
-#nn_model = "2026_04_23_16_40_14" #on mu7 only but iwht logs
-#nn_model = "2026_04_23_16_54_44" #wout logs and all triggers
-#nn_model = "2026_04_24_23_02_53" #wout logs, all triggers, including BC, robust scaler
-#nn_model = "2026_04_25_00_22_59" #wout logs, all triggers, including BC, standard scaler
-#nn_model = "2026_04_27_10_10_47" #wout logs, all triggers, including BC, standard scaler, including mu pt
-#nn_model = "2026_04_28_12_45_11" 
-#nn_model = "2026_04_28_18_03_22" #wout mu9_ip4
+#nn_model = "2026_07_14_08_42_58" #nn wirth photon info and mass
+#nn_model = "2026_07_14_13_44_52" #same as for cms week presi (same features, mu7 only, no SF, but no bdt corr)
 
-#nn_model ="2026_05_07_09_08_36" # trained on A wout hammer
-
-#nn_25_mu7 = "09Mar2026_10h05m52s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
-#nn_25_mu9 = "09Mar2026_15h07m00s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
-
-#nn_model = "12_05_2026_11_23_28" #bdt with 10 folds
-#nn_model = "12_05_2026_16_09_52" #bdt with 10 folds, mu7 only
-#nn_model = "2026_05_13_11_08_34" #NN, on old baseline!!!, mu7 only
-
-#nn_model = "13_05_2026_11_29_48" 
-#nn_model = "15_05_2026_09_18_55" #this is actually a bdt!
-#nn_model = "2026_05_13_16_39_35" 
-#nn_model = "19May2026_10h42m34s" #with old script (wout batch splitting)
-nn_model = "2026_05_14_17_01_24"
+#nn_model = "2026_07_16_09_02_09"
 
 cons_pastNN_25_mu7    = {}
 cons_pastNN_25_mu7["sig"  ] = "sig_"    + nn_25_mu7
@@ -170,7 +167,7 @@ cons_pastNN_25_mu9["data" ] = "data_"   + nn_25_mu9
 
 sig_pastNN  = "sig_"    + nn_model
 hb_pastNN   = "hb_"     + nn_model
-data_pastNN = "data_"   + nn_model
+#data_pastNN = "data_"   + nn_model
 
 
 #baseline selection
@@ -201,6 +198,52 @@ f'(mu_pt > 7.0)',
 '(mu_is_global == 1)',
 '(ds_vtx_cosine_xyz_pv > 0.8)',
 ])
+
+check_sf = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 7.0)', 
+'(mu_pt < 20.0)',
+'(abs(dxy_mu_sig_pv) > 3.0)',
+'(abs(dxy_mu_sig_pv) < 15.0)',
+'(k1_pt > 1.0)',
+'(k2_pt > 1.0)',
+'(pi_pt > 1.0)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(rel_iso_03_pv < 0.3)',
+'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
+])
+
+check_sf_D_only= ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 7.0)', 
+'(k1_pt > 0.7)',
+'(k2_pt > 0.7)',
+'(pi_pt > 0.7)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(rel_iso_03_pv < 0.3)',
+#'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
+])
+
+check_sf_full = ' && '.join([ #remove the charge and ds+mu mass cuts!
+f'(mu_pt > 7.0)', 
+'(mu_pt < 50)', #match with SF binning 
+'(abs(dxy_mu_sig_pv) > 3)',
+'(abs(dxy_mu_sig_pv) < 100)',
+'(k1_pt > 1.0)',
+'(k2_pt > 1.0)',
+'(pi_pt > 1.0)',
+'(lxy_ds < 1)',
+'(mu_id_medium == 1)',
+'(rel_iso_03_pv < 0.3)',
+'(fv_prob > 0.1)',
+'(mu_is_global == 1)',
+'(ds_vtx_cosine_xyz_pv > 0.8)',
+])
+
 
 minimal = ' && '.join([ #remove the charge and ds+mu mass cuts!
 f'(mu_pt > 7.0)', 
@@ -234,7 +277,13 @@ f'(mu_pt > 7.0)',
 #sig_cons_hammer_25 = "signal_default_17_03_2026_18_28_42" #same as line above but with scale factors :D! 
 #sig_hammer_flatNano = "signal_default_20_03_2026_09_37_22" #same as line above but with minimal selection :D! 
 #sig_hammer_flatNano = "signal_default_22_05_2026_13_20_18" #same as line above but with minimal selection  + lifetime uncertainty:D! 
-sig_hammer_flatNano = "signal_default_26_05_2026_14_20_38" #same as line above but with minimal selection  + lifetime uncertainty + riccardos SF:D! 
+
+#sig_hammer_flatNano = "signal_default_28_05_2026_12_38_44" #same as line above but with minimal selection  + lifetime uncertainty + riccardos SF - D only!!!! 
+#sig_hammer_flatNano= "signal_default_28_05_2026_15_04_16" # UNFILTERED AND HAMMERED WITH CLN
+#sig_hammer_flatNano= "signal_default_29_05_2026_07_47_53" # FILTERED: with_iso AND HAMMERED 
+#sig_hammer_flatNano= "signal_default_30_06_2026_12_06_43" # UNFILTERED AND HAMMERED WITH ISGW2 
+#sig_hammer_flatNano= "signal_default_01_07_2026_00_43_46" # FILTERED: with_iso AND HAMMERED 
+sig_hammer_flatNano= "signal_default_30_07_2026_11_01_16" # FILTERED: with_iso AND HAMMERED AND PU WEIGHTS
 
 isoflip = ' && '.join([ #remove the charge and ds+mu mass cuts! 
 '(rel_iso_03_pv > 0.3)',
@@ -294,10 +343,12 @@ circularTestPlots = "22_07_2025_08_25_22"
 dsmu_to_bcl       = "dsmu_BCLVar_04_06_2025_14_40_48"
 dsmu_isgw2_to_bcl = "dsmu_isgw2_BCLVar_26_06_2025_12_00_43"
 dsstarmu_to_bgl   = "dsstarmu_BGLVar_20_10_2025_09_48_08" # hammer with factor 2: "dsstarmu_BGLVar_30_09_2025_22_37_38" #the old (january 25 harrison weights): "dsstarmu_BGLVar_04_06_2025_15_03_24"
+dsstarmu_isgw2_to_bgl = "dsstarmu_isgw2_BGLVar_02_07_2026_15_11_07" # hammer with factor 2: "dsstarmu_BGLVar_30_09_2025_22_37_38" #the old (january 25 harrison weights): "dsstarmu_BGLVar_04_06_2025_15_03_24"
 dstau_to_bcl      = "dstau_BCLVar_04_06_2025_14_58_02"
 dsstartau_to_bgl  = "dsstartau_BGLVar_20_10_2025_09_37_44" # hammer with factor 2: "dsstartau_BGLVar_30_09_2025_22_37_46" # the old (january 25 harrison weights): "dsstartau_BGLVar_04_06_2025_15_25_47"
 # yaml file used in the analysis note: /work/pahwagne/RDsTools/hammercpp/development_branch/weights/20_10_2025_09_57_12/
-averageWeightsYaml = "20_10_2025_09_57_12" #the old (wrong factor 2 weights) "01_10_2025_09_01_19" # the old (nauary 25 harrison weights): "04_06_2025_16_55_31"
+#averageWeightsYaml = "20_10_2025_09_57_12" #with the CLN MC #the old (wrong factor 2 weights) "01_10_2025_09_01_19" # the old (nauary 25 harrison weights): "04_06_2025_16_55_31"
+averageWeightsYaml = "02_07_2026_15_35_35" #with the new all-ISGW2 MC
 # plots which show central and variational weight effect used in analysis note: 
 # /work/pahwagne/RDsTools/hammercpp/development_branch/weights/plots/09_12_2025_09_01_30/ #mu7
 # /work/pahwagne/RDsTools/hammercpp/development_branch/weights/plots/09_12_2025_09_16_52/ #mu9
@@ -335,6 +386,9 @@ baselines = {
 "offline"        : offline, 
 "minimal"        : minimal,
 "with_iso"         : with_iso,
+"check_sf"       : check_sf,
+"check_sf_full"       : check_sf_full,
+"check_sf_D_only"       : check_sf_D_only,
 }
 
 # need this when we want to import (some)
@@ -343,9 +397,9 @@ baselines = {
 if __name__ == "__main__":
 
   config = {
-    "sig_cons_25": sig_cons_25,
-    "hb_cons_25": hb_cons_25,
-    "data_cons_25": data_cons_25,
+    "sig_flatNanos"   : sig_flatNanos,
+    "hb_flatNanos"    : hb_flatNanos,
+    "data_flatNanos"  : data_flatNanos,
     "dsmu_gen"      : dsmu_gen,           
     "dsmu_isgw2_gen": dsmu_isgw2_gen, 
     "dsstarmu_gen"  : dsstarmu_gen,   
@@ -357,11 +411,13 @@ if __name__ == "__main__":
     "dsmu_to_bcl": dsmu_to_bcl, 
     "dsmu_isgw2_to_bcl": dsmu_isgw2_to_bcl, 
     "dsstarmu_to_bgl": dsstarmu_to_bgl,
+    "dsstarmu_isgw2_to_bgl": dsstarmu_isgw2_to_bgl,
     "dstau_to_bcl": dstau_to_bcl,
     "dsstartau_to_bgl": dsstartau_to_bgl,
     "averageWeightsYaml": averageWeightsYaml,
-    "sig_cons_hammer_25":sig_cons_hammer_25,
-    "base_wout_tv_25": base_wout_tv_25
+    "sig_hammer_flatNano":sig_hammer_flatNano,
+    "base_wout_tv_25": base_wout_tv_25,
+    "with_iso":with_iso 
     }
   print(json.dumps(config))
 
