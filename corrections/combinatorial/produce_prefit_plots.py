@@ -453,6 +453,8 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
 
   hComb.SetLineColor(ROOT.kBlue)
   hComb.SetFillColor(ROOT.kBlue)
+  hComb.SetMarkerColor(ROOT.kBlue)
+  hComb.SetMarkerStyle(0)
 
   nComb = hComb.Integral()
   histos["comb"] = hComb # append to create datacard later
@@ -502,6 +504,8 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
 
   hRest         .SetLineColor(ROOT.kAzure)
   hComb_expected.SetLineColor(ROOT.kRed)
+  hComb_expected.SetMarkerColor(ROOT.kRed)
+  hComb_expected.SetMarkerStyle(0)
 
   hComb_expected.SetLineWidth(2)
   hComb         .SetLineWidth(2)
@@ -548,7 +552,6 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   leg.AddEntry(hComb                            ,'Comb. + Fakes Estimation (Est.)'  ,'L' )
   #leg.AddEntry(histos["Data"]                   ,'Data'  ,'L' )
  
-
   ###############
   # text        #
   ###############
@@ -557,7 +560,14 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   txt.SetTextFont(43);
   txt.SetTextSize(24);
 
- 
+  ###############
+  # Perform KS  #
+  ###############
+  ks_score = hComb.KolmogorovTest(hComb_expected) 
+  ks_value = ROOT.TPaveText(0.5, 0.6, 0.7, 0.7, 'nbNDC')
+  ks_value.AddText(f'KS score = {round(ks_score,3)}')
+  ks_value.SetFillColor(0)
+
   #plot mainpad
   if logy:
     ROOT.gPad.SetLogy()
@@ -579,10 +589,11 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
     hComb.GetYaxis().SetRangeUser(1e-3, maxi*2.0)
 
   #hRest         .Draw("HIST")
-  hComb         .Draw("HIST ")
-  hComb_expected.Draw("HIST SAME")
+  hComb         .Draw("HIST E")
+  hComb_expected.Draw("HIST E SAME")
   #histos["Data"].Draw("HIST SAME")
   txt.Draw("SAME")
+  ks_value.Draw('EP SAME') 
 
   leg.Draw("SAME")
   ROOT.gPad.RedrawAxis()
@@ -596,6 +607,8 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
   ratio = hComb_expected.Clone()
   ratio.SetName('ratio')
   ratio.SetLineColor(ROOT.kBlack)
+  ratio.SetMarkerColor(ROOT.kBlack)
+  ratio.SetMarkerStyle(8)
   ratio.Divide(hComb)
   #ratio_stats = hErr.Clone()
   #ratio_stats.SetName('ratiostats')
@@ -629,24 +642,24 @@ def combSys(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, logx =
     #if the ratio (bin content) is further away than one sigma from 1, we consider the bin as shape affected.
     diff = ratio.GetBinContent(i) - 1.0
 
-    #if  ( ratio.GetBinContent(i) > 1e-5):
-    #  weights_up  .append(ratio.GetBinContent(i))
-    #  weights_down.append(1.0/ratio.GetBinContent(i))
-
-    #else:
-    #  weights_up  .append(1.0)
-    #  weights_down.append(1.0)
-
-
-    if ( abs(diff) > abs(ratio.GetBinError(i))) and not ( ratio.GetBinContent(i) < 1e-5):
+    if  ( ratio.GetBinContent(i) > 1e-5):
       weights_up  .append(ratio.GetBinContent(i))
       weights_down.append(1.0/ratio.GetBinContent(i))
 
     else:
-
-      #either no shape effect or no events :)
       weights_up  .append(1.0)
       weights_down.append(1.0)
+
+
+    #if ( abs(diff) > abs(ratio.GetBinError(i))) and not ( ratio.GetBinContent(i) < 1e-5):
+    #  weights_up  .append(ratio.GetBinContent(i))
+    #  weights_down.append(1.0/ratio.GetBinContent(i))
+
+    #else:
+
+    #  #either no shape effect or no events :)
+    #  weights_up  .append(1.0)
+    #  weights_down.append(1.0)
  
     edges  .append(ratio.GetBinLowEdge(i))
    
