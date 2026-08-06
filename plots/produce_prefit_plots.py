@@ -68,6 +68,8 @@ sys_vector = systematics_vector
 massYields = {}
 modifyHammer = False
 modifyBsTau  = False
+modifyPU     = False 
+modifyComb   = False 
 
 #########################################
 ## COLOR SCHEME                        ##
@@ -1623,11 +1625,13 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
       hammer_sys = False
       bs_tau_sys = False
       comb_sys   = False
+      pu_sys     = False
 
       for key in hist_dict.keys():
         if "e1Up"      in key: hammer_sys = True
         if "bsTauUp"   in key: bs_tau_sys = True
         if "combUp"    in key: comb_sys   = True
+        if "puUp"      in key: pu_sys     = True
 
 
       #print(hist_dict["dsMu"])
@@ -1684,6 +1688,34 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
         outputFile.WriteObject(hist_dict["DsStarTau_bsTauDown" ],"dsStarTau_bsTauDown" + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["DsStarMu_bsTauDown"  ],"dsStarMu_bsTauDown"  + binned * f"_ch{channel}"  )
 
+      if pu_sys:
+        outputFile.WriteObject(hist_dict["DsTau_puUp"         ],"dsTau_puUp"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsMu_puUp"          ],"dsMu_puUp"      + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarTau_puUp"     ],"dsStarTau_puUp" + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarMu_puUp"      ],"dsStarMu_puUp"  + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["Hb_puUp"            ],"hb_puUp"        + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_fd_puUp"      ],"hb_bs_fd_puUp"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_dc_puUp"      ],"hb_bs_dc_puUp"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_b0_puUp"         ],"hb_b0_puUp"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bpm_puUp"        ],"hb_bpm_puUp"    + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_lambdab_puUp"    ],"hb_lambdab_puUp"+ binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_others_puUp"     ],"hb_others_puUp" + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["DsTau_puDown" ]    ,"dsTau_puDown"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsMu_puDown"  ]    ,"dsMu_puDown"      + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarTau_puDown" ],"dsStarTau_puDown" + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarMu_puDown"  ],"dsStarMu_puDown"  + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["Hb_puDown"        ],"hb_puDown"        + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_fd_puDown"  ],"hb_bs_fd_puDown"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_dc_puDown"  ],"hb_bs_dc_puDown"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_b0_puDown"     ],"hb_b0_puDown"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bpm_puDown"    ],"hb_bpm_puDown"    + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_lambdab_puDown"],"hb_lambdab_puDown"+ binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_others_puDown" ],"hb_others_puDown" + binned * f"_ch{channel}"  )
+
+
       if comb_sys:
         outputFile.WriteObject(hist_dict["Data_sf_pimu_combUp"   ]    ,"comb_combSysUp"       + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["Data_sf_pimu_combDown" ]    ,"comb_combSysDown"     + binned * f"_ch{channel}"  )
@@ -1712,11 +1744,13 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
   hammer_sys = False
   bs_tau_sys = False
   comb_sys   = False
+  pu_sys     = False
 
   for key in histos.keys():
     if "e1Up" in key: hammer_sys = True
     if "bsTauUp" in key: bs_tau_sys = True
     if "combUp" in key: comb_sys = True
+    if "puUp" in key: pu_sys = True
 
 
   if hammer_sys:
@@ -2047,52 +2081,69 @@ for i in range(num_bins+1):
   for var in vars_base:
 
     hammer_sys = False
+    bsTau_sys  = False
+    pu_sys     = False
+    comb_sys   = False
+    
     for key in histos_reshuffled[var].keys():
       if "e1Up"    in key: hammer_sys = True
       if "bsTau"   in key: bsTau_sys  = True
+      if "puUp"    in key: pu_sys     = True
+      if "combUp"  in key: comb_sys   = True
   
  
     #TODO include modification for blinding here!
 
- 
+    ##########################
+
     if var == "phiPi_m" and i == 0 and hammer_sys:
   
       answer = input("Skip ch0 and use it for yield estimation only (mass hammer systematics)? (y/n): ").strip().lower()
       if answer == "y":
         print("You chose yes!")
   
-        print("##################################################################") 
-        print("# For the mass, we are freezing the shape and only change yields #") 
-        print("##################################################################") 
-  
         modifyHammer = True
         writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
 
         #hammer
         for s in sys_scalar:
-          for direc in ["Up", "Down"]:
+          for sig in ["DsTau","DsTau_blind","DsMu"]:  
+            for direc in ["Up", "Down"]:
 
-            massYields["DsTau_"    + s + direc] = histos_reshuffled[var]["DsTau_"    + s + direc].Integral()/ histos_reshuffled[var]["DsTau"].Integral() 
-            massYields["DsMu_"     + s + direc] = histos_reshuffled[var]["DsMu_"     + s + direc].Integral()/ histos_reshuffled[var]["DsMu" ].Integral() 
+              massYields[ sig + "_" + s + direc] = histos_reshuffled[var][ sig + "_" + s + direc].Integral()/ histos_reshuffled[var][sig].Integral() 
+            
+            if ( ((massYields[ sig + "_" + s + "Up"] > 1.0 ) and (massYields[ sig + "_" + s + "Down"] > 1.0 )) or ((massYields[ sig + "_" + s + "Up"] < 1.0 ) and (massYields[ sig + "_" + s + "Down"] < 1.0 )) ):
+               print(f" ----- WARNING ----- \n Shapes of {sig} in direction {s} both pull in the same direction!")
+               print(f"Up: ", massYields[ sig + "_" + s + "Up"], "Down: ", massYields[ sig + "_" + s + "Down"])  
+
+               if (abs(massYields[ sig + "_" + s + "Up"] - 1.0 ) < 1e-3) and (abs(massYields[ sig + "_" + s + "Down"] - 1.0 ) < 1e-3): 
+                 #no yield change effect, fix yield change to 1.0
+                 massYields[ sig + "_" + s + "Up"] = 1.00001
+                 massYields[ sig + "_" + s + "Down"] = 0.99999
+                 print("====> Change it to: ") 
+                 print(f"Up: ", massYields[ sig + "_" + s + "Up"], "Down: ", massYields[ sig + "_" + s + "Down"])  
  
-            massYields["DsTau_blind_"    + s + direc] = histos_reshuffled[var]["DsTau_blind_"    + s + direc].Integral()/ histos_reshuffled[var]["DsTau_blind"].Integral() 
-                                      
         for s in sys_vector:          
-          for direc in ["Up", "Down"]:
+          for sig in ["DsStarTau","DsStarTau_blind","DsStarMu"]:  
+            for direc in ["Up", "Down"]:
 
-            massYields["DsStarTau_"+ s + direc] = histos_reshuffled[var]["DsStarTau_"+ s + direc].Integral()/ histos_reshuffled[var]["DsStarTau"].Integral() 
-            massYields["DsStarMu_" + s + direc] = histos_reshuffled[var]["DsStarMu_" + s + direc].Integral()/ histos_reshuffled[var]["DsStarMu" ].Integral() 
+              massYields[ sig + "_" + s + direc] = histos_reshuffled[var][ sig + "_" + s + direc].Integral()/ histos_reshuffled[var][sig].Integral() 
 
-            massYields["DsStarTau_blind_"+ s + direc] = histos_reshuffled[var]["DsStarTau_blind_"+ s + direc].Integral()/ histos_reshuffled[var]["DsStarTau_blind"].Integral() 
-
-
+            if ( ((massYields[ sig + "_" + s + "Up"] > 1.0 ) and (massYields[ sig + "_" + s + "Down"] > 1.0 )) or ((massYields[ sig + "_" + s + "Up"] < 1.0 ) and (massYields[ sig + "_" + s + "Down"] < 1.0 )) ):
+               print(f" ----- WARNING ----- \n Shapes of {sig} in direction {s} both pull in the same direction!")
+               print(f"Up: ", massYields[ sig + "_" + s + "Up"], "Down: ", massYields[ sig + "_" + s + "Down"])  
+ 
+               if (abs(massYields[ sig + "_" + s + "Up"] - 1.0 ) < 1e-3) and (abs(massYields[ sig + "_" + s + "Down"] - 1.0 ) < 1e-3): 
+                 #no yield change effect, fix yield change to 1.0
+                 massYields[ sig + "_" + s + "Up"] = 1.00001
+                 massYields[ sig + "_" + s + "Down"] = 0.99999
+                 print("====> Change it to: ") 
+                 print(f"Up: ", massYields[ sig + "_" + s + "Up"], "Down: ", massYields[ sig + "_" + s + "Down"])  
+ 
       elif answer == "n":
         print("You chose no!")
       else:
         print("Invalid input!")
-   
- 
-
  
     if var == "phiPi_m" and i == 0 and bsTau_sys:
 
@@ -2104,83 +2155,161 @@ for i in range(num_bins+1):
         writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
  
         #lifetime
-        for direc in ["Up", "Down"]:
-          massYields["DsTau_"    + "bsTau" + direc] = histos_reshuffled[var]["DsTau_"     + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsTau"].Integral() 
-          massYields["DsMu_"     + "bsTau" + direc] = histos_reshuffled[var]["DsMu_"      + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsMu" ].Integral() 
-          massYields["DsStarTau_"+ "bsTau" + direc] = histos_reshuffled[var]["DsStarTau_" + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsStarTau"].Integral() 
-          massYields["DsStarMu_" + "bsTau" + direc] = histos_reshuffled[var]["DsStarMu_"  + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsStarMu" ].Integral() 
- 
-          massYields["DsTau_blind_"    + "bsTau" + direc] = histos_reshuffled[var]["DsTau_blind_"     + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsTau_blind"].Integral() 
-          massYields["DsStarTau_blind_"+ "bsTau" + direc] = histos_reshuffled[var]["DsStarTau_blind_" + "bsTau" + direc].Integral()/ histos_reshuffled[var]["DsStarTau_blind"].Integral() 
+        for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu"]:  
+          for direc in ["Up", "Down"]:
 
-        print(massYields)
+            massYields[ sig + "_" + "bsTau" + direc] = histos_reshuffled[var][ sig + "_" + "bsTau" + direc].Integral()/ histos_reshuffled[var][sig].Integral() 
+
+          if ( ((massYields[ sig + "_" + "bsTau" + "Up"] > 1.0 ) and (massYields[ sig + "_" + "bsTau" + "Down"] > 1.0 )) or ((massYields[ sig + "_" + "bsTau" + "Up"] < 1.0 ) and (massYields[ sig + "_" + "bsTau" + "Down"] < 1.0 )) ):
+             print(f" ----- WARNING ----- \n Shapes of {sig} in direction bsTau both pull in the same direction!")
+             print(f"Up: ", massYields[ sig + "_" + "bsTau" + "Up"], "Down: ", massYields[ sig + "_" + "bsTau" + "Down"])  
+ 
+             if (abs(massYields[ sig + "_" + "bsTau" + "Up"] - 1.0 ) < 1e-3) and (abs(massYields[ sig + "_" + "bsTau" + "Down"] - 1.0 ) < 1e-3): 
+               #no yield change effect, fix yield change to 1.0
+               massYields[ sig + "_" + "bsTau" + "Up"] = 1.00001
+               massYields[ sig + "_" + "bsTau" + "Down"] = 0.99999
+               print("====> Change it to: ") 
+               print(f"Up: ", massYields[ sig + "_" + "bsTau" + "Up"], "Down: ", massYields[ sig + "_" + "bsTau" + "Down"])  
+ 
+
+      elif answer == "n":
+        print("You chose no!")
+      else:
+        print("Invalid input!")
+ 
+
+    if var == "phiPi_m" and i == 0 and pu_sys:
+
+      answer = input("Skip ch0 and use it for yield estimation only (pu systematics)? (y/n): ").strip().lower()
+      if answer == "y":
+
+        print("You chose yes!")
+        modifyPU  = True
+        writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
+ 
+        #lifetime
+        for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu","Hb","Hb_bs_fd","Hb_bs_dc","Hb_bpm","Hb_b0","Hb_lambdab","Hb_others"]:  
+          for direc in ["Up", "Down"]:
+
+            massYields[ sig + "_" + "pu" + direc] = histos_reshuffled[var][ sig + "_" + "pu" + direc].Integral()/ histos_reshuffled[var][sig].Integral() 
+
+          if ( ((massYields[ sig + "_" + "pu" + "Up"] > 1.0 ) and (massYields[ sig + "_" + "pu" + "Down"] > 1.0 )) or ((massYields[ sig + "_" + "pu" + "Up"] < 1.0 ) and (massYields[ sig + "_" + "pu" + "Down"] < 1.0 )) ):
+             print(f" ----- WARNING ----- \n Shapes of {sig} in direction pu both pull in the same direction!")
+             print(f"Up: ", massYields[ sig + "_" + "pu" + "Up"], "Down: ", massYields[ sig + "_" + "pu" + "Down"])  
+
+             if (abs(massYields[ sig + "_" + "pu" + "Up"] - 1.0 ) < 1e-3) and (abs(massYields[ sig + "_" + "pu" + "Down"] - 1.0 ) < 1e-3): 
+               #no yield change effect, fix yield change to 1.0
+               massYields[ sig + "_" + "pu" + "Up"] = 1.00001
+               massYields[ sig + "_" + "pu" + "Down"] = 0.99999
+               print("====> Change it to: ")                                                                      
+               print(f"Up: ", massYields[ sig + "_" + "pu" + "Up"], "Down: ", massYields[ sig + "_" + "pu" + "Down"])   
       
       elif answer == "n":
         print("You chose no!")
       else:
         print("Invalid input!")
-   
-    if var == "phiPi_m" and i == 1 and hammer_sys and modifyHammer:
+
+    if var == "phiPi_m" and i == 0 and comb_sys:
+
+      answer = input("Skip ch0 and use it for yield estimation only (pu systematics)? (y/n): ").strip().lower()
+      if answer == "y":
+
+        print("You chose yes!")
+        modifyComb  = True
+        writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
  
-        print("====> Redefining the ch1 (mass) hammer sys uncert.)") 
+        #lifetime
+        for direc in ["Up", "Down"]:
+          massYields["Data_sf_pimu_"      + "comb" + direc] = histos_reshuffled[var]["Data_sf_pimu_"      + "comb" + direc].Integral()/ histos_reshuffled[var]["Data_sf_pimu"].Integral() 
+
+        if ( ((massYields[ "Data_sf_pimu" + "_" + "comb" + "Up"] > 1.0 ) and (massYields[ "Data_sf_pimu" + "_" + "comb" + "Down"] > 1.0 )) or ((massYields[ "Data_sf_pimu" + "_" + "comb" + "Up"] < 1.0 ) and (massYields[ "Data_sf_pimu" + "_" + "comb" + "Down"] < 1.0 )) ):
+           print(f" ----- WARNING ----- \n Shapes of Data_sf_pimu in direction comb both combll in the same direction!")
+           print(f"Up: ", massYields[ "Data_sf_pimu" + "_" + "comb" + "Up"], "Down: ", massYields[ "Data_sf_pimu" + "_" + "comb" + "Down"])  
+
+           if (abs(massYields[ "Data_sf_pimu" + "_" + "comb" + "Up"] - 1.0 ) < 1e-3) and (abs(massYields[ "Data_sf_pimu" + "_" + "comb" + "Down"] - 1.0 ) < 1e-3): 
+             #no yield change effect, fix yield change to 1.0
+             massYields[ "Data_sf_pimu" + "_" + "comb" + "Up"] = 1.00001
+             massYields[ "Data_sf_pimu" + "_" + "comb" + "Down"] = 0.99999
+             print("====> Change it to: ") 
+             print(f"Up: ", massYields[ "Data_sf_pimu" + "_" + comb + "Up"], "Down: ", massYields[ "Data_sf_pimu" + "_" + comb + "Down"])  
+
+ 
+      elif answer == "n":
+        print("You chose no!")
+      else:
+        print("Invalid input!")
+
+
+
+    ##########################
+    #if var == "phiPi_m" and i == 1 and hammer_sys and modifyHammer:
+    if i > 0 and hammer_sys and modifyHammer:
+ 
+        print("====> Redefining hammer uncert. shape templates") 
         for s in sys_scalar:
           for direc in ["Up", "Down"]:
-  
-            clone = histos_reshuffled[var]["DsTau"    ].Clone()
-            clone.Scale( massYields["DsTau_"    + s + direc]) 
-            histos_reshuffled[var]["DsTau_"    + s + direc] = clone 
-  
-            clone = histos_reshuffled[var]["DsMu"     ].Clone()
-            clone.Scale( massYields["DsMu_"     + s + direc])
-            histos_reshuffled[var]["DsMu_"     + s + direc] = clone
+            for sig in ["DsTau","DsTau_blind","DsMu"]:  
  
-            clone = histos_reshuffled[var]["DsTau_blind"    ].Clone()
-            clone.Scale( massYields["DsTau_blind_"    + s + direc]) 
-            histos_reshuffled[var]["DsTau_blind_"    + s + direc] = clone 
+              clone       = histos_reshuffled[var][sig + "_" + s + direc].Clone()
+              clone_int   = clone.Integral() 
+              central_int = histos_reshuffled[var][sig ].Integral()
+
+              clone.Scale( massYields[ sig + "_" + s + direc] * central_int / clone_int) 
+              histos_reshuffled[var] [ sig + "_" + s + direc] = clone 
+  
   
         for s in sys_vector:                                            
           for direc in ["Up", "Down"]:                                  
-  
-            clone = histos_reshuffled[var]["DsStarTau"    ].Clone()
-            clone.Scale( massYields["DsStarTau_"+ s + direc])
-            histos_reshuffled[var]["DsStarTau_"+ s + direc] = clone
-  
-            clone = histos_reshuffled[var]["DsStarMu"     ].Clone()
-            clone.Scale( massYields["DsStarMu_" + s + direc])
-            histos_reshuffled[var]["DsStarMu_" + s + direc] = clone
+            for sig in ["DsStarTau","DsStarTau_blind","DsStarMu"]:  
  
-            clone = histos_reshuffled[var]["DsStarTau_blind"    ].Clone()
-            clone.Scale( massYields["DsStarTau_blind_"+ s + direc])
-            histos_reshuffled[var]["DsStarTau_blind_"+ s + direc] = clone
+              clone       = histos_reshuffled[var][sig + "_" + s + direc].Clone()
+              clone_int   = clone.Integral() 
+              central_int = histos_reshuffled[var][sig ].Integral()
+
+              clone.Scale( massYields[ sig + "_" + s + direc] * central_int / clone_int) 
+              histos_reshuffled[var] [ sig + "_" + s + direc] = clone 
   
 
-    if var == "phiPi_m" and i == 1 and bsTau_sys and modifyBsTau:
+    #if var == "phiPi_m" and i == 1 and bsTau_sys and modifyBsTau:
+    if i > 0 and bsTau_sys and modifyBsTau:
+        print("====> Redefining bsTau uncert. shape templates") 
         for direc in ["Up", "Down"]:                                  
+          for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu"]:  
+
+
+            clone       = histos_reshuffled[var][sig + "_" + "bsTau" + direc].Clone()
+            clone_int   = clone.Integral() 
+            central_int = histos_reshuffled[var][sig ].Integral()
  
-            clone = histos_reshuffled[var]["DsTau"    ].Clone()
-            clone.Scale( massYields["DsTau_"   + "bsTau" + direc]) 
-            histos_reshuffled[var]["DsTau_"    + "bsTau" + direc] = clone 
-  
-            clone = histos_reshuffled[var]["DsMu"     ].Clone()
-            clone.Scale( massYields["DsMu_"    + "bsTau" + direc])
-            histos_reshuffled[var]["DsMu_"     + "bsTau" + direc] = clone
+            clone.Scale( massYields[ sig + "_" + "bsTau" + direc] * central_int / clone_int) 
+            histos_reshuffled[var] [ sig + "_" + "bsTau" + direc] = clone 
 
-            clone = histos_reshuffled[var]["DsStarTau"    ].Clone()
-            clone.Scale( massYields["DsStarTau_" + "bsTau" + direc])
-            histos_reshuffled[var]["DsStarTau_"  + "bsTau" + direc] = clone
-  
-            clone = histos_reshuffled[var]["DsStarMu"     ].Clone()
-            clone.Scale( massYields["DsStarMu_"  + "bsTau" + direc])
-            histos_reshuffled[var]["DsStarMu_"   + "bsTau" + direc] = clone
+ 
+    #if var == "phiPi_m" and i == 1 and pu_sys and modifyPU:
+    if i > 0 and pu_sys and modifyPU:
+        print("====> Redefining pu uncert. shape templates") 
+        for direc in ["Up", "Down"]:                                  
+          for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu","Hb","Hb_bs_fd","Hb_bs_dc","Hb_bpm","Hb_b0","Hb_lambdab","Hb_others"]:  
+ 
+            clone       = histos_reshuffled[var][sig + "_" + "pu" + direc].Clone()
+            clone_int   = clone.Integral() 
+            central_int = histos_reshuffled[var][sig ].Integral()
+ 
+            clone.Scale( massYields[ sig + "_" + "pu" + direc] * central_int / clone_int) 
+            histos_reshuffled[var] [ sig + "_" + "pu" + direc] = clone 
 
-            clone = histos_reshuffled[var]["DsTau_blind"    ].Clone()
-            clone.Scale( massYields["DsTau_blind_"   + "bsTau" + direc]) 
-            histos_reshuffled[var]["DsTau_blind_"    + "bsTau" + direc] = clone 
-  
-            clone = histos_reshuffled[var]["DsStarTau_blind"    ].Clone()
-            clone.Scale( massYields["DsStarTau_blind_" + "bsTau" + direc])
-            histos_reshuffled[var]["DsStarTau_blind_"  + "bsTau" + direc] = clone
-  
+    if i > 0 and combSys and modifyComb:
+        print("====> Redefining pu uncert. shape templates") 
+        for direc in ["Up", "Down"]:                                  
+
+          sig = "Data_sf_pimu" 
+          clone       = histos_reshuffled[var][sig + "_" + "comb" + direc].Clone()
+          clone_int   = clone.Integral() 
+          central_int = histos_reshuffled[var][sig ].Integral()
+ 
+          clone.Scale( massYields[ sig + "_" + "comb" + direc] * central_int / clone_int) 
+          histos_reshuffled[var] [ sig + "_" + "comb" + direc] = clone 
+
 
  
     #create root file for every variable which holds shapes
@@ -2259,7 +2388,32 @@ for i in range(num_bins+1):
     #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarMu_"    + s + "Down"].SetBinContent(j,nC)
 
 
- 
+    #for all other bins, we make sure we only consider pure shape changes...
+    #if i > 1:
+    #  for key in histosScaled.keys():
+    #    # syntax is: _somethingUp/Down
+    #    # we usereverse split (rsplit)
+    #    
+    #    #get the central curve and scale the integrals
+    #    if "Up" in key or "Down" in key:
+
+    #      #the argument 1 is needed to split max one time 
+    #      central_key = key.rsplit("_",1)[0] 
+
+    #      central_integral = histosScaled[central_key].Integral()
+    #      up_down_integral = histosScaled[key].Integral()
+
+    #      clone = histosScaled[key].Clone()
+    #      if central_integral > 1e-5:
+    #        if "Up" in key  : clone.Scale(1.000001* central_integral / up_down_integral)
+    #        if "Down" in key: clone.Scale(0.999999* central_integral / up_down_integral)
+    #      else:
+    #        clone.Scale(0.0)
+
+    #      print(key)
+    #      histosScaled[key] = clone
+
+
     if writeThisBin:   
 
       print("====> Writing shapes and datacards")
