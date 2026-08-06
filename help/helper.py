@@ -70,7 +70,7 @@ hb_flatNanos      = ["26_05_2026_17_59_33"] #including 8p5 and 10p5
 
 #### BDT 
 
-bdt_model = "27_02_2026_08_25_42" #model for 02Feb2026_13h29m45s
+#bdt_model = "27_02_2026_08_25_42" #model for 02Feb2026_13h29m45s
 #bdt_model="27_02_2026_08_43_51" #evaluated data for model 02Feb2026_13h29m45s (back then different filename)
 
 ##bdt_data_afternn = "09_03_2026_10_22_26" #for model 02Feb2026_13h29m45s
