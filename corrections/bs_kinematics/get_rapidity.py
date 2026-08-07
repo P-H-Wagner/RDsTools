@@ -24,7 +24,7 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 dest_dir = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{dt}/"
 os.system(f"mkdir -p {dest_dir}")
 
-#calculate time t
+#calculate rapidity y 
 ROOT.gInterpreter.Declare(r'''double get_rapidity(float bs_eta, float bs_phi, float bs_pt, float bs_m){
 
   //change coords to x y z
@@ -40,5 +40,5 @@ ROOT.gInterpreter.Declare(r'''double get_rapidity(float bs_eta, float bs_phi, fl
   }'''
   )
 
-df.Define  ("bs_y","get_rapidity(gen_bs_eta, gen_bs_phi, gen_bs_phi, gen_bs_m)") \
+df.Define  ("gen_bs_y","get_rapidity(gen_bs_eta, gen_bs_phi, gen_bs_pt, gen_bs_m)") \
   .Snapshot("tree",f"{dest_dir}/tree_with_y.root")

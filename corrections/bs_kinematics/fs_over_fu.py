@@ -6,10 +6,10 @@ import numpy as np
 
 bins = [
 
-4, #extend the first bin to 4 (not starting from 11) to match lhcb
-5,
-6,
-7,
+#4, #extend the first bin to 4 (not starting from 11) to match lhcb
+#5,
+#6,
+#7,
 8,
 9,
 10,
@@ -30,10 +30,10 @@ bins = [
 
 values = [
 
-0.2648,#
-0.2648,#
-0.2648,#
-0.2648,# all of those are duplicated for the first bin [4,12]
+#0.2648,#
+#0.2648,#
+#0.2648,#
+#0.2648,# all of those are duplicated for the first bin [4,12]
 0.2648,#
 0.2648,#
 0.2648,#
