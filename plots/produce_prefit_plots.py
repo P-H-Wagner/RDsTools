@@ -1630,8 +1630,8 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
       for key in hist_dict.keys():
         if "e1Up"      in key: hammer_sys = True
         if "bsTauUp"   in key: bs_tau_sys = True
-        if "combUp"    in key: comb_sys   = True
         if "puUp"      in key: pu_sys     = True
+        if "combUp"    in key and (channel == 2 or channel == 3): comb_sys   = True
 
 
       #print(hist_dict["dsMu"])
@@ -1717,8 +1717,8 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
 
 
       if comb_sys:
-        outputFile.WriteObject(hist_dict["Data_sf_pimu_combUp"   ]    ,"comb_combSysUp"       + binned * f"_ch{channel}"  )
-        outputFile.WriteObject(hist_dict["Data_sf_pimu_combDown" ]    ,"comb_combSysDown"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Data_sf_pimu_combUp"   ]    ,f"comb_combSys_ch{channel}Up"       + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Data_sf_pimu_combDown" ]    ,f"comb_combSys_ch{channel}Down"     + binned * f"_ch{channel}"  )
 
 
       #myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
@@ -1731,7 +1731,6 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
 def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
 
   name = ""
-
 
   if blind:
     toSave = toSave_cards + "/blind"
@@ -1747,17 +1746,22 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
   pu_sys     = False
 
   for key in histos.keys():
-    if "e1Up" in key: hammer_sys = True
+    if "e1Up"    in key: hammer_sys = True
     if "bsTauUp" in key: bs_tau_sys = True
-    if "combUp" in key: comb_sys = True
-    if "puUp" in key: pu_sys = True
+    if "puUp"    in key: pu_sys = True
+    if "combUp"  in key and (region == 2 or region == 3): comb_sys = True
 
 
   if hammer_sys:
-    temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal_hammer.txt", "rt")
+    if comb_sys:
+      temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal_hammer_comb.txt", "rt")
+    else:
+      temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal_hammer.txt", "rt")
+
   else:
     temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal.txt", "rt")
 
+  pdb.set_trace()
   card_dir = toSave + f"/datacard_binned_{var}_ch{region}.txt"
   card = open(card_dir, "wt")
 
@@ -1817,7 +1821,6 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
 
   hb_others_Str  = str(round(histos["Hb_others"].Integral(), digits))
   hb_others_Str += " "*(spaces - len(hb_others_Str))
-
 
 
   combStr       = str(round(histos["comb"].Integral(), digits))  
@@ -2299,6 +2302,7 @@ for i in range(num_bins+1):
             histos_reshuffled[var] [ sig + "_" + "pu" + direc] = clone 
 
     if i > 0 and combSys and modifyComb:
+
         print("====> Redefining pu uncert. shape templates") 
         for direc in ["Up", "Down"]:                                  
 
@@ -2326,92 +2330,6 @@ for i in range(num_bins+1):
   
     histosScaled_shapes     = shapesPlot(histos_reshuffled[var],        var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False )
     histosScaled_comb       = combSys   (histos_reshuffled[var],        var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False )
-
-
-    ###############################################################
-    # Correct one-sided hammer effects when the one-sided-ness    #
-    # is less than one event (comging from numerical precision!   #
-    ###############################################################
-
-
-    #tol = 0.001
-    #if hammer_sys :
- 
-    #    # get nBins wlog from central curve
-    #    nBinsX = histosScaled["DsTau"].GetNbinsX()
-
-    #    for s in sys_scalar:
-    #      for j in range(1,nBinsX+1):
-
-    #        nC    = int(histosScaled["DsTau"                 ].GetBinContent(j)) 
-    #        nUp   = int(histosScaled["DsTau_"    + s + "Up"  ].GetBinContent(j)) 
-    #        nDown = int(histosScaled["DsTau_"    + s + "Down"].GetBinContent(j)) 
-
-    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsTau due to numerical precision! \nFix it!") 
-    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsTau_"    + s + "Up"  ].SetBinContent(j,nC)
-    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsTau_"    + s + "Down"].SetBinContent(j,nC)
-
-
-    #        nC    = int(histosScaled["DsMu"                 ].GetBinContent(j)) 
-    #        nUp   = int(histosScaled["DsMu_"    + s + "Up"  ].GetBinContent(j)) 
-    #        nDown = int(histosScaled["DsMu_"    + s + "Down"].GetBinContent(j)) 
-    #                                                                                                                               
-    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsMu due to numerical precision! \nFix it!") 
-    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsMu_"    + s + "Up"  ].SetBinContent(j,nC)
-    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsMu_"    + s + "Down"].SetBinContent(j,nC)
-
-
-    #                                                                    
-    #    for s in sys_vector:                                            
-    #      for j in range(1,nBinsX+1):
-  
-    #        nC    = int(histosScaled["DsStarTau"                 ].GetBinContent(j)) 
-    #        nUp   = int(histosScaled["DsStarTau_"    + s + "Up"  ].GetBinContent(j)) 
-    #        nDown = int(histosScaled["DsStarTau_"    + s + "Down"].GetBinContent(j)) 
-
-    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsTau due to numerical precision! \nFix it!") 
-    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsStarTau_"    + s + "Up"  ].SetBinContent(j,nC)
-    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarTau_"    + s + "Down"].SetBinContent(j,nC)
-
-
-
-    #        nC    = int(histosScaled["DsStarMu"                 ].GetBinContent(j)) 
-    #        nUp   = int(histosScaled["DsStarMu_"    + s + "Up"  ].GetBinContent(j)) 
-    #        nDown = int(histosScaled["DsStarMu_"    + s + "Down"].GetBinContent(j)) 
-    #                                                                                                                               
-    #        if ( ((nC < nDown) and (nC < nUp)) or ((nC > nDown) and (nC > nUp)) ):
-    #          print(f"===> Detected one sided error for direction {s} in bin {j} of dsMu due to numerical precision! \nFix it!") 
-    #          if abs((nC - nUp)   / nC ) < tol: histosScaled["DsStarMu_"    + s + "Up"  ].SetBinContent(j,nC)
-    #          if abs((nC - nDown) / nC ) < tol: histosScaled["DsStarMu_"    + s + "Down"].SetBinContent(j,nC)
-
-
-    #for all other bins, we make sure we only consider pure shape changes...
-    #if i > 1:
-    #  for key in histosScaled.keys():
-    #    # syntax is: _somethingUp/Down
-    #    # we usereverse split (rsplit)
-    #    
-    #    #get the central curve and scale the integrals
-    #    if "Up" in key or "Down" in key:
-
-    #      #the argument 1 is needed to split max one time 
-    #      central_key = key.rsplit("_",1)[0] 
-
-    #      central_integral = histosScaled[central_key].Integral()
-    #      up_down_integral = histosScaled[key].Integral()
-
-    #      clone = histosScaled[key].Clone()
-    #      if central_integral > 1e-5:
-    #        if "Up" in key  : clone.Scale(1.000001* central_integral / up_down_integral)
-    #        if "Down" in key: clone.Scale(0.999999* central_integral / up_down_integral)
-    #      else:
-    #        clone.Scale(0.0)
-
-    #      print(key)
-    #      histosScaled[key] = clone
 
 
     if writeThisBin:   

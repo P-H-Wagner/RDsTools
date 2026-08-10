@@ -38,6 +38,8 @@ parser.add_argument("--hammer",      required = True,     help = "Specify 'true'
 parser.add_argument("--hammer_sys",  required = True,     help = "Specify 'true' or 'false' to save weight variation shapes") 
 parser.add_argument("--bs_tau",      required = True,     help = "Specify 'true' or 'false' to apply bs lifetime weights") 
 parser.add_argument("--bs_tau_sys",  required = True,     help = "Specify 'true' or 'false' to save bs lifetime shape variation") 
+parser.add_argument("--pileup",      required = True,     help = "Specify 'true' or 'false' to apply pileup weights") 
+parser.add_argument("--pileup_sys",  required = True,     help = "Specify 'true' or 'false' to save pileup shape variation") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
 parser.add_argument("--bdt2",        required = True,     help = "Specify 'true' or 'false' to add bdt weights2") 
 parser.add_argument("--debug",       action='store_true', help = "If given, run plotter with 50k events only") 
@@ -69,6 +71,14 @@ else: bs_tau_central = (args.bs_tau == "true")
 if args.bs_tau_sys not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
 else: bs_tau_sys = (args.bs_tau_sys == "true")
+
+if args.pileup not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --pileup, please use 'true' or 'false' (all lowercase!)")
+else: pileup_central = (args.pileup == "true")
+
+if args.pileup_sys not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
+else: pileup_sys = (args.pileup_sys == "true")
 
 if args.bdt not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --bdt , please use 'true' or 'false' (all lowercase!)")
@@ -329,9 +339,11 @@ mass_full   = " (m_shifted > 0) " #just need smth to avoid parsing errors of && 
 ###
 
 
-###########################################
-
-# for hammer
+############################################
+#
+## BINNING IN AN
+#
+## for hammer
 binning_str.append( mass_full                                                                                                        ); fitted_vars[0]  = "phiPi_m";
 
 # comb control region
@@ -365,7 +377,7 @@ binning_str.append( "(class==1)" + m2 + "&& (q2_coll >= 8)   && (q2_coll < 10)" 
 binning_str.append( "(class==1)" + m2 + "&& (q2_coll >= 10)  && (q2_coll < 12)" + mass_center ); fitted_vars[16]  = "score1";
 #
 #
-############################################
+##############################################
 
 #for b in binning:
 #  
@@ -791,7 +803,7 @@ def addSystematics(hist_dict, var, selec_DsTau, selec_DsMu, selec_DsStarTau, sel
 ## CREATE DEFAULT HISTOS               ##
 #########################################
 
-def createHistos(selection, rdf, data = False , variables = None, ff_central = False, ff_sys = False, lt_central = False, lt_sys = False,  mc = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False, comb = None):
+def createHistos(selection, rdf, data = False , variables = None, ff_central = False, ff_sys = False, lt_central = False, lt_sys = False, pu_central = False, pu_sys = False, mc = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False, comb = None):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
@@ -829,6 +841,12 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
     if total_w_str != "": total_w_str += " * w_bs_tau"
     else                : total_w_str += "   w_bs_tau"
+
+  if (mc and pu_central):
+
+    if total_w_str != "": total_w_str += " * w_pu"
+    else                : total_w_str += "   w_pu"
+
 
   print(f"====> Total applied weight is: {total_w_str}" )
 
@@ -974,6 +992,11 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
             total_w_s_up   += " * w_bs_tau"            
             total_w_s_down += " * w_bs_tau"            
 
+          if pu_central:
+            total_w_s_up   += " * w_pu"            
+            total_w_s_down += " * w_pu"            
+
+
 
           # fill histogram with weight "s"
           histos[var + "_" + s + "Up"]    = rdf_filt\
@@ -1001,6 +1024,12 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
             total_w_bs_up   += f" * central_w  / {central_av}"
             total_w_bs_down += f" * central_w  / {central_av}"
 
+          if pu_central: 
+            total_w_bs_up   += f" * w_pu"
+            total_w_bs_down += f" * w_pu"
+
+
+
           # fill histogram with weight "s"
           histos[var + "_bsTauUp"]    = rdf_filt\
                                                .Define(f"total_w_bs_up"    ,total_w_bs_up)\
@@ -1009,6 +1038,35 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
           histos[var + "_bsTauDown"]  = rdf_filt\
                                                .Define(f"total_w_bs_down"  ,total_w_bs_down)\
                                                .Histo1D(model[0], tofill,  "total_w_bs_down")
+ 
+      if pu_sys:
+
+          total_w_pu_up   = " w_pu "
+          total_w_pu_down = " w_pu "
+
+          if mc:
+            total_w_pu_up   += " * trigger_sf"
+            total_w_pu_down += " * trigger_sf"
+
+
+          if ff_central: 
+            total_w_pu_up   += f" * central_w  / {central_av}"
+            total_w_pu_down += f" * central_w  / {central_av}"
+
+          if lt_central: 
+            total_w_pu_up   += f" * w_bs_tau_up"
+            total_w_pu_down += f" * w_bs_tau_down"
+
+
+
+          # fill histogram with weight "s"
+          histos[var + "_puUp"]    = rdf_filt\
+                                               .Define(f"total_w_pu_up"    ,total_w_pu_up)\
+                                               .Histo1D(model[0], tofill , "total_w_pu_up" )
+
+          histos[var + "_puDown"]  = rdf_filt\
+                                               .Define(f"total_w_pu_down"  ,total_w_pu_down)\
+                                               .Histo1D(model[0], tofill,  "total_w_pu_down")
             
 
       histos[var].GetXaxis().SetTitle(model[1])
@@ -1074,19 +1132,19 @@ def createBinnedPlots(splitter, regions, discriminator, controlPlotsHighMass = N
 
   ## Signal and Hb (Hammer variations are never needed for the massfit)
   print("#########\n DsMu \n#########")
-  selec_M_DsMu            = createHistos(selec_massfit.dsMu      + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dsmu"       , lt_central = bs_tau_central)
+  selec_M_DsMu            = createHistos(selec_massfit.dsMu      + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dsmu"       , lt_central = bs_tau_central, pu_central = pileup_central)
 
   print("#########\n DsMu \n#########")
-  selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu      + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] ,                              mc = "dsmu"       , lt_central = bs_tau_central)
+  selec_M_DsMu_woHammer   = createHistos(selec_massfit.dsMu      + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] ,                              mc = "dsmu"       , lt_central = bs_tau_central, pu_central = pileup_central)
 
   print("#########\n DsTau \n#########")
-  selec_M_DsTau           = createHistos(selec_massfit.dsTau     + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dstau"      , lt_central = bs_tau_central)
+  selec_M_DsTau           = createHistos(selec_massfit.dsTau     + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dstau"      , lt_central = bs_tau_central, pu_central = pileup_central)
 
   print("#########\n DsStarMu \n#########")
-  selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu  + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dsstarmu"   , lt_central = bs_tau_central)
+  selec_M_DsStarMu        = createHistos(selec_massfit.dsStarMu  + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dsstarmu"   , lt_central = bs_tau_central, pu_central = pileup_central)
 
   print("#########\n DsStarTau \n#########")
-  selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dsstartau"  , lt_central = bs_tau_central)
+  selec_M_DsStarTau       = createHistos(selec_massfit.dsStarTau + hammer_str +score_cut,    rdfSig       ,variables = ["phiPi_m"] , ff_central = hammer_central, mc = "dsstartau"  , lt_central = bs_tau_central, pu_central = pileup_central)
 
 
 
@@ -1302,7 +1360,7 @@ def createBinnedPlots(splitter, regions, discriminator, controlPlotsHighMass = N
     #python command line
     python_command =  f"python plot_single_channel_and_bin.py" 
     #python_command += f" --nn=\"{args.nn}\" --hammer=\"{args.hammer}\" --hammer_sys=\"{args.hammer_sys}\" --trigger=\"{args.trigger}\" --bdt=\"{args.bdt}\" --bdt2=\"{args.bdt2}\" "
-    python_command += f" --nn=\"{args.nn}\" --hammer=\"{args.hammer}\" --hammer_sys=\"{args.hammer_sys}\" --bs_tau=\"{args.bs_tau}\" --bs_tau_sys=\"{args.bs_tau_sys}\"  --bdt=\"{args.bdt}\" --bdt2=\"{args.bdt2}\" "
+    python_command += f" --nn=\"{args.nn}\" --hammer=\"{args.hammer}\" --hammer_sys=\"{args.hammer_sys}\" --bs_tau=\"{args.bs_tau}\" --bs_tau_sys=\"{args.bs_tau_sys}\"  --pileup=\"{args.pileup}\" --pileup_sys=\"{args.pileup_sys}\" --bdt=\"{args.bdt}\" --bdt2=\"{args.bdt2}\" "
     python_command += f" --bin={i} --region=\"{region}\" --toSave_plots=\"{toSave_plots}\" --selection=\"{selection}\" --data_selection=\"{data_selection}\" --split={split} "
     #python_command += f" --tau={tau} --n0_exp={n0_exp} "
     #python_command += " --scale_pimu={scale_pimu} --scale_rest={scale_rest} --hb_ratio_massfit={hb_ratio_massfit} "
