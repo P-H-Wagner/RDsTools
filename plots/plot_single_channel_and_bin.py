@@ -35,6 +35,8 @@ parser.add_argument("--hammer",      required = True,     help = "Specify 'true'
 parser.add_argument("--hammer_sys",  required = True,     help = "Specify 'true' or 'false' to save weight variation shapes") 
 parser.add_argument("--bs_tau",      required = True,     help = "Specify 'true' or 'false' to apply bs lifetime weights") 
 parser.add_argument("--bs_tau_sys",  required = True,     help = "Specify 'true' or 'false' to save bs lifetime weight variation shapes") 
+parser.add_argument("--bs_kin",      required = True,     help = "Specify 'true' or 'false' to apply bs lifetime weights") 
+parser.add_argument("--bs_kin_sys",  required = True,     help = "Specify 'true' or 'false' to save bs lifetime weight variation shapes") 
 parser.add_argument("--pileup",      required = True,     help = "Specify 'true' or 'false' to apply bs lifetime weights") 
 parser.add_argument("--pileup_sys",  required = True,     help = "Specify 'true' or 'false' to save bs lifetime shape variation") 
 parser.add_argument("--bdt",         required = True,     help = "Specify 'true' or 'false' to add bdt weights") 
@@ -76,6 +78,14 @@ if args.bs_tau_sys not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
 else: bs_tau_sys = (args.bs_tau_sys == "true")
 
+if args.bs_kin not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --bs_kin, please use 'true' or 'false' (all lowercase!)")
+else: bs_kin_central = (args.bs_kin == "true")
+
+if args.bs_kin_sys not in ["true", "false"]:
+  raise ValueError ("Error: Not a valid key for --sys, please use 'true' or 'false' (all lowercase!)")
+else: bs_kin_sys = (args.bs_kin_sys == "true")
+
 if args.pileup not in ["true", "false"]:
   raise ValueError ("Error: Not a valid key for --pileup, please use 'true' or 'false' (all lowercase!)")
 else: pileup_central = (args.pileup == "true")
@@ -106,8 +116,6 @@ if args.model:
 
 if args.debug: debug = 50000
 else         : debug = None
-
-
 
 
 if pastNN: models.update(pastNN_models)
@@ -460,13 +468,10 @@ def addSystematics(hist_dict, var, selec_DsTau, selec_DsMu, selec_DsStarTau, sel
 #########################################
 
 
-def createHistos(selection, rdf, data = False , variables = None, ff_central = False, ff_sys = False, lt_central = False, lt_sys = False, pu_central = False, pu_sys = False, mc = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False, comb = None, combSys = False):
+def createHistos(selection, rdf, data = False , variables = None, ff_central = False, ff_sys = False, lt_central = False, lt_sys = False, kin_central = False, kin_sys = False, pu_central = False, pu_sys = False, mc = None, sf_weights = None, sf_weights2 = None, region = None, massfit = False, comb = None, combSys = False):
 
   "Creates histograms of all histograms in <models> (prepared in histModels.py) with the <selection>"
   "If <variables> are given, only these variables from <models> are created" #f.e. for the phiPi mass or DsMu with different selection
-
-  print(" ====> ff_sys: "        , ff_sys   )
-  print(" ====> selection is: "  , selection)
 
   histos = {}
 
@@ -493,17 +498,28 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   if (sf_weights and sf_weights2):
     total_w_str = "sf_weights * sf_weights2"
 
-  #apply bs lifetime weights for signal (mc given, but not hb)
-  if (mc and mc != "hb" and lt_central):
+  if (mc and lt_central):
+  
+    # Bs lifetime is only applied to signals and bs in hb! 
+    if total_w_str != "": total_w_str += " * ((is_bs == 1) ? w_bs_tau : 1.0)" 
+    else                : total_w_str += "   ((is_bs == 1) ? w_bs_tau : 1.0)"
 
-     if total_w_str != "": total_w_str += " * w_bs_tau"
-     else                : total_w_str += "   w_bs_tau"
+  if (mc and kin_central):
+
+    # Bs kinematics are only applied to signals and bs in hb! 
+    if total_w_str != "": total_w_str += " * ((is_bs == 1) ? w_bs_kin : 1.0)"
+    else                : total_w_str += "   ((is_bs == 1) ? w_bs_kin : 1.0)" 
 
   if (mc and pu_central):
 
-     if total_w_str != "": total_w_str += " * w_pu"
-     else                : total_w_str += "   w_pu"
+    #pileup is applied to all MC
+    if total_w_str != "": total_w_str += " * w_pu"
+    else                : total_w_str += "   w_pu"
 
+
+  print(f" ====> Total applied weight is: {total_w_str}" )
+  print(f" ====> ff_sys: "        , ff_sys   )
+  print(f" ====> selection is: "  , selection)
 
 
   print(f"====> Total applied weight is: {total_w_str}" )
@@ -556,8 +572,8 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
     print(f"====> tilting combinatorial by applying weight {total_w_str}")
     
   #correct dxy
-  dxy_err_expr = f"(run==1) * 1.0 * dxy_mu_err_pv + (run!=1) * dxy_mu_err_pv"
-  dxy_sig_expr = f" dxy_mu_pv / dxy_mu_err_pv_corr "
+  #dxy_err_expr = f"(run==1) * dxy_mu_err_pv_corr + (run!=1) * dxy_mu_err_pv"
+  #dxy_sig_expr = f"(run==1) * dxy_mu_sig_pv_corr + (run!=1) * dxy_mu_sig_pv"
 
   #re-order k1 and k2 after pt
   k1_expr      = f" k1_pt * (k1_pt > k2_pt) + k2_pt * (k1_pt <= k2_pt) "
@@ -568,10 +584,11 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
              .Filter(selection)\
              .Define("smear","gRandom->Gaus(1.0, 0.001)")\
              .Define("m_corr"   ,mass_shifted_smeared)\
-             .Define("dxy_mu_err_pv_corr",dxy_err_expr)\
-             .Define("dxy_mu_sig_pv_corr",dxy_sig_expr)\
              .Define("k1_corr",k1_expr)\
              .Define("k2_corr",k2_expr)\
+
+  if mc:
+    rdf_filt = rdf_filt.Define("is_bs","((gen_sig >= 300 && gen_sig < 400) || ((gen_sig == 0) || (gen_sig == 1) || (gen_sig == 10) || (gen_sig ==11))) ")
 
 
 
@@ -620,20 +637,29 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
         #combFolder="17_07_2026_14_29_34"#for the old binnning
         #combFolder="23_07_2026_07_57_05"#for the new binning 
         #combFolder="23_07_2026_16_40_41"#for the new binning with cut 0.01 and more bins
-        combFolder="24_07_2026_15_01_12"#for the new binning with cut 0.01 and more bins
+        #combFolder="24_07_2026_15_01_12"#for the new binning with cut 0.01 and more bins
         #combFolder="24_07_2026_12_50_08"
+        #combFolder="12_08_2026_15_48_32"
+        #combFolder="25_08_2026_21_17_22"
+        #combFolder="28_08_2026_05_25_51"
+        #combFolder="01_09_2026_08_22_41"
+        #combFolder="01_09_2026_12_42_31"
+        combFolder="01_09_2026_16_55_41" #including q2_lhcb
 
-        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
+        #with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch0.json"  ,"r") as f:
           comb_up = json.load(f) 
-        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_down_{var}_ch{region}.json","r") as f:
+        #with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_down_{var}_ch{region}.json","r") as f:
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_down_{var}_ch0.json","r") as f:
           comb_down = json.load(f) 
-        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_edges_{var}_ch{region}.json"       ,"r") as f:
+        #with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_edges_{var}_ch{region}.json"       ,"r") as f:
+        with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_edges_{var}_ch0.json"       ,"r") as f:
           comb_edges = json.load(f) 
    
         #build a th1d out of it
         comb_edges = array.array("d", comb_edges)
   
-        hWeightsUp   = ROOT.TH1D("wHistUp","wHistUp", len(comb_up), comb_edges)
+        hWeightsUp   = ROOT.TH1D("wHistUp"  ,"wHistUp"  , len(comb_up)  , comb_edges)
         hWeightsDown = ROOT.TH1D("wHistDown","wHistDown", len(comb_down), comb_edges)
     
         for i, w in enumerate(comb_up, start=1):
@@ -659,7 +685,6 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
         }
         """)
  
- 
         ROOT.hWUp = hWeightsUp
         rdf_filt = rdf_filt.Define(f"comb_w_up"  , f"getWeightUp({var})")
 
@@ -668,16 +693,21 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
         print("====> Defined weights for combinatorial")
 
-
       ##############################################
       # Start filling                              #
       ##############################################
+      print(var)
 
       if   var == "phiPi_m": tofill = "m_corr"
-      elif var == "dxy_mu_err_pv": tofill = "dxy_mu_err_pv_corr"
-      elif var == "dxy_mu_sig_pv": tofill = "dxy_mu_sig_pv_corr"
       elif var == "k1_pt": tofill = "k1_corr"
       elif var == "k2_pt": tofill = "k2_corr"
+      elif "dxy_mu_err_pv" in var: 
+        if mc: tofill = "dxy_mu_err_pv_corr"
+        else : tofill = "dxy_mu_err_pv"
+      elif "dxy_mu_sig_pv" in var: 
+        if mc: tofill = "dxy_mu_sig_pv_corr"
+        else : tofill = "dxy_mu_sig_pv"
+
       else: tofill = var
       print(f"filling variable {tofill}")
 
@@ -720,8 +750,13 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
           if lt_central:
 
-            total_w_s_up   += " * w_bs_tau"
-            total_w_s_down += " * w_bs_tau"
+            total_w_s_up   += " * ((is_bs == 1) ? w_bs_tau : 1.0)"
+            total_w_s_down += " * ((is_bs == 1) ? w_bs_tau : 1.0)"
+
+          if kin_central:
+
+            total_w_s_up   += " * ((is_bs == 1) ? w_bs_kin : 1.0)"
+            total_w_s_down += " * ((is_bs == 1) ? w_bs_kin : 1.0)"
  
           if pu_central:
 
@@ -745,38 +780,79 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
       if lt_sys:
 
-          total_w_bs_up   = " w_bs_tau_up "
-          total_w_bs_down = " w_bs_tau_down "
+          total_w_bs_tau_up   = " ((is_bs == 1) ? w_bs_tau_up   : 1.0)"
+          total_w_bs_tau_down = " ((is_bs == 1) ? w_bs_tau_down : 1.0)"
 
           if mc:
-            total_w_bs_up   += " * trigger_sf"
-            total_w_bs_down += " * trigger_sf"
+            total_w_bs_tau_up   += " * trigger_sf"
+            total_w_bs_tau_down += " * trigger_sf"
 
 
           if ff_central:
-            total_w_bs_up   += f" * central_w  / {central_av}"
-            total_w_bs_down += f" * central_w  / {central_av}"
+            total_w_bs_tau_up   += f" * central_w  / {central_av}"
+            total_w_bs_tau_down += f" * central_w  / {central_av}"
 
           if pu_central:
 
-            total_w_bs_up   += " * w_pu"
-            total_w_bs_down += " * w_pu"
+            total_w_bs_tau_up   += " * w_pu"
+            total_w_bs_tau_down += " * w_pu"
+ 
+          if kin_central:
+
+            total_w_bs_tau_up   += " * ((is_bs == 1) ? w_bs_kin : 1.0)"
+            total_w_bs_tau_down += " * ((is_bs == 1) ? w_bs_kin : 1.0)"
  
 
           histos[var + "_bsTauUp"]    = rdf_filt\
-                                          .Define(f"total_w_bs_up"    ,total_w_bs_up)\
-                                          .Histo1D(model[0], tofill , "total_w_bs_up" )
+                                          .Define(f"total_w_bs_tau_up"    ,total_w_bs_tau_up)\
+                                          .Histo1D(model[0], tofill , "total_w_bs_tau_up" )
 
 
 
           histos[var + "_bsTauDown"]  = rdf_filt\
-                                          .Define(f"total_w_bs_down"    ,total_w_bs_down)\
-                                          .Histo1D(model[0], tofill , "total_w_bs_down" )
+                                          .Define(f"total_w_bs_tau_down"    ,total_w_bs_tau_down)\
+                                          .Histo1D(model[0], tofill , "total_w_bs_tau_down" )
+
+      if kin_sys:
+
+          total_w_bs_kin_up   = " ((is_bs == 1) ? w_bs_kin_up   : 1.0 ) "
+          total_w_bs_kin_down = " ((is_bs == 1) ? w_bs_kin_down : 1.0 ) "
+
+          if mc:
+            total_w_bs_kin_up   += " * trigger_sf"
+            total_w_bs_kin_down += " * trigger_sf"
+
+
+          if ff_central:
+            total_w_bs_kin_up   += f" * central_w  / {central_av}"
+            total_w_bs_kin_down += f" * central_w  / {central_av}"
+
+          if pu_central:
+
+            total_w_bs_kin_up   += " * w_pu"
+            total_w_bs_kin_down += " * w_pu"
+ 
+          if lt_central:
+
+            total_w_bs_kin_up   += " * ((is_bs == 1) ?  w_bs_tau : 1.0)"
+            total_w_bs_kin_down += " * ((is_bs == 1) ?  w_bs_tau : 1.0)"
+ 
+
+          histos[var + "_bsKinUp"]    = rdf_filt\
+                                          .Define(f"total_w_bs_kin_up"    ,total_w_bs_kin_up)\
+                                          .Histo1D(model[0], tofill , "total_w_bs_kin_up" )
+
+
+
+          histos[var + "_bsKinDown"]  = rdf_filt\
+                                          .Define(f"total_w_bs_kin_down"    ,total_w_bs_kin_down)\
+                                          .Histo1D(model[0], tofill , "total_w_bs_kin_down" )
+
 
       if pu_sys:
 
-          total_w_pu_up   = " w_pu "
-          total_w_pu_down = " w_pu "
+          total_w_pu_up   = " w_pu_up "
+          total_w_pu_down = " w_pu_down "
 
           if mc:
             total_w_pu_up   += " * trigger_sf"
@@ -788,8 +864,13 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
             total_w_pu_down += f" * central_w  / {central_av}"
 
           if lt_central: 
-            total_w_pu_up   += f" * w_bs_tau_up"
-            total_w_pu_down += f" * w_bs_tau_down"
+            total_w_pu_up   += f" * ((is_bs == 1) ? w_bs_tau : 1.0)"
+            total_w_pu_down += f" * ((is_bs == 1) ? w_bs_tau : 1.0)"
+
+
+          if kin_central: 
+            total_w_pu_up   += f" * ((is_bs == 1) ? w_bs_kin : 1.0)"
+            total_w_pu_down += f" * ((is_bs == 1) ? w_bs_kin : 1.0)"
 
 
 
@@ -874,30 +955,30 @@ tilt   = norm_params["tilt"]
 selec = selections(args.selection)
 
 if args.channel == "DsMu":
-  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsmu",      region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, pu_central = pileup_central, pu_sys = pileup_sys)
-  print(histo1d)
-  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsMu_{args.bin}.root")
-
-if args.channel == "DsMu_woHammer":
-  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,                                                     mc = "dsmu",      region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, pu_central = pileup_central, pu_sys = pileup_sys) 
-  print(histo1d)
-  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsMu_woHammer_{args.bin}.root")
-
-if args.channel == "DsTau":
-
-  histo1d       = createHistos(selec.dsTau + hammer_str       ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dstau",     region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, pu_central = pileup_central, pu_sys = pileup_sys)
-  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsTau_{args.bin}.root")
-  
-  histo1d_blind = { key: histo1d[key].Clone()  for key in histo1d.keys() }
-  for key in histo1d_blind.keys()    : histo1d_blind[key]    .Scale(blind_scalar)    
-  saveHisto1D(histo1d_blind, f"{args.toSave_plots}/histos_DsTau_blind_{args.bin}.root")
-
-if args.channel == "DsStarMu":
-  histo1d       = createHistos(selec.dsStarMu + hammer_str    ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstarmu",  region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, pu_central = pileup_central, pu_sys = pileup_sys)
-  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsStarMu_{args.bin}.root")
-
-if args.channel == "DsStarTau":
-  histo1d       = createHistos(selec.dsStarTau + hammer_str   ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstartau", region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsmu",      region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys, pu_central = pileup_central, pu_sys = pileup_sys)
+  print(histo1d)                                                                                                                                                                                                                                                               
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsMu_{args.bin}.root")                                                                                                                                                                                                     
+                                                                                                                                                                                                                                                                               
+if args.channel == "DsMu_woHammer":                                                                                                                                                                                                                                            
+  histo1d       = createHistos(selec.dsMu + hammer_str        ,    rdfSig        ,                                                     mc = "dsmu",      region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys, pu_central = pileup_central, pu_sys = pileup_sys) 
+  print(histo1d)                                                                                                                                                                                                                                                               
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsMu_woHammer_{args.bin}.root")                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                               
+if args.channel == "DsTau":                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                               
+  histo1d       = createHistos(selec.dsTau + hammer_str       ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dstau",     region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys, pu_central = pileup_central, pu_sys = pileup_sys)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsTau_{args.bin}.root")                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                               
+  histo1d_blind = { key: histo1d[key].Clone()  for key in histo1d.keys() }                                                                                                                                                                                                     
+  for key in histo1d_blind.keys()    : histo1d_blind[key]    .Scale(blind_scalar)                                                                                                                                                                                              
+  saveHisto1D(histo1d_blind, f"{args.toSave_plots}/histos_DsTau_blind_{args.bin}.root")                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                               
+if args.channel == "DsStarMu":                                                                                                                                                                                                                                                 
+  histo1d       = createHistos(selec.dsStarMu + hammer_str    ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstarmu",  region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys, pu_central = pileup_central, pu_sys = pileup_sys)
+  saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsStarMu_{args.bin}.root")                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                               
+if args.channel == "DsStarTau":                                                                                                                                                                                                                                                
+  histo1d       = createHistos(selec.dsStarTau + hammer_str   ,    rdfSig        ,   ff_central = hammer_central, ff_sys = hammer_sys, mc = "dsstartau", region = args.bin, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys, pu_central = pileup_central, pu_sys = pileup_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_DsStarTau_{args.bin}.root")
 
   histo1d_blind = { key: histo1d[key].Clone()  for key in histo1d.keys() }
@@ -905,15 +986,15 @@ if args.channel == "DsStarTau":
   saveHisto1D(histo1d_blind, f"{args.toSave_plots}/histos_DsStarTau_blind_{args.bin}.root")
 
 if args.channel == "Hb":
-  histo1d       = createHistos(selec.hb           ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb           ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_{args.bin}.root")
 
 if args.channel == "Hb_dc":
-  histo1d       = createHistos(selec.hb_dc        ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_dc        ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_dc_{args.bin}.root")
 
 if args.channel == "Hb_fd":
-  histo1d       = createHistos(selec.hb_fd        ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_fd        ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_fd_{args.bin}.root")
 
 
@@ -953,15 +1034,15 @@ if args.channel == "Hb_b0_dc":
 
 
 if args.channel == "Hb_bs":
-  histo1d       = createHistos(selec.hb_bs        ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_bs        ,    rdfHb         ,                            mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_bs_{args.bin}.root")
 
 if args.channel == "Hb_bs_fd":
-  histo1d       = createHistos(selec.hb_bs_fd        ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_bs_fd        ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_bs_fd_{args.bin}.root")
 
 if args.channel == "Hb_bs_dc":
-  histo1d       = createHistos(selec.hb_bs_dc        ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_bs_dc        ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_bs_dc_{args.bin}.root")
 
 
@@ -971,17 +1052,17 @@ if args.channel == "Hb_lambdab":
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_lambdab_{args.bin}.root")
 
 if args.channel == "Hb_lambdab_fd":
-  histo1d       = createHistos(selec.hb_lambdab_fd        ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_lambdab_fd   ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_lambdab_fd_{args.bin}.root")
 
 if args.channel == "Hb_lambdab_dc":
-  histo1d       = createHistos(selec.hb_lambdab_dc        ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.hb_lambdab_dc   ,    rdfHb         ,                         mc = "hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Hb_lambdab_dc_{args.bin}.root")
 
 
 
 if args.channel == "Mu_in_Hb":
-  histo1d       = createHistos(selec.dsMu              ,    rdfHb         ,                mc = "mu_in_hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys)
+  histo1d       = createHistos(selec.dsMu            ,    rdfHb         ,                         mc = "mu_in_hb", region = args.bin, pu_central = pileup_central, pu_sys = pileup_sys, lt_central = bs_tau_central, lt_sys = bs_tau_sys, kin_central = bs_kin_central, kin_sys = bs_kin_sys)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Mu_in_Hb_{args.bin}.root")
 
 if args.channel == "Data":

@@ -68,6 +68,7 @@ sys_vector = systematics_vector
 massYields = {}
 modifyHammer = False
 modifyBsTau  = False
+modifyBsKin  = False 
 modifyPU     = False 
 modifyComb   = False 
 
@@ -405,7 +406,7 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
   #supress data plotting in SR. region is a string of type: ch0
   dataBlind = False
-  if ((int(region[2:]) > 5) and (int(region[2:]) != 8) and (int(region[2:]) != 14)): 
+  if ((int(region[2:]) >= 5) and (int(region[2:]) < 8)) or ((int(region[2:]) >= 14) and (int(region[2:]) < 17)): 
     dataBlind = True 
   #  color["DsTau"] = color["DsMu"]
   #  color["DsStarTau"] = color["DsStarMu"]
@@ -1624,14 +1625,17 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
 
       hammer_sys = False
       bs_tau_sys = False
+      bs_kin_sys = False
       comb_sys   = False
       pu_sys     = False
 
       for key in hist_dict.keys():
         if "e1Up"      in key: hammer_sys = True
         if "bsTauUp"   in key: bs_tau_sys = True
+        if "bsKinUp"   in key: bs_kin_sys = True
         if "puUp"      in key: pu_sys     = True
         if "combUp"    in key and (channel == 2 or channel == 3): comb_sys   = True
+        #if "combUp"    in key : comb_sys   = True
 
 
       #print(hist_dict["dsMu"])
@@ -1683,10 +1687,18 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
         outputFile.WriteObject(hist_dict["DsStarTau_bsTauUp" ],"dsStarTau_bsTauUp" + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["DsStarMu_bsTauUp"  ],"dsStarMu_bsTauUp"  + binned * f"_ch{channel}"  )
 
+        outputFile.WriteObject(hist_dict["Hb_bs_fd_bsTauUp"      ],"hb_bs_fd_bsTauUp"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_dc_bsTauUp"      ],"hb_bs_dc_bsTauUp"  + binned * f"_ch{channel}"  )
+
+
         outputFile.WriteObject(hist_dict["DsTau_bsTauDown" ]    ,"dsTau_bsTauDown"     + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["DsMu_bsTauDown"  ]    ,"dsMu_bsTauDown"      + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["DsStarTau_bsTauDown" ],"dsStarTau_bsTauDown" + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["DsStarMu_bsTauDown"  ],"dsStarMu_bsTauDown"  + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["Hb_bs_fd_bsTauDown"  ],"hb_bs_fd_bsTauDown"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_dc_bsTauDown"  ],"hb_bs_dc_bsTauDown"  + binned * f"_ch{channel}"  )
+
 
       if pu_sys:
         outputFile.WriteObject(hist_dict["DsTau_puUp"         ],"dsTau_puUp"     + binned * f"_ch{channel}"  )
@@ -1716,16 +1728,26 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
         outputFile.WriteObject(hist_dict["Hb_others_puDown" ],"hb_others_puDown" + binned * f"_ch{channel}"  )
 
 
+      if bs_kin_sys:
+        outputFile.WriteObject(hist_dict["DsTau_bsKinUp"         ],"dsTau_bsKinUp"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsMu_bsKinUp"          ],"dsMu_bsKinUp"      + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarTau_bsKinUp"     ],"dsStarTau_bsKinUp" + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarMu_bsKinUp"      ],"dsStarMu_bsKinUp"  + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["Hb_bs_fd_bsKinUp"      ],"hb_bs_fd_bsKinUp"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_dc_bsKinUp"      ],"hb_bs_dc_bsKinUp"  + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["DsTau_bsKinDown" ]    ,"dsTau_bsKinDown"     + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsMu_bsKinDown"  ]    ,"dsMu_bsKinDown"      + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarTau_bsKinDown" ],"dsStarTau_bsKinDown" + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["DsStarMu_bsKinDown"  ],"dsStarMu_bsKinDown"  + binned * f"_ch{channel}"  )
+
+        outputFile.WriteObject(hist_dict["Hb_bs_fd_bsKinDown"  ],"hb_bs_fd_bsKinDown"  + binned * f"_ch{channel}"  )
+        outputFile.WriteObject(hist_dict["Hb_bs_dc_bsKinDown"  ],"hb_bs_dc_bsKinDown"  + binned * f"_ch{channel}"  )
+
       if comb_sys:
         outputFile.WriteObject(hist_dict["Data_sf_pimu_combUp"   ]    ,f"comb_combSys_ch{channel}Up"       + binned * f"_ch{channel}"  )
         outputFile.WriteObject(hist_dict["Data_sf_pimu_combDown" ]    ,f"comb_combSys_ch{channel}Down"     + binned * f"_ch{channel}"  )
-
-
-      #myFile_1D.WriteObject(histosScaled["dsStarMu"],  "dsStarMu"  )
-      #myFile_1D.WriteObject(histosScaled["dsStarTau"], "dsStarTau" )
-      #myFile_1D.WriteObject(histosScaled["hb"],        "hb"        )
-      #myFile_1D.WriteObject(histosScaled["data"],      "data_obs"  ) #combine convention
-      #myFile_1D.WriteObject(histosScaled["comb"],      "comb"      )
 
 
 def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
@@ -1742,14 +1764,17 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
 
   hammer_sys = False
   bs_tau_sys = False
+  bs_kin_sys = False
   comb_sys   = False
   pu_sys     = False
 
   for key in histos.keys():
     if "e1Up"    in key: hammer_sys = True
     if "bsTauUp" in key: bs_tau_sys = True
+    if "bsKinUp" in key: bs_kin_sys = True
     if "puUp"    in key: pu_sys = True
     if "combUp"  in key and (region == 2 or region == 3): comb_sys = True
+    #if "combUp"  in key : comb_sys = True
 
 
   if hammer_sys:
@@ -1761,7 +1786,6 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
   else:
     temp = open("/work/pahwagne/RDsTools/fit/new_temps/datacardTemplateFinal.txt", "rt")
 
-  pdb.set_trace()
   card_dir = toSave + f"/datacard_binned_{var}_ch{region}.txt"
   card = open(card_dir, "wt")
 
@@ -2084,13 +2108,15 @@ for i in range(num_bins+1):
   for var in vars_base:
 
     hammer_sys = False
-    bsTau_sys  = False
+    bs_tau_sys = False
+    bs_kin_sys = False
     pu_sys     = False
     comb_sys   = False
     
     for key in histos_reshuffled[var].keys():
       if "e1Up"    in key: hammer_sys = True
-      if "bsTau"   in key: bsTau_sys  = True
+      if "bsTau"   in key: bs_tau_sys = True
+      if "bsKin"   in key: bs_kin_sys = True
       if "puUp"    in key: pu_sys     = True
       if "combUp"  in key: comb_sys   = True
   
@@ -2148,7 +2174,7 @@ for i in range(num_bins+1):
       else:
         print("Invalid input!")
  
-    if var == "phiPi_m" and i == 0 and bsTau_sys:
+    if var == "phiPi_m" and i == 0 and bs_tau_sys:
 
       answer = input("Skip ch0 and use it for yield estimation only (bsTau systematics)? (y/n): ").strip().lower()
       if answer == "y":
@@ -2158,7 +2184,7 @@ for i in range(num_bins+1):
         writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
  
         #lifetime
-        for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu"]:  
+        for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu","Hb_bs_fd","Hb_bs_dc"]:  
           for direc in ["Up", "Down"]:
 
             massYields[ sig + "_" + "bsTau" + direc] = histos_reshuffled[var][ sig + "_" + "bsTau" + direc].Integral()/ histos_reshuffled[var][sig].Integral() 
@@ -2212,6 +2238,41 @@ for i in range(num_bins+1):
       else:
         print("Invalid input!")
 
+
+    if var == "phiPi_m" and i == 0 and bs_kin_sys:
+
+      answer = input("Skip ch0 and use it for yield estimation only (bs kin systematics)? (y/n): ").strip().lower()
+      if answer == "y":
+
+        print("You chose yes!")
+        modifyBsKin  = True
+        writeThisBin = False #ch0 here has only the purpose of re-defining hammer shapes, no datacard needed
+ 
+        #lifetime
+        for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu","Hb_bs_fd","Hb_bs_dc"]:  
+          for direc in ["Up", "Down"]:
+
+            massYields[ sig + "_" + "bsKin" + direc] = histos_reshuffled[var][ sig + "_" + "bsKin" + direc].Integral()/ histos_reshuffled[var][sig].Integral() 
+
+          if ( ((massYields[ sig + "_" + "bsKin" + "Up"] > 1.0 ) and (massYields[ sig + "_" + "bsKin" + "Down"] > 1.0 )) or ((massYields[ sig + "_" + "bsKin" + "Up"] < 1.0 ) and (massYields[ sig + "_" + "bsKin" + "Down"] < 1.0 )) ):
+             print(f" ----- WARNING ----- \n Shapes of {sig} in direction bsKin both bsKinll in the same direction!")
+             print(f"Up: ", massYields[ sig + "_" + "bsKin" + "Up"], "Down: ", massYields[ sig + "_" + "bsKin" + "Down"])  
+
+             if (abs(massYields[ sig + "_" + "bsKin" + "Up"] - 1.0 ) < 1e-3) and (abs(massYields[ sig + "_" + "bsKin" + "Down"] - 1.0 ) < 1e-3): 
+               #no yield change effect, fix yield change to 1.0
+               massYields[ sig + "_" + "bsKin" + "Up"] = 1.00001
+               massYields[ sig + "_" + "bsKin" + "Down"] = 0.99999
+               print("====> Change it to: ")                                                                      
+               print(f"Up: ", massYields[ sig + "_" + "bsKin" + "Up"], "Down: ", massYields[ sig + "_" + "bsKin" + "Down"])   
+      
+      elif answer == "n":
+        print("You chose no!")
+      else:
+        print("Invalid input!")
+
+
+
+
     if var == "phiPi_m" and i == 0 and comb_sys:
 
       answer = input("Skip ch0 and use it for yield estimation only (pu systematics)? (y/n): ").strip().lower()
@@ -2257,7 +2318,8 @@ for i in range(num_bins+1):
               clone_int   = clone.Integral() 
               central_int = histos_reshuffled[var][sig ].Integral()
 
-              clone.Scale( massYields[ sig + "_" + s + direc] * central_int / clone_int) 
+              if clone_int > 0.0: 
+                clone.Scale( massYields[ sig + "_" + s + direc] * central_int / clone_int) 
               histos_reshuffled[var] [ sig + "_" + s + direc] = clone 
   
   
@@ -2269,22 +2331,24 @@ for i in range(num_bins+1):
               clone_int   = clone.Integral() 
               central_int = histos_reshuffled[var][sig ].Integral()
 
-              clone.Scale( massYields[ sig + "_" + s + direc] * central_int / clone_int) 
+              if clone_int > 0.0: 
+                clone.Scale( massYields[ sig + "_" + s + direc] * central_int / clone_int) 
               histos_reshuffled[var] [ sig + "_" + s + direc] = clone 
   
 
     #if var == "phiPi_m" and i == 1 and bsTau_sys and modifyBsTau:
-    if i > 0 and bsTau_sys and modifyBsTau:
+    if i > 0 and bs_tau_sys and modifyBsTau:
         print("====> Redefining bsTau uncert. shape templates") 
         for direc in ["Up", "Down"]:                                  
-          for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu"]:  
+          for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu", "Hb_bs_fd","Hb_bs_dc"]:  
 
 
             clone       = histos_reshuffled[var][sig + "_" + "bsTau" + direc].Clone()
             clone_int   = clone.Integral() 
             central_int = histos_reshuffled[var][sig ].Integral()
  
-            clone.Scale( massYields[ sig + "_" + "bsTau" + direc] * central_int / clone_int) 
+            if clone_int > 0.0: 
+              clone.Scale( massYields[ sig + "_" + "bsTau" + direc] * central_int / clone_int) 
             histos_reshuffled[var] [ sig + "_" + "bsTau" + direc] = clone 
 
  
@@ -2294,16 +2358,33 @@ for i in range(num_bins+1):
         for direc in ["Up", "Down"]:                                  
           for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu","Hb","Hb_bs_fd","Hb_bs_dc","Hb_bpm","Hb_b0","Hb_lambdab","Hb_others"]:  
  
+ 
             clone       = histos_reshuffled[var][sig + "_" + "pu" + direc].Clone()
             clone_int   = clone.Integral() 
             central_int = histos_reshuffled[var][sig ].Integral()
- 
-            clone.Scale( massYields[ sig + "_" + "pu" + direc] * central_int / clone_int) 
+
+            if clone_int > 0.0: 
+              clone.Scale( massYields[ sig + "_" + "pu" + direc] * central_int / clone_int) 
             histos_reshuffled[var] [ sig + "_" + "pu" + direc] = clone 
 
-    if i > 0 and combSys and modifyComb:
+    if i > 0 and bs_kin_sys and modifyBsKin:
+        print("====> Redefining bs kin uncert. shape templates") 
+        for direc in ["Up", "Down"]:                                  
+          for sig in ["DsTau", "DsTau_blind", "DsMu", "DsStarTau","DsStarTau_blind","DsStarMu","Hb_bs_fd","Hb_bs_dc"]:  
+ 
+            clone       = histos_reshuffled[var][sig + "_" + "bsKin" + direc].Clone()
+            clone_int   = clone.Integral() 
+            central_int = histos_reshuffled[var][sig ].Integral()
+ 
+            if clone_int > 0.0: 
+              clone.Scale( massYields[ sig + "_" + "bsKin" + direc] * central_int / clone_int) 
+            histos_reshuffled[var] [ sig + "_" + "bsKin" + direc] = clone 
 
-        print("====> Redefining pu uncert. shape templates") 
+
+    #if i > 0 and combSys and modifyComb:
+    if i > 0 and comb_sys and modifyComb:
+
+        print("====> Redefining comb uncert. shape templates") 
         for direc in ["Up", "Down"]:                                  
 
           sig = "Data_sf_pimu" 
@@ -2311,7 +2392,8 @@ for i in range(num_bins+1):
           clone_int   = clone.Integral() 
           central_int = histos_reshuffled[var][sig ].Integral()
  
-          clone.Scale( massYields[ sig + "_" + "comb" + direc] * central_int / clone_int) 
+          if clone_int > 0.0: 
+            clone.Scale( massYields[ sig + "_" + "comb" + direc] * central_int / clone_int) 
           histos_reshuffled[var] [ sig + "_" + "comb" + direc] = clone 
 
 
@@ -2365,3 +2447,127 @@ for i in range(num_bins+1):
   ##  createBinnedPlots(split,binning) 
   ##
   ##
+
+
+
+#save mass Yields to get yield ucnertainty
+
+# Source - https://stackoverflow.com/a/7100202
+# Posted by Marty, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-08-15, License - CC BY-SA 4.0
+
+import json
+with open(f'{toSave_plots}/yieldUncertainties.json', 'w') as f:
+    json.dump(massYields, f)
+
+
+
+bs_lt_up   = [] 
+bs_lt_down = [] 
+
+for key,value in massYields.items():
+
+  #bs lifetime
+  if "bsTauUp" in key:
+
+    #print(f"Lifetime uncertainty for {key} is:", round(value,3) )
+    bs_lt_up .append( value)
+ 
+  if "bsTauDown" in key:
+
+    #print(f"Lifetime uncertainty for {key} is:", round(value,3) )
+    bs_lt_down .append (value)
+
+print(" ====> Average lifetime uncertainty up: ", sum(bs_lt_up)/len(bs_lt_up))
+print(" ====> Average lifetime uncertainty down: ", sum(bs_lt_down)/len(bs_lt_down))
+ 
+bs_kin_up   = []
+bs_kin_down = []
+
+for key,value in massYields.items():
+
+  #bs kinematics 
+  if "bsKinUp" in key:
+
+    #print(f"Kinematic uncertainty for {key} is:", round(value,3) )
+    bs_kin_up .append(value)
+ 
+  if "bsKinDown" in key:
+
+    #print(f"Kinematic uncertainty for {key} is:", round(value,3) )
+    bs_kin_down .append(value)
+ 
+print(" ====> Average kinematics uncertainty up: ", sum(bs_kin_up)/len(bs_kin_up))
+print(" ====> Average kinematics uncertainty down: ", sum(bs_kin_down)/len(bs_kin_down))
+ 
+pu_up   = [] 
+pu_down = [] 
+
+
+for key,value in massYields.items():
+
+  #pileup
+  if "_puUp" in key:
+
+    #print(f"Pileup uncertainty for {key} is:", round(value,3) )
+    pu_up .append( value)
+ 
+  if "_puDown" in key:
+
+    #print(f"Pileup uncertainty for {key} is:", round(value,3) )
+    pu_down .append( value)
+
+print(" ====> Average pileup uncertainty up: ", sum(pu_up)/len(pu_up))
+print(" ====> Average pileup uncertainty down: ", sum(pu_down)/len(pu_down))
+ 
+
+for i in range (1,7):
+
+  hammer_up = []
+  hammer_down = []
+ 
+  for key,value in massYields.items():
+
+
+    if "Star" in key: continue
+    #pileup
+
+    if f"_e{i}Up" in key:
+
+      print(f"Hammer uncertainty for {key} is:", round(value,3) )
+      hammer_up .append(value)
+ 
+    if f"_e{i}Down" in key:
+
+      print(f"Hammer uncertainty for {key} is:", round(value,3) )
+      hammer_down .append(value)
+
+
+  print(f" ====> Average hammer uncertainty e{i}Bcl up: ", sum(hammer_up)/len(hammer_up))
+  print(f" ====> Average hammer uncertainty e{i}Bcl down: ", sum(hammer_down)/len(hammer_down))
+ 
+for i in range (1,11):
+
+  hammer_up = []
+  hammer_down = []
+  
+  for key,value in massYields.items():
+
+
+    if "Star" not in key: continue
+    #pileup
+
+    if f"_e{i}Up" in key:
+
+      print(f"Hammer uncertainty for {key} is:", round(value,3) )
+      hammer_up .append(value)
+ 
+    if f"_e{i}Down" in key:
+
+      print(f"Hammer uncertainty for {key} is:", round(value,3) )
+      hammer_down .append(value)
+ 
+  print(f" ====> Average hammer uncertainty e{i}Bgl up: ", sum(hammer_up)/len(hammer_up))
+  print(f" ====> Average hammer uncertainty e{i}Bgl down: ", sum(hammer_down)/len(hammer_down))
+ 
+ 
