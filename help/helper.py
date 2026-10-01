@@ -63,14 +63,22 @@ split_by_parts = {
 
 #sig_flatNanos     = ["17_03_2026_11_31_56"] 
 #sig_flatNanos     = ["check_sf_full/26_05_2026_17_56_10_fullBPark"] #including 8p5 and 10p5 
-sig_flatNanos     = ["26_05_2026_17_56_10"] #including 8p5 and 10p5 
+sig_flatNanos     = [
+"26_05_2026_17_56_10",
+"08_09_2026_09_50_00", #NEW!!
+] #including 8p5 and 10p5 
+
 #hb_flatNanos      = ["25_02_2026_16_36_40"]  
 #hb_flatNanos      = ["minimal/25_02_2026_16_36_40_D_only"]  
-hb_flatNanos      = ["26_05_2026_17_59_33"] #including 8p5 and 10p5   
+
+hb_flatNanos      = [
+"26_05_2026_17_59_33",
+"08_09_2026_14_13_48", #NEW!!
+] #including 8p5 and 10p5   
 
 #### BDT 
 
-#bdt_model = "27_02_2026_08_25_42" #model for 02Feb2026_13h29m45s
+bdt_model = "27_02_2026_08_25_42" #model for 02Feb2026_13h29m45s
 #bdt_model="27_02_2026_08_43_51" #evaluated data for model 02Feb2026_13h29m45s (back then different filename)
 
 ##bdt_data_afternn = "09_03_2026_10_22_26" #for model 02Feb2026_13h29m45s
@@ -94,7 +102,17 @@ hb_flatNanos      = ["26_05_2026_17_59_33"] #including 8p5 and 10p5
 #bdt_model="01_07_2026_09_22_13" #for bdt 2026_07_01_00_48_47
 #bdt_model = "02_07_2026_07_53_24" #for bdt 2026_07_01_16_29_30
 
-bdt_model="20_07_2026_22_07_48" ##for bdt 2026_07_01_00_48_47
+#bdt_model="20_07_2026_22_07_48" ##for bdt 2026_07_01_00_48_47
+#bdt_model = "20_08_2026_13_43_09" #for bdt 2026_07_01_00_48_47 but with trigger bug fixed!!
+#bdt_model = "24_08_2026_14_40_14"#for bdt 2026_07_01_00_48_47 but with trigger bug fixed and only right SB!
+#bdt_model = "01_09_2026_11_09_59"#for bdt 2026_07_01_00_48_47 but with new SF and also high mass sideband!
+bdt_model = "03_09_2026_12_06_16"#for bdt 2026_08_31_14_54_56 but with new SF and also high mass sideband!
+#bdt_model="21_09_2026_20_24_53" #for bdt 2026_08_31_14_54_56 high mass only
+#bdt_model = "22_09_2026_12_59_43" #for bdt 2026_09_18_16_49_58 high mass only
+bdt_model = "23_09_2026_14_27_15" #for bdt 2026_09_18_16_49_58 left sideband
+
+bdt_model = "29_09_2026_17_42_15" # EASY BDT ON PT AND ETA ONLY; PRE CLASSIFIER
+
 
 ####### REDO OLD LOGIC
 
@@ -125,7 +143,7 @@ bdt_model="20_07_2026_22_07_48" ##for bdt 2026_07_01_00_48_47
 # kk constrained 
 nn_25_mu7 = "02Feb2026_13h29m45s" #"05Dec2025_11h14m48s" #with new hb: 02Feb2026_13h29m45s
 nn_25_mu9 = "02Feb2026_09h24m08s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026_09h24m08s
-#nn_model = "02Feb2026_13h29m45s"
+nn_model = "02Feb2026_13h29m45s"
 
 #all triggers!
 #nn_model = "2026_06_04_08_08_42" #small NN, 30 epochs only, closes together with BDT above
@@ -139,13 +157,17 @@ nn_25_mu9 = "02Feb2026_09h24m08s" #"05Dec2025_11h15m22s" #with new hb: 02Feb2026
 #nn_model = "2026_06_19_09_32_52" #even bigger bdt :))
 
 # HAMMER ISGW2  everywhere
-nn_model = "2026_07_01_00_48_47" # bdt with photon info :))
 #nn_model = "2026_07_01_16_29_30" # bdt wout photon info
 
 #nn_model = "2026_07_14_08_42_58" #nn wirth photon info and mass
 #nn_model = "2026_07_14_13_44_52" #same as for cms week presi (same features, mu7 only, no SF, but no bdt corr)
 
 #nn_model = "2026_07_16_09_02_09"
+
+#nn_model = "2026_07_01_00_48_47" # bdt with photon info :))
+nn_model="2026_08_31_14_54_56"
+nn_model = "2026_09_18_16_49_58" # bdt with 7 classes!
+nn_model = "2026_09_30_10_43_48" #easy bdt with 7 lclasses, jsut on pt and eta
 
 cons_pastNN_25_mu7    = {}
 cons_pastNN_25_mu7["sig"  ] = "sig_"    + nn_25_mu7
@@ -281,9 +303,19 @@ f'(mu_pt > 7.0)',
 #sig_hammer_flatNano = "signal_default_28_05_2026_12_38_44" #same as line above but with minimal selection  + lifetime uncertainty + riccardos SF - D only!!!! 
 #sig_hammer_flatNano= "signal_default_28_05_2026_15_04_16" # UNFILTERED AND HAMMERED WITH CLN
 #sig_hammer_flatNano= "signal_default_29_05_2026_07_47_53" # FILTERED: with_iso AND HAMMERED 
+
 #sig_hammer_flatNano= "signal_default_30_06_2026_12_06_43" # UNFILTERED AND HAMMERED WITH ISGW2 
 #sig_hammer_flatNano= "signal_default_01_07_2026_00_43_46" # FILTERED: with_iso AND HAMMERED 
-sig_hammer_flatNano= "signal_default_30_07_2026_11_01_16" # FILTERED: with_iso AND HAMMERED AND PU WEIGHTS
+#sig_hammer_flatNano= "signal_default_30_07_2026_11_01_16" # FILTERED: with_iso AND HAMMERED AND PU WEIGHTS
+#sig_hammer_flatNano= "signal_default_10_08_2026_16_45_20" # FILTERED: with_iso AND HAMMERED AND PU WEIGHTS (correct) and BS KINEMATICS
+#sig_hammer_flatNano= "signal_default_11_08_2026_08_53_12" # FILTERED: minimal AND HAMMERED AND PU WEIGHTS (correct) and BS KINEMATICS
+#sig_hammer_flatNano = "signal_default_28_08_2026_09_41_14" # FILTERED: with_iso and HAMMERED and all corr + dxy_corr!!
+#sig_hammer_flatNano = "signal_default_30_08_2026_16_52_36" # FILTERED: with_iso and HAMMERED and all corr + dxy_corr AND OLD sf!!
+sig_hammer_flatNano = "signal_default_17_09_2026_20_50_17" # FILTERED: with_iso and HAMMERED and all corr + dxy_corr AND latest sf!!
+
+#sig_hammer_flatNano2= "signal_default_15_09_2026_15_18_18" # UNFILTERED EXTENSION AND HAMMERED WITH ISGW2
+#sig_hammer_flatNano2= "signal_default_16_09_2026_08_33_31" # FILTERED EXTENSION: with_iso and HAMMERED and all corr + dxy_corr AND OLD sf!! 
+sig_hammer_flatNano2= "signal_default_17_09_2026_20_50_37" # FILTERED EXTENSION: with_iso and HAMMERED and all corr + dxy_corr AND latest sf!! 
 
 isoflip = ' && '.join([ #remove the charge and ds+mu mass cuts! 
 '(rel_iso_03_pv > 0.3)',
@@ -358,6 +390,8 @@ averageWeightsYaml = "02_07_2026_15_35_35" #with the new all-ISGW2 MC
 dsmu_for_time = "19_03_2026_12_19_50" #inside pnfs/.../flatNano
 #unfiltered gen lvl sample including time 
 dsmu_with_time = "19_03_2026_16_32_11"
+#unfiltered gen lvl sample including rapidity
+dsmu_with_y = "07_08_2026_13_05_05"
 
 # prefit plots
 # 09_12_2025_11_37_43 #mu7
