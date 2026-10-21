@@ -103,33 +103,70 @@ if args.channel == "sig":
   forLoop = f"df = df.Define  ('bs_time'    ,'get_time(gen_pv_x, gen_pv_y, gen_pv_z, gen_sv_x, gen_sv_y, gen_sv_z, gen_bs_boost)') \n"
   forLoop += f"df \\"
 
-  #todo add up/down for PU
+  forLoop += f"\n.Define  ('w_bs_tau'          ,'get_w_bs_tau      (bs_time)                             ') \\"
+  forLoop += f"\n.Define  ('w_bs_tau_up'       ,'get_w_bs_tau_up   (bs_time)                             ') \\"
+  forLoop += f"\n.Define  ('w_bs_tau_down'     ,'get_w_bs_tau_down (bs_time)                             ') \\"
+
   forLoop += f"\n.Define  ('w_pu'              ,'get_w_pu              (gen_numPUInts)           ') \\"
   forLoop += f"\n.Define  ('w_pu_up'           ,'get_w_pu_up           (gen_numPUInts)           ') \\"
   forLoop += f"\n.Define  ('w_pu_down'         ,'get_w_pu_down         (gen_numPUInts)           ') \\"
 
-  #forLoop += f"\n.Redefine('trigger_sf'       ,'get_trigger_sf    (mu_pt, dxy_mu_sig_pv)   ') \\"
-  forLoop += f"\n.Define  ('trigger_sf'        ,'get_trigger_sf    (mu_pt, dxy_mu_sig_pv)   ') \\"
-  forLoop += f"\n.Define  ('trigger_sf_err_hi' ,'get_trigger_sf_err_hi(mu_pt, dxy_mu_sig_pv)   ') \\"
-  forLoop += f"\n.Define  ('trigger_sf_err_lo' ,'get_trigger_sf_err_lo(mu_pt, dxy_mu_sig_pv)   ') \\"
-  #forLoop += f"\n.Define  ('trigger_sf_err'   ,'get_trigger_sf_err(mu_pt, dxy_mu_sig_pv)   ') \\"
-  forLoop += f"\n.Define  ('w_bs_tau'          ,'get_w_bs_tau      (bs_time)                ') \\"
-  forLoop += f"\n.Define  ('w_bs_tau_up'       ,'get_w_bs_tau_up   (bs_time)                ') \\"
-  forLoop += f"\n.Define  ('w_bs_tau_down'     ,'get_w_bs_tau_down (bs_time)                ') \\"
+  forLoop += f"\n.Define  ('gen_bs_y'          ,'get_rapidity(gen_bs_eta, gen_bs_phi, gen_bs_pt, gen_bs_m)') \\"
+  forLoop += f"\n.Define  ('gen_abs_bs_y'      ,'abs(gen_bs_y)                                           ') \\"
+  forLoop += f"\n.Define  ('w_bs_kin'          ,'get_w_bs_kin(gen_bs_pt, gen_abs_bs_y)                   ') \\"
+  forLoop += f"\n.Define  ('w_bs_kin_up'       ,'get_w_bs_kin_up(gen_bs_pt, gen_abs_bs_y)                ') \\"
+  forLoop += f"\n.Define  ('w_bs_kin_down'     ,'get_w_bs_kin_down(gen_bs_pt, gen_abs_bs_y)              ') \\"
+
+  forLoop += f"\n.Define  ('abs_mu_eta'        ,'abs(mu_eta)                                             ') \\"
+  forLoop += f"\n.Define  ('dxy_mu_err_pv_corr','get_corr_dxy(mu_pt, abs_mu_eta, dxy_mu_err_pv)          ') \\"
+  forLoop += f"\n.Define  ('dxy_mu_sig_pv_corr','dxy_mu_pv/dxy_mu_err_pv_corr          ') \\"
+
+  forLoop += f"\n.Define  ('trigger_sf'        ,'get_trigger_sf       (mu_pt, dxy_mu_sig_pv_corr)        ') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_hi' ,'get_trigger_sf_err_hi(mu_pt, dxy_mu_sig_pv_corr)        ') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_lo' ,'get_trigger_sf_err_lo(mu_pt, dxy_mu_sig_pv_corr)        ') \\"
+
+  forLoop += f"\n.Define  ('trigger_sf_old'        ,'get_trigger_sf_old       (mu_pt, dxy_mu_sig_pv_corr)') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_hi_old' ,'get_trigger_sf_err_hi_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_lo_old' ,'get_trigger_sf_err_lo_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
+
 
 if args.channel == "hb":
-  forLoop  = f"df.Define  ('trigger_sf'        ,'get_trigger_sf    (mu_pt, dxy_mu_sig_pv)') \\"
+  forLoop  = f"df = df.Define  ('bs_time'    ,'get_time(gen_pv_x, gen_pv_y, gen_pv_z, gen_sv_x, gen_sv_y, gen_sv_z, gen_bs_boost)') \n"
+  forLoop += f"df \\"
+
+  forLoop += f"\n.Define  ('w_bs_tau'          ,'get_w_bs_tau      (bs_time)                             ') \\"
+  forLoop += f"\n.Define  ('w_bs_tau_up'       ,'get_w_bs_tau_up   (bs_time)                             ') \\"
+  forLoop += f"\n.Define  ('w_bs_tau_down'     ,'get_w_bs_tau_down (bs_time)                             ') \\"
+
   forLoop += f"\n.Define  ('w_pu'              ,'get_w_pu              (gen_numPUInts)           ') \\"
   forLoop += f"\n.Define  ('w_pu_up'           ,'get_w_pu_up           (gen_numPUInts)           ') \\"
   forLoop += f"\n.Define  ('w_pu_down'         ,'get_w_pu_down         (gen_numPUInts)           ') \\"
-  forLoop += f"\n.Define  ('trigger_sf_err_hi' ,'get_trigger_sf_err_hi(mu_pt, dxy_mu_sig_pv)') \\"
-  forLoop += f"\n.Define  ('trigger_sf_err_lo' ,'get_trigger_sf_err_lo(mu_pt, dxy_mu_sig_pv)') \\"
-  #forLoop += f"\n.Define  ('trigger_sf_err'   ,'get_trigger_sf_err(mu_pt, dxy_mu_sig_pv)') \\"
+
+  forLoop += f"\n.Define  ('gen_bs_y'          ,'get_rapidity(gen_bs_eta, gen_bs_phi, gen_bs_pt, gen_bs_m)') \\"
+  forLoop += f"\n.Define  ('gen_abs_bs_y'      ,'abs(gen_bs_y)                                           ') \\"
+  forLoop += f"\n.Define  ('w_bs_kin'          ,'get_w_bs_kin(gen_bs_pt, gen_abs_bs_y)                   ') \\"
+  forLoop += f"\n.Define  ('w_bs_kin_up'       ,'get_w_bs_kin_up(gen_bs_pt, gen_abs_bs_y)                ') \\"
+  forLoop += f"\n.Define  ('w_bs_kin_down'     ,'get_w_bs_kin_down(gen_bs_pt, gen_abs_bs_y)              ') \\"
+
+  forLoop += f"\n.Define  ('abs_mu_eta'        ,'abs(mu_eta)                                             ') \\"
+  forLoop += f"\n.Define  ('dxy_mu_err_pv_corr','get_corr_dxy(mu_pt, abs_mu_eta, dxy_mu_err_pv)          ') \\"
+  forLoop += f"\n.Define  ('dxy_mu_sig_pv_corr','dxy_mu_pv/dxy_mu_err_pv_corr          ') \\"
+
+  forLoop += f"\n.Define  ('trigger_sf'        ,'get_trigger_sf       (mu_pt, dxy_mu_sig_pv_corr)        ') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_hi' ,'get_trigger_sf_err_hi(mu_pt, dxy_mu_sig_pv_corr)        ') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_lo' ,'get_trigger_sf_err_lo(mu_pt, dxy_mu_sig_pv_corr)        ') \\"
+
+  forLoop += f"\n.Define  ('trigger_sf_old'        ,'get_trigger_sf_old       (mu_pt, dxy_mu_sig_pv_corr)') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_hi_old' ,'get_trigger_sf_err_hi_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
+  forLoop += f"\n.Define  ('trigger_sf_err_lo_old' ,'get_trigger_sf_err_lo_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
+
+
+
 
 if args.channel == "data":
   forLoop = "df \\"
  
-  if (dt_in == "20260227_105644") or (dt_in == "20260227_104615") or (dt_in == "20260227_102607"):
+  if ("20260227_105644" in dt_in ) or ("20260227_104615" in dt_in ) or ("20260227_102607" in dt_in ):
     #dirty fix
     #since the period D was produced on crb earlier this year without the 8p5 and 10p5 parts, lets add a column manually
     #we set the trigger zero all the time, since it was never on in period D!
@@ -198,7 +235,8 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
          '#!/bin/bash',
          'eval "$(conda shell.bash hook)"',
          #'conda activate /work/pahwagne/environments/skim_env',
-         'conda activate /work/pahwagne/environments/hammer3p8',
+         #'conda activate /work/pahwagne/environments/hammer3p8',
+         'conda activate /work/pahwagne/environments/tf',
          f'mkdir -p /scratch/pahwagne/skimmed_{dt_out}_{args.selection}',
          f'python /work/pahwagne/RDsTools/skim/{dt_in}_{args.selection}/skimmer_{i}.py',
          f'xrdcp {fout} {pnfs_loc}',
