@@ -181,6 +181,7 @@ with open( args.toSave_plots + f"/info.txt", "a") as f:
 #data_selec = " && ((mu7_ip4 == 1))"
 #data_selec = " && ((mu8_ip3 == 1))"
 #data_selec = " && ((mu8_ip5 == 1))"
+#data_selec = " && ((mu8p5_3p5 == 1))"
 #data_selec = " && ((mu8_ip6 == 1))"
 #data_selec = " && ((mu9_ip4 == 1))"
 #data_selec = " && ((mu9_ip5 == 1))"
@@ -198,6 +199,7 @@ data_selec = " "
 #mc_selec = " && ((mu7_ip4 == 1))"
 #mc_selec = " && ((mu8_ip3 == 1))"
 #mc_selec = " && ((mu8_ip5 == 1))"
+#mc_selec = " && ((mu8p5_3p5 == 1))"
 #mc_selec = " && ((mu8_ip6 == 1))"
 #mc_selec = " && ((mu9_ip4 == 1))"
 #mc_selec = " && ((mu9_ip5 == 1))"
@@ -282,14 +284,40 @@ print(f" ===> Start creating RDataFrames")
 
 
 #prepare the defaults
-files_sig  = sig_flatNanos
-files_hb   = hb_flatNanos
-files_data = data_flatNanos
+#files_sig  = sig_flatNanos 
+#files_sig  = [f + "_RS_only_fullBPark" for f in sig_flatNanos]
+#files_sig  = [f + "_RS_only" for f in sig_flatNanos]
+files_sig  = [sig_hammer_flatNano]
+files_hb   = [f + "_RS_RANDOM_fullBPark" for f in hb_flatNanos]
+#files_hb   = [f + "_RS_only" for f in hb_flatNanos]
+
+files_data = []
+if parts:
+  for part in parts:
+    files_data += split_by_parts[f"data_bph{part}"]
+else:
+  files_data = data_flatNanos 
+
+#NEW!!
+base_data = files_data.copy() 
+#files_data    = [f + "_RS_RANDOM" for f in base_data]
+files_data    = [f + "_RS_RANDOM_fullBPark" for f in base_data]
+#files_data_sf = [f + "_WS_RANDOM" for f in base_data]
+files_data_sf = [f + "_WS_RANDOM_fullBPark" for f in base_data]
+#files_data_sf = files_data 
 
 #default: we always run on pre-skimmed files
-path_sig  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/"
-path_hb   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/"
-path_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/"
+path_sig  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/hammer/25/{sig_hammer_flatNano}"
+#path_sig  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/"
+path_hb   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/"
+path_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/"
+#path_data_sf= f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/"
+path_data_sf= path_data 
+
+#path_sig  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/"
+#path_hb   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/"
+#path_data = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/"
+
 
 #update sig
 if hammer_central:
@@ -303,23 +331,28 @@ if pastNN:
   files_sig  = [f"sig_{nn_model}"]
   files_hb   = [f"hb_{nn_model}" ]
   if parts:
-    files_data = [f"data_bph{part}_{nn_model}" for part in parts]
+    #files_data = [f"data_bph{part}_{nn_model}" for part in parts]
+    files_data = [f"data_bph{part}_RS_RANDOM_{nn_model}" for part in parts]
+    #files_data_sf = [f"data_bph{part}_{nn_model}" for part in parts]
+    files_data_sf = [f"data_bph{part}_WS_RANDOM_{nn_model}" for part in parts]
   else:
     files_data = [f"data_{nn_model}" ]
 
   path_sig   = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
   path_hb    = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
   path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
+  path_data_sf= f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/"
 
 #update data
-if (bdt and not bdt2):
-
-  if parts:  
-    files_data = [f"{bdt_model}/data_bph{part}_{bdt_model}/" for part in parts]
-  else:
-    files_data = [f"{bdt_model}" ]
-
-  path_data  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
+#if (bdt and not bdt2):
+#
+#  if parts:  
+#    #files_data = [f"{bdt_model}/data_bph{part}_{bdt_model}/" for part in parts]
+#    files_data_sf = [f"{bdt_model}/data_bph{part}_{bdt_model}/" for part in parts]
+#  else:
+#    files_data = [f"{bdt_model}" ]
+#
+#  path_data_sf  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/bdt_weighted_data/" 
 
 
 #update data again (bdt2 only exists with nn!)
@@ -343,6 +376,7 @@ chainSig,   rdfSig       = getRdf( files_sig , path_sig , debug = debug)
 chainHb,    rdfHb        = getRdf( files_hb  , path_hb  , debug = debug)
 _,          rdfHbHammer  = getRdf( files_hb  , path_hb  , debug = debug)
 chainData,  rdfData      = getRdf( files_data, path_data, debug = debug)
+chainDataSf,  rdfDataSf   = getRdf( files_data_sf, path_data_sf, debug = debug)
 
  
 #########################################
@@ -534,10 +568,28 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   #bool          #true for MC                            #true for data
   mass_shifted         = f"(run==1) * 0.9995 * phiPi_m         + (run!=1) * phiPi_m"
   mass_shifted_smeared = f"(run==1) * 0.9995 * smear * phiPi_m + (run!=1) * phiPi_m"
+  mass_shifted_smeared = f"(run==1) * 0.9995 *         phiPi_m + (run!=1) * phiPi_m"
   #mass_expr    = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
 
-  # Tilt mass shape of combinatorial --> weights that change along y
-  # This is a per event weights! Change along y, needs to be applied for all variables
+  k1_wrong     = f"fabs(phiPi_m_k1_wrong - 1.869)"
+  k2_wrong     = f"fabs(phiPi_m_k2_wrong - 1.869)"
+  k1_mu_charge = f"(k1_charge * mu_charge)"
+  k2_mu_charge = f"(k2_charge * mu_charge)"
+  
+  phiPi_m_wrong_corr = f"( ({k2_mu_charge} < 0) * phiPi_m_k2_wrong + ({k1_mu_charge} < 0) * phiPi_m_k1_wrong)"
+
+
+  #if mc :
+  #  if total_w_str != "":
+  #    total_w_str += f"* ( 0.9 * (mu_pt < 9.0) + 1.05 * ((mu_pt >= 9.0) && (mu_pt<12.0)) + 1.1 *(mu_pt>=12.0) )"#linear tilt  
+  #  else:
+  #    total_w_str += f"( 0.9 * (mu_pt < 9.0) + 1.05 * ((mu_pt >= 9.0) && (mu_pt<12.0)) + 1.1 * (mu_pt>=12.0) )" #linear tilt
+  #  print(f"====> tilting combinatorial by applying weight {total_w_str}")
+
+
+
+  ## Tilt mass shape of combinatorial --> weights that change along y
+  ## This is a per event weights! Change along y, needs to be applied for all variables
   if comb:
 
     
@@ -558,34 +610,75 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
     mC = (m0+m1)/2
 
     if total_w_str != "":
-      #total_w_str  += f" * (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
-      #total_w_str  += f" * (( {a_new} * phiPi_m + {b_new} ) / ({a} * phiPi_m + {b} ))"
       total_w_str += f"* (1.0 + {tilt} * (phiPi_m - {mC})/({m1} - {m0}))"
-      #total_w_str += f"* (std::exp({tilt} * (phiPi_m - {mC})) )"#exp tilt  
+      #total_w_str += f"* (1.0 + 0.0 * (phiPi_m - {mC})/({m1} - {m0}))"
 
     else:
-      #total_w_str  += f"   (( {a} * phiPi_m + {b} ) / ( {n0_exp} * std::exp({tau} * phiPi_m )))"
-      #total_w_str  += f"  (( {a_new} * phiPi_m + {b_new} ) / ({a} * phiPi_m + {b} ))"
       total_w_str += f" (1.0 + {tilt} * (phiPi_m - {mC})/({m1} - {m0}))"
-      #total_w_str += f" (std::exp({tilt} * (phiPi_m - {mC})) )"#exp tilt  
+      #total_w_str += f" (1.0 + 0.0 * (phiPi_m - {mC})/({m1} - {m0}))"
 
     print(f"====> tilting combinatorial by applying weight {total_w_str}")
     
-  #correct dxy
-  #dxy_err_expr = f"(run==1) * dxy_mu_err_pv_corr + (run!=1) * dxy_mu_err_pv"
-  #dxy_sig_expr = f"(run==1) * dxy_mu_sig_pv_corr + (run!=1) * dxy_mu_sig_pv"
+  #correct q2_coll with scaled 4 momentum 
+
+  def p4_corr(px, py, pz, mass, scale):
+ 
+    #scale 3 vec
+    px_s = scale * px
+    py_s = scale * py
+    pz_s = scale * pz
+   
+    #new energy
+    E_s  = math.sqrt(px_s**2 + py_s**2 + pz_s**2 + mass**2)
+  
+    p4 = ROOT.TLorentzVector()
+    p4.SetPxPyPzE(px_s, py_s, pz_s, E_s)
+ 
+    return p4 
+
+  ROOT.gInterpreter.Declare("""auto p4_corr(double px, double py, double pz, double mass, double scale) {
+
+    double px_s = scale * px;
+    double py_s = scale * py;
+    double pz_s = scale * pz;
+    double E_s  = std::sqrt(px_s*px_s + py_s*py_s + pz_s*pz_s + mass*mass);
+
+    TLorentzVector p4;
+    p4.SetPxPyPzE(px_s, py_s, pz_s, E_s);
+    return p4;
+
+  }
+  """)
+ 
 
   #re-order k1 and k2 after pt
   k1_expr      = f" k1_pt * (k1_pt > k2_pt) + k2_pt * (k1_pt <= k2_pt) "
   k2_expr      = f" k2_pt * (k1_pt > k2_pt) + k1_pt * (k1_pt <= k2_pt) "
 
+
+  #pick new (scaled) q2 depending on of its MC or not
+  q2_coll_expr     = f"(run==1) * q2_coll_new + (run!=1) * q2_coll"
+  q2_lhcb_alt_expr = f"(run==1) * q2_lhcb_alt_new + (run!=1) * q2_lhcb_alt"
+
   rdf_filt = rdf\
              .Define("m_shifted",mass_shifted)\
+             .Define("bs_coll"         ,"p4_corr(bs_px_coll,     bs_py_coll,     bs_pz_coll,     5.366, 1.0)")\
+             .Define("bs_lhcb_alt"     ,"p4_corr(bs_px_lhcb_alt, bs_py_lhcb_alt, bs_pz_lhcb_alt, 5.366, 1.0)")\
+             .Define("ds_new"          ,"p4_corr(ds_refitted_px, ds_refitted_py, ds_refitted_pz, 1.968, 0.995)")\
+             .Define("q2_coll_new"     ,"(bs_coll     - ds_new).M2()")\
+             .Define("q2_lhcb_alt_new" ,"(bs_lhcb_alt - ds_new).M2()")\
+             .Define("q2_coll_corr"    ,q2_coll_expr)\
              .Filter(selection)\
              .Define("smear","gRandom->Gaus(1.0, 0.001)")\
              .Define("m_corr"   ,mass_shifted_smeared)\
+             .Define("phiPi_m_wrong_corr"   ,phiPi_m_wrong_corr)\
              .Define("k1_corr",k1_expr)\
              .Define("k2_corr",k2_expr)\
+             .Define("q2_lhcb_alt_corr",q2_lhcb_alt_expr)\
+
+  if not mc:
+    rdf_filt = rdf_filt.Define("dxy_mu_err_pv_corr","dxy_mu_err_pv")\
+                       .Define("dxy_mu_sig_pv_corr","dxy_mu_sig_pv")\
 
   if mc:
     rdf_filt = rdf_filt.Define("is_bs","((gen_sig >= 300 && gen_sig < 400) || ((gen_sig == 0) || (gen_sig == 1) || (gen_sig == 10) || (gen_sig ==11))) ")
@@ -614,7 +707,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       #model = special_models_bdt[var + f"_bin{region}" ]
       #model = special_models_score2[var + f"_bin{region}" ]
       #model = special_models_cmsweek[var + f"_bin{region}" ]
-      model = special_models_class[var + f"_bin{region}" ]
+      #model = special_models_class[var + f"_bin{region}" ]
       
 
       ##############################################
@@ -633,18 +726,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       # this has to happen in the variable loop bc the histograms are per variable!
 
       if combSys:
-        #combFolder="03_07_2026_15_56_21" 
-        #combFolder="17_07_2026_14_29_34"#for the old binnning
-        #combFolder="23_07_2026_07_57_05"#for the new binning 
-        #combFolder="23_07_2026_16_40_41"#for the new binning with cut 0.01 and more bins
-        #combFolder="24_07_2026_15_01_12"#for the new binning with cut 0.01 and more bins
-        #combFolder="24_07_2026_12_50_08"
-        #combFolder="12_08_2026_15_48_32"
-        #combFolder="25_08_2026_21_17_22"
-        #combFolder="28_08_2026_05_25_51"
-        #combFolder="01_09_2026_08_22_41"
-        #combFolder="01_09_2026_12_42_31"
-        combFolder="01_09_2026_16_55_41" #including q2_lhcb
+        combFolder="01_09_2026_12_42_31" 
 
         #with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
         with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch0.json"  ,"r") as f:
@@ -698,16 +780,14 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       ##############################################
       print(var)
 
-      if   var == "phiPi_m": tofill = "m_corr"
-      elif var == "k1_pt": tofill = "k1_corr"
-      elif var == "k2_pt": tofill = "k2_corr"
-      elif "dxy_mu_err_pv" in var: 
-        if mc: tofill = "dxy_mu_err_pv_corr"
-        else : tofill = "dxy_mu_err_pv"
-      elif "dxy_mu_sig_pv" in var: 
-        if mc: tofill = "dxy_mu_sig_pv_corr"
-        else : tofill = "dxy_mu_sig_pv"
-
+      if   var == "phiPi_m"      : tofill = "m_corr"
+      if   var == "phiPi_m_wrong": tofill = "phiPi_m_wrong_corr"
+      elif var == "k1_pt"        : tofill = "k1_corr"
+      elif var == "k2_pt"        : tofill = "k2_corr"
+      elif var == "q2_coll"      : tofill = "q2_coll_corr"
+      elif var == "q2_lhcb_alt"  : tofill = "q2_lhcb_alt_corr"
+      elif var == "dxy_mu_err_pv": tofill = "dxy_mu_err_pv_corr"
+      elif var == "dxy_mu_sig_pv": tofill = "dxy_mu_sig_pv_corr"
       else: tofill = var
       print(f"filling variable {tofill}")
 
@@ -1070,7 +1150,7 @@ if args.channel == "Data":
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Data_{args.bin}.root")
 
 if args.channel == "Data_sf_pimu":
-  histo1d       = createHistos(args.data_selection,  rdfData         ,  sf_weights = bdt, sf_weights2 = bdt2,            region = args.bin, comb = "comb", combSys = True)
+  histo1d       = createHistos(args.data_selection,  rdfDataSf ,  sf_weights = bdt, sf_weights2 = bdt2,            region = args.bin, comb = "comb", combSys = False)
   saveHisto1D(histo1d, f"{args.toSave_plots}/histos_Data_sf_pimu_{args.bin}.root")
 
 

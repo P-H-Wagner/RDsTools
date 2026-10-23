@@ -158,7 +158,13 @@ def getColorAndLabelSignalDistinction(key):
               "Data_sf_pimu":    ROOT.TColor.GetColor("#717581"), #ROOT.kGray+1,
               "Data_sf_both":    ROOT.TColor.GetColor("#717581"), #ROOT.kGray+1,
               "Data_sf_one":     ROOT.TColor.GetColor("#717581"), #ROOT.kGray+1,
-              "Data":            ROOT.kBlack}
+              "Data":            ROOT.kBlack
+
+
+
+  }
+
+  
 
   if "Hb" in key:
     hbColor,hbLabel = getHbColorAndLabel()
@@ -406,7 +412,8 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
   #supress data plotting in SR. region is a string of type: ch0
   dataBlind = False
-  if ((int(region[2:]) >= 5) and (int(region[2:]) < 8)) or ((int(region[2:]) >= 14) and (int(region[2:]) < 17)): 
+  if ((int(region[2:]) >= 5) and (int(region[2:]) < 9)) or ((int(region[2:]) >= 14) and (int(region[2:]) < 18)): 
+  #if ((int(region[2:]) == 2) or (int(region[2:]) == 3)): 
     dataBlind = True 
   #  color["DsTau"] = color["DsMu"]
   #  color["DsStarTau"] = color["DsStarMu"]
@@ -503,6 +510,7 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   #for key in histos.keys():
   #  if 'Data' not in key:
   #    histos[key].Scale(histos["Data"].Integral() / ntot )
+  #print(f"data scale is:", histos["Data"].Integral() / ntot )
 
   # add comb to stack and err 
 
@@ -806,18 +814,18 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
 
   if logx:
-    c1.SaveAs( toSave + f"/logx/{var}_{name}.pdf")
-    c1.SaveAs( toSave + f"/logx/{var}_{name}.png")
+    c1.SaveAs( toSave + f"/logx/{var}_{name}_stacked.pdf")
+    c1.SaveAs( toSave + f"/logx/{var}_{name}_stacked.png")
 
   elif logy:
-    c1.SaveAs( toSave + f"/logy/{var}_{name}.pdf")
-    c1.SaveAs( toSave + f"/logy/{var}_{name}.png")
+    c1.SaveAs( toSave + f"/logy/{var}_{name}_stacked.pdf")
+    c1.SaveAs( toSave + f"/logy/{var}_{name}_stacked.png")
 
 
   else:
-    c1.SaveAs( toSave + f"/{var}_{name}.pdf")
-    c1.SaveAs( toSave + f"/{var}_{name}.png")
-  print(f"===> Produced plot: {var}.pdf")
+    c1.SaveAs( toSave + f"/{var}_{name}_stacked.pdf")
+    c1.SaveAs( toSave + f"/{var}_{name}_stacked.png")
+  print(f"===> Produced plot: {var}_stacked.pdf")
 
 
   # return a copy, otherwise the histosScaled get overwritten when we change histos in f.e. normplots! (Weird???)
@@ -1125,6 +1133,12 @@ def shapesPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk = 
     #print(histos) 
 
   color, labels = getColorAndLabelSignalDistinction("stacked")
+  color["Hb_bs_fd"] = ROOT.kRed
+  color["Hb_bs_dc"] = ROOT.kBlue
+  color["Hb_bs_bpm"] = ROOT.kGreen
+  color["Hb_bs_b0"] = ROOT.kOrange
+
+
 
   for i,key in enumerate(histos.keys()):
     #print("my key in histos is: ", key)
@@ -1242,6 +1256,13 @@ def shapesPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk = 
   leg.AddEntry(histos["DsStarTau"]  ,'B_{s}#rightarrow D*_{s}#tau#nu','L' )
   leg.AddEntry(histos["DsTau"]      ,'B_{s}#rightarrow D_{s}#tau#nu' ,'L' )
 
+  #leg.AddEntry(histos["Hb_bs_fd"]       ,'B_{s} #rightarrow D_{s} + #mu (fd)','F' )
+  #leg.AddEntry(histos["Hb_bs_dc"]       ,'B_{s} #rightarrow D_{s} + #mu (cc)','F' )
+  #leg.AddEntry(histos["Hb_bpm"]      ,'B^{#pm} #rightarrow D_{s} + #mu','F' )
+  #leg.AddEntry(histos["Hb_b0"]       ,'B^{0} #rightarrow D_{s} + #mu','F' )
+  #leg.AddEntry(histos["Hb_lambdab"]  ,'#Lambda_{b} #rightarrow D_{s} + #mu','F' )
+  #leg.AddEntry(histos["Hb_others"]   ,'other b #rightarrow D_{s} + #mu','F' )
+
   leg.AddEntry(histos["Hb"]         ,'H_{b}#rightarrow D_{s} + #mu ' ,'L' )
   leg.AddEntry(histos["Data"]       ,'Data','LEP')
   leg.AddEntry(histos["comb"]                           ,'Comb. + Fakes'  ,'L' )
@@ -1253,6 +1274,7 @@ def shapesPlot(histos2, var, hb_scale, abc = None, scale_bkg = None, scale_kk = 
     ROOT.gPad.SetLogy()
 
   # draw all
+  #for i,key in enumerate(["Hb_bs_fd","Hb_bs_dc","Hb_bpm","Hb_b0","comb","Data"]):
   for i,key in enumerate(["DsTau","DsStarTau","Hb","DsMu","DsStarMu","comb","Data"]):
 
     #print(f"drawing variable {key}")
@@ -1634,8 +1656,8 @@ def writeShapes(hist_dict, outputFile, binned = False, channel = "placeholder :)
         if "bsTauUp"   in key: bs_tau_sys = True
         if "bsKinUp"   in key: bs_kin_sys = True
         if "puUp"      in key: pu_sys     = True
-        if "combUp"    in key and (channel == 2 or channel == 3): comb_sys   = True
-        #if "combUp"    in key : comb_sys   = True
+        #if "combUp"    in key and (channel == 2 or channel == 3): comb_sys   = True
+        if "combUp"    in key : comb_sys   = True
 
 
       #print(hist_dict["dsMu"])
@@ -1773,8 +1795,8 @@ def writeBinnedDatacard(histos, var, region, digits = 5, blind = False):
     if "bsTauUp" in key: bs_tau_sys = True
     if "bsKinUp" in key: bs_kin_sys = True
     if "puUp"    in key: pu_sys = True
-    if "combUp"  in key and (region == 2 or region == 3): comb_sys = True
-    #if "combUp"  in key : comb_sys = True
+    #if "combUp"  in key and (region == 2 or region == 3): comb_sys = True
+    if "combUp"  in key : comb_sys = True
 
 
   if hammer_sys:
@@ -2411,8 +2433,7 @@ for i in range(num_bins+1):
     histosScaledLogy    , _ = stackedPlot(histos_reshuffled[var],       var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False, logy = True )
   
     histosScaled_shapes     = shapesPlot(histos_reshuffled[var],        var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False )
-    histosScaled_comb       = combSys   (histos_reshuffled[var],        var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False )
-
+    #histosScaled_comb       = combSys   (histos_reshuffled[var],        var, scale_hb,   scale_pimu = scale_pimu,       scale_rest = scale_rest,        region = f"ch{i}", blind = False )
 
     if writeThisBin:   
 
