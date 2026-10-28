@@ -568,7 +568,6 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   #bool          #true for MC                            #true for data
   mass_shifted         = f"(run==1) * 0.9995 * phiPi_m         + (run!=1) * phiPi_m"
   mass_shifted_smeared = f"(run==1) * 0.9995 * smear * phiPi_m + (run!=1) * phiPi_m"
-  mass_shifted_smeared = f"(run==1) * 0.9995 *         phiPi_m + (run!=1) * phiPi_m"
   #mass_expr    = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
 
   k1_wrong     = f"fabs(phiPi_m_k1_wrong - 1.869)"
@@ -577,6 +576,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   k2_mu_charge = f"(k2_charge * mu_charge)"
   
   phiPi_m_wrong_corr = f"( ({k2_mu_charge} < 0) * phiPi_m_k2_wrong + ({k1_mu_charge} < 0) * phiPi_m_k1_wrong)"
+  phi_m_wrong_corr   = f"( ({k2_mu_charge} < 0) * phi_m_k2_wrong   + ({k1_mu_charge} < 0) * phi_m_k1_wrong  )"
 
 
   #if mc :
@@ -672,6 +672,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
              .Define("smear","gRandom->Gaus(1.0, 0.001)")\
              .Define("m_corr"   ,mass_shifted_smeared)\
              .Define("phiPi_m_wrong_corr"   ,phiPi_m_wrong_corr)\
+             .Define("phi_m_wrong_corr"     ,phi_m_wrong_corr)\
              .Define("k1_corr",k1_expr)\
              .Define("k2_corr",k2_expr)\
              .Define("q2_lhcb_alt_corr",q2_lhcb_alt_expr)\
@@ -707,7 +708,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       #model = special_models_bdt[var + f"_bin{region}" ]
       #model = special_models_score2[var + f"_bin{region}" ]
       #model = special_models_cmsweek[var + f"_bin{region}" ]
-      #model = special_models_class[var + f"_bin{region}" ]
+      model = special_models_class[var + f"_bin{region}" ]
       
 
       ##############################################
@@ -727,6 +728,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
       if combSys:
         combFolder="01_09_2026_12_42_31" 
+        combFolder="27_10_2026_19_37_40" 
 
         #with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch{region}.json"  ,"r") as f:
         with open(f"/work/pahwagne/RDsTools/corrections/combinatorial/{combFolder}/combSys/comb_sys_weights_up_{var}_ch0.json"  ,"r") as f:
@@ -781,7 +783,8 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       print(var)
 
       if   var == "phiPi_m"      : tofill = "m_corr"
-      if   var == "phiPi_m_wrong": tofill = "phiPi_m_wrong_corr"
+      elif var == "phiPi_m_wrong": tofill = "phiPi_m_wrong_corr"
+      elif var == "phi_m_wrong"  : tofill = "phi_m_wrong_corr"
       elif var == "k1_pt"        : tofill = "k1_corr"
       elif var == "k2_pt"        : tofill = "k2_corr"
       elif var == "q2_coll"      : tofill = "q2_coll_corr"

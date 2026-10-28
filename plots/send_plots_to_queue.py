@@ -137,7 +137,9 @@ if args.cut and not pastNN : score_cut = f" " #&& (kk_m > 1.015) && (kk_m < 1.02
 #elif args.cut and pastNN   : score_cut = f" && (score5 < {args.cut}) && (rel_iso_03_pv == 0)"
 #elif args.cut and pastNN   : score_cut = f" && (score5 < {args.cut}) && (phiPi_m>1.95) && (phiPi_m<1.99)"
 #elif args.cut and pastNN   : score_cut = f" && (score5 < {args.cut}) "
-elif args.cut and pastNN   : score_cut = f" && (score5 < {args.cut}) && (({k2_mu_charge} < 0) * ({k2_wrong} > 0.06) + ({k1_mu_charge} < 0) * ({k1_wrong} > 0.06)) "
+elif args.cut and pastNN   : score_cut = f" && (score5 < {args.cut}) && (m_shifted< 1.99)"#&& (({k2_mu_charge} < 0) * ({k2_wrong} > 0.06) + ({k1_mu_charge} < 0) * ({k1_wrong} > 0.06)) && ( ({k2_mu_charge} < 0) * (fabs(phi_m_k2_wrong-0.892)>0.06)   + ({k1_mu_charge} < 0) * (fabs(phi_m_k1_wrong - 0.892) > 0.06))"
+
+
 #elif args.cut and pastNN   : score_cut = f" && (abs(cosPiK1) > 0.95)"  
 #elif args.cut and pastNN   : score_cut = f" && (bs_pt_lhcb_alt > 8) && (abs(cosPiK1) > 0.9) && (cosMuW_lhcb_alt < -0.2) && (bs_pt_lhcb_alt > 20) && (bs_mass_corr < 7) "
 else                       : score_cut = ""
@@ -276,7 +278,9 @@ sr_string = " && ((m_shifted >= 1.94134) && (m_shifted <= 1.99534 ) )"
 sb_string = " && ((m_shifted < 1.94 ) || (m_shifted > 1.995  ) )"
 
 #used later
-mass_sb     = "    ((m_shifted <  1.92) || (m_shifted >  2.02))" 
+mass_sb       = "    ((m_shifted <  1.92) || (m_shifted >  2.02))" 
+mass_sb_left  = "    (m_shifted <  1.92)" 
+mass_sb_right = "    (m_shifted >  2.02)" 
 mass_center = " && ((m_shifted >= 1.92) && (m_shifted <= 2.02))"
 mass_full   = " (m_shifted > 0) " #just need smth to avoid parsing errors of && && later
 
@@ -367,50 +371,57 @@ mass_full   = " (m_shifted > 0) " #just need smth to avoid parsing errors of && 
 #
 # BINNING IN AN
 
-### for hammer
-#binning_str.append( mass_full                                                                                                        ); fitted_vars[0]  = "phiPi_m";
-#
-## comb control region
-#binning_str.append( mass_sb                                                                                                          ); fitted_vars[1]  = "phiPi_m";
-#
-## comb control region
-#binning_str.append( "(class==2)" + mass_center ); fitted_vars[2]   ="q2_coll";
-#binning_str.append( "(class==3)" + mass_center ); fitted_vars[3]   ="q2_coll";
-#binning_str.append( "(class==4)" + mass_center ); fitted_vars[4]   ="q2_coll";
+## for hammer
+binning_str.append( mass_full                                                                                                        ); fitted_vars[0]  = "phiPi_m";
+
+# comb control region
+binning_str.append( mass_sb_left                                                                                                     ); fitted_vars[1]  = "phiPi_m";
+#binning_str.append( mass_sb_right                                                                                                    ); fitted_vars[2]  = "phiPi_m";
+
+# comb control region
+binning_str.append( "(class==2)" + mass_center ); fitted_vars[2]   ="q2_coll";
+binning_str.append( "(class==3)" + mass_center ); fitted_vars[3]   ="q2_coll";
+binning_str.append( "(class==4)" + mass_center ); fitted_vars[4]   ="q2_coll";
 #binning_str.append( "(class==5)" + mass_center ); fitted_vars[5]   ="q2_coll";
-#
-##mass regions 
-#m1 = " &&   (m_shifted > 1.955) && (m_shifted < 1.98)"
-#m2 = " && (((m_shifted > 1.94)  && (m_shifted < 1.955)) || ((m_shifted > 1.98) && (m_shifted < 2.0 ))) "
-#m3 = " && (((m_shifted > 1.92)  && (m_shifted < 1.94))  || ((m_shifted > 2.0)  && (m_shifted < 2.02))) "
-#
-##tau
-#binning_str.append( "(class==0)" + m1 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8)  " + mass_center ); fitted_vars[6]   ="score0";
-#binning_str.append( "(class==0)" + m1 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10) " + mass_center ); fitted_vars[7]   ="score0";
-#binning_str.append( "(class==0)" + m1 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12) " + mass_center ); fitted_vars[8]   ="score0";
-#
-#binning_str.append( "(class==0)" + m2 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[9]    ="score0";
-#binning_str.append( "(class==0)" + m2 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10)" + mass_center ); fitted_vars[10]    ="score0";
-#binning_str.append( "(class==0)" + m2 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[11]   ="score0";
-#
-#binning_str.append( "(class==0)" + m3 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[12]   ="score0";
-#binning_str.append( "(class==0)" + m3 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10)" + mass_center ); fitted_vars[13]   ="score0";
-#binning_str.append( "(class==0)" + m3 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[14]   ="score0";
-#
-#
-##tau star
-#binning_str.append( "(class==1)" + m1 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[15]   = "score1";
-#binning_str.append( "(class==1)" + m1 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10)" + mass_center ); fitted_vars[16]   = "score1" ;# "score1";
-#binning_str.append( "(class==1)" + m1 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[17]   = "score1" ;# "score1";
-#
-#binning_str.append( "(class==1)" + m2 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[18]   = "score1" ;# "score1";
-#binning_str.append( "(class==1)" + m2 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10)" + mass_center ); fitted_vars[19]   = "score1" ;# "score1";
-#binning_str.append( "(class==1)" + m2 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[20]   = "score1" ;# "score1";
-#
-#binning_str.append( "(class==1)" + m3 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[21]   = "score1" ;# "score1";
-#binning_str.append( "(class==1)" + m3 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10)" + mass_center ); fitted_vars[22]   = "score1" ;# "score1";
-#binning_str.append( "(class==1)" + m3 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[23]   = "score1" ;# "score1";
-#
+
+#mass regions 
+m1 = " &&   (m_shifted > 1.955) && (m_shifted < 1.98)"
+m2 = " && (((m_shifted > 1.94)  && (m_shifted < 1.955)) || ((m_shifted > 1.98) && (m_shifted < 2.0 ))) "
+m3 = " && (((m_shifted > 1.92)  && (m_shifted < 1.94))  || ((m_shifted > 2.0)  && (m_shifted < 2.02))) "
+m3_left  = " && ((m_shifted > 1.92)  && (m_shifted < 1.94)) "
+m3_right = " && ((m_shifted > 2.0)  && (m_shifted < 2.02)) "
+
+#tau
+binning_str.append( "(class==0)" + m1 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8)  " + mass_center ); fitted_vars[5]   ="score0";
+binning_str.append( "(class==0)" + m1 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10) " + mass_center ); fitted_vars[6]   ="score0";
+binning_str.append( "(class==0)" + m1 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12) " + mass_center ); fitted_vars[7]   ="score0";
+
+binning_str.append( "(class==0)" + m2 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[8]    ="score0";
+binning_str.append( "(class==0)" + m2 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 12)" + mass_center ); fitted_vars[9]    ="score0";
+#binning_str.append( "(class==0)" + m2 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[10]   ="score0";
+
+#binning_str.append( "(class==0)" + m3 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 12) " + mass_center ); fitted_vars[11]   ="score0";
+binning_str.append( "(class==0)" + m3_left  + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 12) " + mass_center ); fitted_vars[10]   ="score0";
+#binning_str.append( "(class==0)" + m3_right + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 12) " + mass_center ); fitted_vars[12]   ="score0";
+#binning_str.append( "(class==0)" + m3 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 12)" + mass_center ); fitted_vars[12]   ="score0";
+#binning_str.append( "(class==0)" + m3 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[13]   ="score0";
+
+
+#tau star
+binning_str.append( "(class==1)" + m1 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[11]   = "score1";
+binning_str.append( "(class==1)" + m1 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 10)" + mass_center ); fitted_vars[12]   = "score1" ;# "score1";
+binning_str.append( "(class==1)" + m1 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[13]   = "score1" ;# "score1";
+
+binning_str.append( "(class==1)" + m2 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 8) " + mass_center ); fitted_vars[14]   = "score1" ;# "score1";
+binning_str.append( "(class==1)" + m2 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 12)" + mass_center ); fitted_vars[15]   = "score1" ;# "score1";
+#binning_str.append( "(class==1)" + m2 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[19]   = "score1" ;# "score1";
+
+#binning_str.append( "(class==1)" + m3 + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 12) " + mass_center ); fitted_vars[17]   = "score1" ;# "score1";
+binning_str.append( "(class==1)" + m3_left  + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 12) " + mass_center ); fitted_vars[16]   = "score1" ;# "score1";
+#binning_str.append( "(class==1)" + m3_right + "&& (q2_coll_corr >= 0)   && (q2_coll_corr < 12) " + mass_center ); fitted_vars[19]   = "score1" ;# "score1";
+#binning_str.append( "(class==1)" + m3 + "&& (q2_coll_corr >= 8)   && (q2_coll_corr < 12)" + mass_center ); fitted_vars[19]   = "score1" ;# "score1";
+#binning_str.append( "(class==1)" + m3 + "&& (q2_coll_corr >= 10)  && (q2_coll_corr < 12)" + mass_center ); fitted_vars[22]   = "score1" ;# "score1";
+
 ##
 ## ANOHTER IDEA
 #
@@ -473,13 +484,13 @@ mass_full   = " (m_shifted > 0) " #just need smth to avoid parsing errors of && 
 ####
 ###############################################
 #
-for b in binning:
- 
-  # b is a list
-  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
-  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
-  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + mass_center)  
-  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
+#for b in binning:
+# 
+#  # b is a list
+#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sr_string)  
+#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + sb_string)  
+#  #binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" + mass_center)  
+#  binning_str.append( f"( {split} > {b[0]} ) && ( {split} < {b[1]} )" )  
 
 
 ##overwrite
@@ -1000,7 +1011,6 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   #bool                      #true for MC                            #true for data
   mass_shifted         = f"(run==1) * 0.9995 * phiPi_m         + (run!=1) * phiPi_m"
   mass_shifted_smeared = f"(run==1) * 0.9995 * smear * phiPi_m + (run!=1) * phiPi_m"
-  mass_shifted_smeared = f"(run==1) * 0.9995 *         phiPi_m + (run!=1) * phiPi_m"
   #mass_expr    = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
 
   # Tilt mass shape of combinatorial --> weights that change along y
@@ -1421,7 +1431,7 @@ def createBinnedPlots(splitter, regions, discriminator, controlPlotsHighMass = N
     #submitter command line
     #sh_command = f"sbatch -p short -o {toSave_plots}/log/log{i}.log -e {toSave_plots}/err/err{i}.err"
     #sh_command = f"sbatch -p short --cpus-per-task=4 --mem-per-cpu=4000M --time=60 "
-    sh_command = f"sbatch -p short --cpus-per-task=4 --mem-per-cpu=4000M --time=60 "
+    sh_command = f"sbatch -p short --cpus-per-task=8 --mem-per-cpu=4000M --time=60 "
 
     with open( toSave_plots + f"/submitter_DsMu_ch{i}.sh"         , "w") as f:
       f.write(core)

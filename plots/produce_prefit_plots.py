@@ -401,13 +401,6 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
       histos[key] = hist.Clone()
     #print(histos) 
 
-  #print("==========> number of hb events right calling stackedPlot", histos["Hb"].Integral())
-  #print("==========> number of bs events right calling stackedPlot", histos["Hb_bs"].Integral())
-  #print("==========> number of b0 events right calling stackedPlot", histos["Hb_b0"].Integral())
-  #print("==========> number of bpm events right calling stackedPlot", histos["Hb_bpm"].Integral())
-  #print("==========> number of bpm events right calling stackedPlot", histos["Hb_lambdab"].Integral())
-  #print("==========> number of other events right calling stackedPlot", histos["Hb_others"].Integral())
-
   color, labels = getColorAndLabelSignalDistinction("stacked")
 
   #supress data plotting in SR. region is a string of type: ch0
@@ -459,17 +452,6 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
     if ("Hb" in key) : 
       #print(f"===> scale {key} to signals")
       histos[key].Scale(scale_hb)
-
-  #nSig = histos["DsMu"].Integral() + histos["DsTau"].Integral() + histos["DsStarMu"].Integral() + histos["DsStarTau"].Integral() + histos["Hb"].Integral()
-  #print("==========> number of tau* signals before scaling", histos["DsStarTau"].Integral())
-  #print("==========> number of mu* signals before scaling", histos["DsStarMu"].Integral())
-  #print("==========> number of hb events after first sclaing", histos["Hb"].Integral())
-  #print("==========> number of bs events after first sclaing", histos["Hb_bs"].Integral())
-  #print("==========> number of b0 events after first sclaing", histos["Hb_b0"].Integral())
-  #print("==========> number of bpm events after first sclaing", histos["Hb_bpm"].Integral())
-  #print("==========> number of bpm events right calling stackedPlot", histos["Hb_lambdab"].Integral())
-  #print("==========> number of other event right calling stackedPlot", histos["Hb_others"].Integral())
-
 
   ###################################
   ## Scale Comb to data            ##
@@ -680,11 +662,7 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
   leg.Draw("SAME")
   ROOT.gPad.RedrawAxis()
   
-  #if trigger == "mu7": CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Private Work', lumi_13TeV = '6.4 fb^{-1}')
-  #if trigger == "mu9": CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Private Work', lumi_13TeV = '20.7 fb^{-1}')
-  #CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Private Work', lumi_13TeV = '2018D, Part 1')
   CMS_lumi(main_pad, 4, 0, cmsText = '     CMS', extraText = '       Private Work', lumi_13TeV = f'{args.label}')
- 
  
   #plot ratiopad
   ratio_pad.cd()
@@ -854,6 +832,50 @@ def stackedPlot(histos2, var, scale_hb, scale_pimu = None, scale_rest = None, lo
 
   weight_str = " + ".join(weights)
   #print(weight_str)
+
+
+  #########################
+  # Plot Data vs Exp.     #
+  #########################
+
+  c4 = ROOT.TCanvas(var, '', 700, 700)
+  c4.Draw()
+  c4.cd()
+  main_pad = ROOT.TPad('main_pad', '', 0., 0.0, 1. , 1.  )
+  main_pad.Draw()
+  main_pad.SetTicks(True)
+  #main_pad.SetBottomMargin(0.)
+  #main_pad.SetLeftMargin(.16)
+  main_pad.cd()
+
+  diff =  histos["Data"].Clone()
+
+  hExp = hComb.Clone()
+  hExp.Add(histos["DsMu"])
+  hExp.Add(histos["DsTau"])
+  hExp.Add(histos["DsStarMu"])
+  hExp.Add(histos["DsStarTau"])
+  hExp.Add(histos["Hb"])
+
+  diff.Add(hExp , -1.0)
+  diff.Draw("EP")
+
+  legDiff = ROOT.TLegend(.2,.7,.88,0.88)
+  legDiff.SetBorderSize(0)
+  legDiff.SetFillColor(0)
+  legDiff.SetFillStyle(0)
+  legDiff.SetTextFont(42)
+  legDiff.SetTextSize(0.035)
+  legDiff.SetNColumns(2)
+  legDiff.AddEntry(diff,'Data - Expectation' ,'EP' )
+  legDiff.Draw("SAME")
+
+
+  c4.Modified()
+  c4.Update()
+  c4.SaveAs( toSave + f"/{var}_{name}_diff.pdf")
+  c4.SaveAs( toSave + f"/{var}_{name}_diff.png")
+
 
   return returnHisto, weight_str
 
