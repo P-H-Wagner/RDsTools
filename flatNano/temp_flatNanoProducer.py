@@ -32,9 +32,9 @@ import sys
 
 
 # the input can be a single file (t3 production) or a list of files (crab)
-inp =  "HOOK_PATH"  #f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/HOOK_DATE_TIME/HOOK_FILE_IN"
+#inp =  "HOOK_PATH"  #f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/HOOK_DATE_TIME/HOOK_FILE_IN"
+inp =  f"/scratch/pahwagne/HOOK_LOG_PATH/HOOK_FILE_SRC"
 out =  f"/scratch/pahwagne/HOOK_LOG_PATH/HOOK_FILE_OUT"
-
 #load it into root file to get all branch names
 rootFile = ROOT.TFile.Open(inp)
 rootTree = rootFile.Get("Events")
@@ -49,7 +49,7 @@ rootTree = rootFile.Get("Events")
 ##################
   
 #will hold the nanoAOD values -> can handle jagged arrays!!
-nf = NanoFrame(inp, ) 
+nf_bare = NanoFrame(inp, ) 
 
 #dictionary which holds everything
 #nfDir = {}
@@ -64,12 +64,13 @@ names    = [branch.GetName() for branch in branches]
 # remove the last few branches (f.e. fixedGridRhoFastjetAll) 
 # Do we need them ? otherwise I have to adapt the shape as below
 names = [name for name in names if not (name.startswith("fixed") or name == "nmuon" or name.startswith("muon")) ] 
-  
+
+
 #Bs mass
 bsMass_ = 5.36688
 
 #chekc if not empty
-emptyFlag = nf["mu_pt"].any()
+emptyFlag = nf_bare["mu_pt"].any()
 
 # sort the candidates according to:
 # 1. we want opposite pi mu charge (priority)
@@ -82,8 +83,27 @@ emptyFlag = nf["mu_pt"].any()
 # high pt, according to the priority list above. We do not throw away events! Worst case
 # scenario is that we have only wrong charge candidates and take the one with highest pt
   
-mySorting = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuMass] < bsMass_, x[iDsMuPt]) )
+#mySorting = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuMass] < bsMass_, x[iDsMuPt]) )
+#mySorting = lambda x : ( (x[iMuCharge]*x[iPiCharge] < 0.,x[iK1Charge]*x[iK2Charge] < 0. , x[iDsMuPt]) )
+mySorting = lambda x : ( ( x[iDsMuPt]) )
  
+###############
+# SIGN FILTER #
+###############
+
+exclude = ["run","luminosityBlock","event","n","ngen"]
+rs_mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") < 0) & (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") < 0))
+ws_mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") > 0) & (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") < 0))
+ws_any_mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") > 0) | (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") > 0))
+dummy = {key: nf_bare.array(key)[ws_mask] for key in names if key not in exclude}
+dummy["run"]             = nf_bare.array("run")
+dummy["luminosityBlock"] = nf_bare.array("luminosityBlock")
+dummy["event"]           = nf_bare.array("event")
+dummy["n"]               = nf_bare.array("n")
+try: dummy["ngen"]       = nf_bare.array("ngen")
+except: pass
+nf      = NanoFrame(dummy)
+
   
 #adapt these shapes to the nr of candidates in every event
 nf["run"]             = np.array([np.array([run]  *len(nf[names[-1]][ev])) for ev,run  in enumerate(nf["run"]) ],             dtype=object)
@@ -92,7 +112,8 @@ nf["event"]           = np.array([np.array([evt]  *len(nf[names[-1]][ev])) for e
 nf["n"]               = np.array([np.array([n]    *len(nf[names[-1]][ev])) for ev,n    in enumerate(nf["n"]) ],               dtype=object)
 try: nf["ngen"]       = np.array([np.array([n]    *len(nf[names[-1]][ev])) for ev,n    in enumerate(nf["ngen"]) ],            dtype=object)
 except: pass
- 
+
+emptyFlag = nf["mu_pt"].any() 
 
 for i,name in enumerate(names):
   
@@ -112,7 +133,22 @@ print(f"flattening {nEntries} events!")
 
 # Lets rewrite the nfDir in the following shape and sort at the same time to avoid an extra loop:
 #                   [        [ [this is one cand with all its variables pt, mass, m2miss, .... ]        #and we dump all candidates in an array]  sort this!                                # for each event]          
-bestCands = np.array([ sorted([ [nf[name][ev][nCand] for name in names                       ] for nCand in range(len(nf[names[-1]][ev])) ], key = mySorting, reverse = True)[0] for ev in range(nEntries)])
+#bestCands = np.array([ sorted([ [nf[name][ev][nCand] for name in names                       ] for nCand in range(len(nf[names[-1]][ev])) ], key = mySorting, reverse = True)[0] for ev in range(nEntries)])
+
+#--------------------
+## TRY random selection
+#rng = np.random.default_rng(seed=42)   # fixed seed -> reproducible
+#
+#def pickRandom(ev):
+#    nCands = len(nf[names[-1]][ev])
+#    nc     = rng.integers(nCands)      # uniform in [0, nCands)
+#    return [nf[name][ev][nc] for name in names]
+#
+#bestCands = np.array([pickRandom(ev) for ev in range(nEntries)])
+#--------------------
+
+
+pdb.set_trace()
 
 # Lets sort them for each event (each element in allCands, as this is the outermost index (see above) and pick the best (index 0)
 #bestCands = np.array([ listOfCands[0] for listOfCands in allCands ]) 

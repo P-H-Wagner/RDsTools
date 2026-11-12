@@ -26,7 +26,6 @@ args = parser.parse_args()
 
 queue = 'short' 
 #time = 60
-nevents = -1
 
 #naming
 if args.channel == 'sig': naming = 'all_signals'
@@ -78,7 +77,7 @@ if ((args.channel == "dstau") or (args.channel == "dsstartau") or (args.channel 
 elif args.site == 't3' and not gen:
   path       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/" 
   directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{args.date_time}/"
-  inputfiles = os.listdir(directory)
+  inputfiles = [ directory + l for l in os.listdir(directory)]
 
   log_path = f"{args.date_time}"   
 
@@ -86,7 +85,7 @@ else:
 
   # Convert Date-Time into crab naming:
   
-  months = {"02": "Feb", "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct"} # add more if needed
+  months = {"02": "Feb", "03": "Mar", "04": "Apr","05": "May", "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct", "11":"Nov"} # add more if needed
   
   year  = args.date_time[0:4]
   month = months[args.date_time[4:6]]
@@ -106,7 +105,10 @@ else:
   if args.channel == "fakes":
     path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}_{part}/QCD_HT{part}_TuneCP5_13TeV-madgraphMLM-pythia8/crab_{args.date_time}/{args.crab_id}/000{folder}/"
   else:
-    path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/000{folder}/"
+    if int(folder) <= 9:
+      path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/000{folder}/"
+    else:
+      path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/00{folder}/"
 
   files       = list_files_gfal(path)
   inputfiles  = [path + f for f in files] #inlcude the path in the list :-)
@@ -121,15 +123,15 @@ else:
 #inputfiles = inputfiles[0:1] #debug
 #print(inputfiles)
 
-if not os.path.exists(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}"):
+if not os.path.exists(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}_WS_RANDOM"):
 
-  os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}")
+  os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}_WS_RANDOM")
 
 if not os.path.exists(f"flat_{log_path}"):
   os.makedirs(f"flat_{log_path}/logs")
   os.makedirs(f"flat_{log_path}/errs")
 
-#inputfiles = inputfiles[0:5]
+#inputfiles = inputfiles[0:1]
 #print(inputfiles)
 for fin in inputfiles:
   print("here")
@@ -155,10 +157,16 @@ for fin in inputfiles:
   #file to save things
   fout = f"{naming}_flatChunk_{chunkNr}.root"  
 
+  # naming
+  print("Fin is: ", fin) #full filepath to cscs
+  src = os.path.basename(fin) #only target filename XXXX.root
+  print("Src is: ", src)
+
   for line in temp:
     if "HOOK_DATE_TIME" in line: line = line.replace("HOOK_DATE_TIME", args.date_time)
     if "HOOK_LOG_PATH" in line: line  = line.replace("HOOK_LOG_PATH", log_path)
     if "HOOK_FILE_IN" in line:   line = line.replace("HOOK_FILE_IN", fin)
+    if "HOOK_FILE_SRC" in line:   line = line.replace("HOOK_FILE_SRC", src)
     if "HOOK_FILE_OUT" in line:  line = line.replace("HOOK_FILE_OUT", fout)
     if "HOOK_CHUNK" in line:     line = line.replace("HOOK_CHUNK", chunkNr)
     if "HOOK_CHANNEL" in line:   line = line.replace("HOOK_CHANNEL", naming)
@@ -177,9 +185,13 @@ for fin in inputfiles:
          'eval "$(conda shell.bash hook)"',
          'conda activate /work/pahwagne/environments/hammer3p8',
          f'cp nanoframe.py flat_{log_path}/nanoframe.py',
+         f'echo "copied NANOFRAME"',
          f'mkdir -p /scratch/pahwagne/{log_path}',
+         f'xrdcp {fin} /scratch/pahwagne/{log_path}/',
+         f'echo "copied CSCS file"',
+         f'ls /scratch/pahwagne/{log_path}/',
          f'python flat_{log_path}/cfg_chunk_{chunkNr}.py',
-         f'xrdcp /scratch/pahwagne/{log_path}/{fout} root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}/{fout}',
+         f'xrdcp /scratch/pahwagne/{log_path}/{fout} root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}_WS_RANDOM/{fout}',
          f'rm /scratch/pahwagne/{log_path}/{fout}',
          '',
      ])
@@ -195,9 +207,9 @@ for fin in inputfiles:
         '--account=t3',
         f'-o flat_{log_path}/logs/chunk_{chunkNr}.log',
         f'-e flat_{log_path}/errs/chunk_{chunkNr}.err',
-        f'--mem=3000M',
+        #f'--mem=6000M',
         f'--job-name=FLAT_{chunkNr}_{naming}',
-        #f'--time=60',
+        f'--time=30',
         f'flat_{log_path}/submitter_chunk_{chunkNr}.sh',
      ])
 
