@@ -92,10 +92,23 @@ mySorting = lambda x : ( ( x[iDsMuPt]) )
 ###############
 
 exclude = ["run","luminosityBlock","event","n","ngen"]
-rs_mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") < 0) & (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") < 0))
-ws_mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") > 0) & (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") < 0))
+
+
+
+if "HOOK_SIGN" == "WS":
+  mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") > 0) & (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") < 0))
+  dummy = {key: nf_bare.array(key)[mask] for key in names if key not in exclude}
+
+elif "HOOK_SIGN" == "NONE":
+  dummy = {key: nf_bare.array(key)       for key in names if key not in exclude}
+
+else:
+  mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") < 0) & (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") < 0))
+  dummy = {key: nf_bare.array(key)[mask] for key in names if key not in exclude}
+
 ws_any_mask = ((nf_bare.array("pi_charge") * nf_bare.array("mu_charge") > 0) | (nf_bare.array("k1_charge") * nf_bare.array("k2_charge") > 0))
-dummy = {key: nf_bare.array(key)[ws_mask] for key in names if key not in exclude}
+
+
 dummy["run"]             = nf_bare.array("run")
 dummy["luminosityBlock"] = nf_bare.array("luminosityBlock")
 dummy["event"]           = nf_bare.array("event")
@@ -104,14 +117,16 @@ try: dummy["ngen"]       = nf_bare.array("ngen")
 except: pass
 nf      = NanoFrame(dummy)
 
-  
-#adapt these shapes to the nr of candidates in every event
-nf["run"]             = np.array([np.array([run]  *len(nf[names[-1]][ev])) for ev,run  in enumerate(nf["run"]) ],             dtype=object)
-nf["luminosityBlock"] = np.array([np.array([lumi] *len(nf[names[-1]][ev])) for ev,lumi in enumerate(nf["luminosityBlock"]) ], dtype=object)
-nf["event"]           = np.array([np.array([evt]  *len(nf[names[-1]][ev])) for ev,evt  in enumerate(nf["event"]) ],           dtype=object)
-nf["n"]               = np.array([np.array([n]    *len(nf[names[-1]][ev])) for ev,n    in enumerate(nf["n"]) ],               dtype=object)
-try: nf["ngen"]       = np.array([np.array([n]    *len(nf[names[-1]][ev])) for ev,n    in enumerate(nf["ngen"]) ],            dtype=object)
-except: pass
+
+reference = nf[names[-1]]
+
+for key in ["run", "luminosityBlock", "event", "n"]:
+    #nf[key] = ak.broadcast_arrays(nf[key], reference)[0]
+    nf[key] = np.array([np.array([val]  *len(nf[names[-1]][ev])) for ev,val  in enumerate(nf[key]) ],             dtype=object)
+
+if "ngen" in nf.keys:
+    #nf["ngen"] = ak.broadcast_arrays(nf["ngen"], reference)[0]
+    nf[key] = np.array([np.array([val]  *len(nf[names[-1]][ev])) for ev,val  in enumerate(nf[key]) ],             dtype=object)
 
 emptyFlag = nf["mu_pt"].any() 
 
@@ -131,31 +146,23 @@ for i,name in enumerate(names):
 nEntries = len(nf[names[-1]])
 print(f"flattening {nEntries} events!")
 
-# Lets rewrite the nfDir in the following shape and sort at the same time to avoid an extra loop:
-#                   [        [ [this is one cand with all its variables pt, mass, m2miss, .... ]        #and we dump all candidates in an array]  sort this!                                # for each event]          
-#bestCands = np.array([ sorted([ [nf[name][ev][nCand] for name in names                       ] for nCand in range(len(nf[names[-1]][ev])) ], key = mySorting, reverse = True)[0] for ev in range(nEntries)])
 
-#--------------------
-## TRY random selection
-#rng = np.random.default_rng(seed=42)   # fixed seed -> reproducible
-#
-#def pickRandom(ev):
-#    nCands = len(nf[names[-1]][ev])
-#    nc     = rng.integers(nCands)      # uniform in [0, nCands)
-#    return [nf[name][ev][nc] for name in names]
-#
-#bestCands = np.array([pickRandom(ev) for ev in range(nEntries)])
-#--------------------
-
-
-pdb.set_trace()
-
-# Lets sort them for each event (each element in allCands, as this is the outermost index (see above) and pick the best (index 0)
-#bestCands = np.array([ listOfCands[0] for listOfCands in allCands ]) 
 ## For saving, we have to slice after the name rather than event
 for i,name in enumerate(names):
-  toSave[name] = bestCands[:,i]
-  typesToSave[name] = type(toSave[name][0]) #take one element of to Save and get type
+
+  # Flatten completely --> keep all candidates per event
+  nf[name] = nf[name].flatten()
+ 
+  # unsigned types raise errors 
+  if nf[name].dtype.kind == "u":
+      nf[name] = nf[name].astype(np.int64)
+  
+  # Save the dataframe as a dictionary
+  toSave[name] = nf[name]
+  # save the type
+  typesToSave[name] = type(toSave[name][0])
+
+
 outfile = uproot.recreate(out)
 outfile["tree"] = uproot.newtree(typesToSave)
 outfile["tree"].extend(toSave)
