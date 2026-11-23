@@ -18,6 +18,8 @@ parser.add_argument('site')  # t3 or t2 (from crab)
 parser.add_argument('-f','--folder')  # nr of directory on the t2, f.e. nDir = 2 means: 0002 
 parser.add_argument('-i','--crab_id') # first number sequence of crab task name 
 parser.add_argument('-p','--part')    # 1,2,3,4,5 - specifies the part of the dataset (BPH1, BPH2, ..., BPH5) OR the binning for qcd (e.g. 50to100)
+parser.add_argument('-s','--sign')    # 
+parser.add_argument('-m','--missing', action='store_true') #resubmit missing files
 args = parser.parse_args()
 
 
@@ -28,6 +30,13 @@ queue = 'short'
 #time = 60
 
 #naming
+SIGN_FLAG = ""
+if args.sign is not None:
+  if args.sign not in ["RS","WS","NONE"]:
+    print("ABORT, choose --sign as RS or WS or NONE"); sys.exit()
+  else:
+    SIGN_FLAG=args.sign
+
 if args.channel == 'sig': naming = 'all_signals'
 elif args.channel == 'hb': naming = 'hb_inclusive'
 elif args.channel == 'b0': naming = 'b0'
@@ -41,10 +50,13 @@ elif args.channel == 'dstau': naming = 'dstau'
 elif args.channel == 'dsstarmu': naming = 'dsstarmu'
 elif args.channel == 'dsstarmu_isgw2': naming = 'dsstarmu_isgw2'
 elif args.channel == 'dsstartau': naming = 'dsstartau'
-else: naming = 'data'
+elif 'qcd' in args.channel: 
+  naming = args.channel
+else:
+  naming = 'data'
 
-
-template   = "temp_flatNanoProducer.py"
+template     = "temp_flatNanoProducer.py"
+template_new = "temp_flatNanoProducer_new.py"
 
 def list_files_gfal(path):
 
@@ -62,6 +74,13 @@ def list_files_gfal(path):
 
 
   return files
+
+
+def filesFromTxt(txtFile):
+  with open(txtFile) as dataFiles:
+    filenames = [line[0:-1] for line in dataFiles] #-2 to remove the newline character \n
+  return ["root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat/" + filename for filename in filenames ]
+
 
 #load files
 gen = False
@@ -83,49 +102,65 @@ elif args.site == 't3' and not gen:
 
 else:
 
-  # Convert Date-Time into crab naming:
-  
-  months = {"02": "Feb", "03": "Mar", "04": "Apr","05": "May", "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct", "11":"Nov"} # add more if needed
-  
-  year  = args.date_time[0:4]
-  month = months[args.date_time[4:6]]
-  day   = args.date_time[6:8]
-  
-  crab_date = year+month+day
 
-  try: folder = args.folder
-  except: print("Please give the folder number on the T2 storage for this task!")
+  if args.channel == "qcd":
+    inputfiles = filesFromTxt(f"/work/manzoni/rds/rds16/filelists/20261109_qcd/{args.date_time}.txt")
+    template   = "temp_flatNanoProducer_new.py"
+    log_path = f"{args.date_time}"   
 
-  try: crab_id = args.crab_id
-  except: print("Please give also the crab id next to date time for this task!")
-
-  try: part = args.part
-  except: print("Please give also the data part for this task!")
-
-  if args.channel == "fakes":
-    path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}_{part}/QCD_HT{part}_TuneCP5_13TeV-madgraphMLM-pythia8/crab_{args.date_time}/{args.crab_id}/000{folder}/"
   else:
-    if int(folder) <= 9:
-      path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/000{folder}/"
+    # Convert Date-Time into crab naming:
+    months = {"02": "Feb", "03": "Mar", "04": "Apr","05": "May", "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct", "11":"Nov"} # add more if needed
+    
+    year  = args.date_time[0:4]
+    month = months[args.date_time[4:6]]
+    day   = args.date_time[6:8]
+    
+    crab_date = year+month+day
+  
+    try: folder = args.folder
+    except: print("Please give the folder number on the T2 storage for this task!")
+  
+    try: crab_id = args.crab_id
+    except: print("Please give also the crab id next to date time for this task!")
+  
+    try: part = args.part
+    except: print("Please give also the data part for this task!")
+  
+    if args.channel == "fakes":
+      path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}_{part}/QCD_HT{part}_TuneCP5_13TeV-madgraphMLM-pythia8/crab_{args.date_time}/{args.crab_id}/000{folder}/"
     else:
-      path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/00{folder}/"
+      if int(folder) <= 9:
+        path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/000{folder}/"
+      else:
+        path        = f"root://storage01.lcg.cscs.ch:1096//pnfs/lcg.cscs.ch/cms/trivcat//store/user/pahwagne/{crab_date}/ParkingBPH{part}/crab_{args.date_time}/{args.crab_id}/00{folder}/"
+  
+  
+    files       = list_files_gfal(path)
+    inputfiles  = [path + f for f in files] #inlcude the path in the list :-)
 
-  files       = list_files_gfal(path)
-  inputfiles  = [path + f for f in files] #inlcude the path in the list :-)
+    log_path = f"{args.date_time}_{args.folder}"   
  
-  #path       = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/crab/"
-  #directory  = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/crab/{args.date_time}/"
-  #inputfiles = os.listdir(directory)
-
-  log_path = f"{args.date_time}_{args.folder}"   
+ 
 
 
 #inputfiles = inputfiles[0:1] #debug
 #print(inputfiles)
 
-if not os.path.exists(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}_WS_RANDOM"):
+if args.missing:
 
-  os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}_WS_RANDOM")
+  print("===> Resubmission TASK")
+
+  directory = './missing/missing_nanos_' + args.date_time + '.txt'
+  inputfiles = filesFromTxt(directory)
+
+  with open("./missing/missing_chunks_{}.txt".format(args.date_time)) as f:
+    chunk_numbers = [int(line.strip()) for line in f if line.strip()]
+
+
+if not os.path.exists(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}{SIGN_FLAG}"):
+
+  os.makedirs(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}{SIGN_FLAG}")
 
 if not os.path.exists(f"flat_{log_path}"):
   os.makedirs(f"flat_{log_path}/logs")
@@ -142,11 +177,19 @@ for fin in inputfiles:
     match = re.search(pattern, fin)
     if match: chunkNr = match.group(2)
 
+  elif args.site == "t2" and args.channel == "qcd":
+    #get chunk nr
+    pattern = r'([^_]+)_nano_(\d+)\.root'
+    match = re.search(pattern, fin)
+    if match: chunkNr = match.group(2)      
+
   else:
     #get chunk nr
     pattern = r'([^_]+)_crab_(\d+)\.root'
     match = re.search(pattern, fin)
     if match: chunkNr = match.group(2)      
+
+
 
   print(chunkNr)
 
@@ -170,6 +213,7 @@ for fin in inputfiles:
     if "HOOK_FILE_OUT" in line:  line = line.replace("HOOK_FILE_OUT", fout)
     if "HOOK_CHUNK" in line:     line = line.replace("HOOK_CHUNK", chunkNr)
     if "HOOK_CHANNEL" in line:   line = line.replace("HOOK_CHANNEL", naming)
+    if "HOOK_SIGN" in line:   line = line.replace("HOOK_SIGN", SIGN_FLAG)
     if "HOOK_PATH" in line:      
       if args.site == "t3": line = line.replace("HOOK_PATH", path + '/' + args.date_time + '/' + fin)
       else                : line = line.replace("HOOK_PATH", fin)
@@ -184,14 +228,16 @@ for fin in inputfiles:
          'cd /work/pahwagne/RDsTools/flatNano',
          'eval "$(conda shell.bash hook)"',
          'conda activate /work/pahwagne/environments/hammer3p8',
+         #'conda activate /work/pahwagne/environments/nanoframe_env',
          f'cp nanoframe.py flat_{log_path}/nanoframe.py',
+         f'cp nanoframe_new.py flat_{log_path}/nanoframe_new.py',
          f'echo "copied NANOFRAME"',
          f'mkdir -p /scratch/pahwagne/{log_path}',
          f'xrdcp {fin} /scratch/pahwagne/{log_path}/',
          f'echo "copied CSCS file"',
          f'ls /scratch/pahwagne/{log_path}/',
          f'python flat_{log_path}/cfg_chunk_{chunkNr}.py',
-         f'xrdcp /scratch/pahwagne/{log_path}/{fout} root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}_WS_RANDOM/{fout}',
+         f'xrdcp /scratch/pahwagne/{log_path}/{fout} root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/{args.date_time}{SIGN_FLAG}/{fout}',
          f'rm /scratch/pahwagne/{log_path}/{fout}',
          '',
      ])
@@ -207,7 +253,7 @@ for fin in inputfiles:
         '--account=t3',
         f'-o flat_{log_path}/logs/chunk_{chunkNr}.log',
         f'-e flat_{log_path}/errs/chunk_{chunkNr}.err',
-        #f'--mem=6000M',
+        f'--mem=6000M',
         f'--job-name=FLAT_{chunkNr}_{naming}',
         f'--time=30',
         f'flat_{log_path}/submitter_chunk_{chunkNr}.sh',
