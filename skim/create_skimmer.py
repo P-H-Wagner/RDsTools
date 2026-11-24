@@ -129,6 +129,17 @@ if args.channel == "sig":
   forLoop += f"\n.Define  ('trigger_sf_err_hi_old' ,'get_trigger_sf_err_hi_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
   forLoop += f"\n.Define  ('trigger_sf_err_lo_old' ,'get_trigger_sf_err_lo_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
 
+  forLoop += f"\n.Define  ('phiPi_m_k1_wrong'      , 'get_phiPi_m(k1_pt, k1_eta, k1_phi, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m)') \\"
+  forLoop += f"\n.Define  ('phiPi_m_k2_wrong'      , 'get_phiPi_m(k2_pt, k2_eta, k2_phi, k1_pt, k1_eta, k1_phi, k1_m, pi_pt, pi_eta, pi_phi, pi_m)') \\"
+
+  forLoop += f"\n.Define  ('phi_m_k1_wrong'      , 'get_phi_m(k1_pt, k1_eta, k1_phi, k2_pt, k2_eta, k2_phi, k2_m, pi_m)') \\"
+  forLoop += f"\n.Define  ('phi_m_k2_wrong'      , 'get_phi_m(k2_pt, k2_eta, k2_phi, k1_pt, k1_eta, k1_phi, k1_m, pi_m)') \\"
+
+  forLoop += f"\n.Define  ('dsK_m'       , 'get_dsMu_m(k1_pt, k1_eta, k1_phi, k1_m, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m, mu_pt, mu_eta, mu_phi, k1_m)') \\"
+  forLoop += f"\n.Define  ('dsPi_m'      , 'get_dsMu_m(k1_pt, k1_eta, k1_phi, k1_m, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m, mu_pt, mu_eta, mu_phi, pi_m)') \\"
+
+
+
 
 if args.channel == "hb":
   forLoop  = f"df = df.Define  ('bs_time'    ,'get_time(gen_pv_x, gen_pv_y, gen_pv_z, gen_sv_x, gen_sv_y, gen_sv_z, gen_bs_boost)') \n"
@@ -160,6 +171,15 @@ if args.channel == "hb":
   forLoop += f"\n.Define  ('trigger_sf_err_hi_old' ,'get_trigger_sf_err_hi_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
   forLoop += f"\n.Define  ('trigger_sf_err_lo_old' ,'get_trigger_sf_err_lo_old(mu_pt, dxy_mu_sig_pv_corr)') \\"
 
+  forLoop += f"\n.Define  ('phiPi_m_k1_wrong'      , 'get_phiPi_m(k1_pt, k1_eta, k1_phi, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m)') \\"
+  forLoop += f"\n.Define  ('phiPi_m_k2_wrong'      , 'get_phiPi_m(k2_pt, k2_eta, k2_phi, k1_pt, k1_eta, k1_phi, k1_m, pi_pt, pi_eta, pi_phi, pi_m)') \\"
+
+  forLoop += f"\n.Define  ('phi_m_k1_wrong'      , 'get_phi_m(k1_pt, k1_eta, k1_phi, k2_pt, k2_eta, k2_phi, k2_m, pi_m)') \\"
+  forLoop += f"\n.Define  ('phi_m_k2_wrong'      , 'get_phi_m(k2_pt, k2_eta, k2_phi, k1_pt, k1_eta, k1_phi, k1_m, pi_m)') \\"
+
+  forLoop += f"\n.Define  ('dsK_m'       , 'get_dsMu_m(k1_pt, k1_eta, k1_phi, k1_m, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m, mu_pt, mu_eta, mu_phi, k1_m)') \\"
+  forLoop += f"\n.Define  ('dsPi_m'      , 'get_dsMu_m(k1_pt, k1_eta, k1_phi, k1_m, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m, mu_pt, mu_eta, mu_phi, pi_m)') \\"
+
 
 
 
@@ -173,6 +193,17 @@ if args.channel == "data":
     
     forLoop += f"\n.Define  ('mu8p5_3p5'  , '0.0') \\"
     forLoop += f"\n.Define  ('mu10p5_3p5' , '0.0') \\"
+
+  forLoop += f"\n.Define  ('phiPi_m_k1_wrong'      , 'get_phiPi_m(k1_pt, k1_eta, k1_phi, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m)') \\"
+  forLoop += f"\n.Define  ('phiPi_m_k2_wrong'      , 'get_phiPi_m(k2_pt, k2_eta, k2_phi, k1_pt, k1_eta, k1_phi, k1_m, pi_pt, pi_eta, pi_phi, pi_m)') \\"
+
+  forLoop += f"\n.Define  ('phi_m_k1_wrong'      , 'get_phi_m(k1_pt, k1_eta, k1_phi, k2_pt, k2_eta, k2_phi, k2_m, pi_m)') \\"
+  forLoop += f"\n.Define  ('phi_m_k2_wrong'      , 'get_phi_m(k2_pt, k2_eta, k2_phi, k1_pt, k1_eta, k1_phi, k1_m, pi_m)') \\"
+
+  forLoop += f"\n.Define  ('dsK_m'       , 'get_dsMu_m(k1_pt, k1_eta, k1_phi, k1_m, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m, mu_pt, mu_eta, mu_phi, k1_m)') \\"
+  forLoop += f"\n.Define  ('dsPi_m'      , 'get_dsMu_m(k1_pt, k1_eta, k1_phi, k1_m, k2_pt, k2_eta, k2_phi, k2_m, pi_pt, pi_eta, pi_phi, pi_m, mu_pt, mu_eta, mu_phi, pi_m)') \\"
+
+
 
 ###############################
 # take snapshot               #

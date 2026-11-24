@@ -732,6 +732,70 @@ ROOT.gInterpreter.Declare(rf'''double get_w_bs_kin_down(float b_pt, float b_abs_
     '''
     )
 
+
+####################
+# wrong sign hypo  #
+####################
+
+ROOT.gInterpreter.Declare(r'''
+double get_dsMu_m(
+    float k1_pt, float k1_eta, float k1_phi, float k1_m,
+    float k2_pt, float k2_eta, float k2_phi, float k2_m,
+    float pi_pt, float pi_eta, float pi_phi, float pi_m,
+    float mu_pt, float mu_eta, float mu_phi, float hypo
+) {
+
+    // originals 
+    ROOT::Math::PtEtaPhiMVector k1(k1_pt, k1_eta, k1_phi, k1_m);
+    ROOT::Math::PtEtaPhiMVector k2(k2_pt, k2_eta, k2_phi, k2_m);
+    ROOT::Math::PtEtaPhiMVector pi(pi_pt, pi_eta, pi_phi, pi_m);
+
+    // mass hypothesis for mu
+    ROOT::Math::PtEtaPhiMVector mu(mu_pt, mu_eta, mu_phi, hypo);
+
+    // invariant mass 
+    return (k1 + k2 + pi + mu).M();
+}
+''')
+
+ROOT.gInterpreter.Declare(r'''
+double get_phiPi_m(
+    float k1_pt, float k1_eta, float k1_phi,
+    float k2_pt, float k2_eta, float k2_phi, float k2_m,
+    float pi_pt, float pi_eta, float pi_phi, float pi_m
+) {
+
+    // pion mass hypothesis for k1
+    ROOT::Math::PtEtaPhiMVector k1(k1_pt, k1_eta, k1_phi, pi_m);
+
+    // originals 
+    ROOT::Math::PtEtaPhiMVector k2(k2_pt, k2_eta, k2_phi, k2_m);
+    ROOT::Math::PtEtaPhiMVector pi(pi_pt, pi_eta, pi_phi, pi_m);
+
+    // invariant mass 
+    return (k1 + k2 + pi).M();
+}
+''')
+
+ROOT.gInterpreter.Declare(r'''
+double get_phi_m(
+    float k1_pt, float k1_eta, float k1_phi,
+    float k2_pt, float k2_eta, float k2_phi, float k2_m,
+    float pi_m
+) {
+
+    // pion mass hypothesis for k1
+    ROOT::Math::PtEtaPhiMVector k1(k1_pt, k1_eta, k1_phi, pi_m);
+
+    // originals 
+    ROOT::Math::PtEtaPhiMVector k2(k2_pt, k2_eta, k2_phi, k2_m);
+
+    // invariant mass 
+    return (k1 + k2).M();
+}
+''')
+
+
 ####################
 # dxy err morphing #
 ####################
