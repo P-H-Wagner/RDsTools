@@ -114,7 +114,7 @@ if args.model:
   nn_model = args.model
 
 
-if args.debug: debug = 50000
+if args.debug: debug = 5000
 else         : debug = None
 
 
@@ -138,9 +138,9 @@ if hammer_central:
   hammer_str += "&& (TMath::Finite(central_w) > 0 )"
 
 if hammer_sys:
-  for sys in systematics_vector:
-    hammer_str += f" && (TMath::Finite({sys}_up) > 0 )"
-    hammer_str += f" && (TMath::Finite({sys}_down) > 0 )"
+  for s in systematics_vector:
+    hammer_str += f" && (TMath::Finite({s}_up) > 0 )"
+    hammer_str += f" && (TMath::Finite({s}_down) > 0 )"
 
 
 # disable title and stats and displaying
@@ -219,7 +219,7 @@ def getRdf(files, path, debug = None, bph_part = None, isData = None):
 
   if debug:
 
-    files_str = f"{path}/{files[0]}/*1*.root"
+    files_str = f"{path}/{files[0]}/*111*.root"
     n = chain.Add(files_str)
 
   else:
@@ -288,7 +288,7 @@ print(f" ===> Start creating RDataFrames")
 #files_sig  = [f + "_RS_only_fullBPark" for f in sig_flatNanos]
 #files_sig  = [f + "_RS_only" for f in sig_flatNanos]
 files_sig  = [sig_hammer_flatNano]
-files_hb   = [f + "_RS_RANDOM_fullBPark" for f in hb_flatNanos]
+files_hb   = [f + "_fullBPark" for f in hb_flatNanos]
 #files_hb   = [f + "_RS_only" for f in hb_flatNanos]
 
 files_data = []
@@ -301,9 +301,9 @@ else:
 #NEW!!
 base_data = files_data.copy() 
 #files_data    = [f + "_RS_RANDOM" for f in base_data]
-files_data    = [f + "_RS_RANDOM_fullBPark" for f in base_data]
+files_data    = [f + "_fullBPark" for f in base_data]
 #files_data_sf = [f + "_WS_RANDOM" for f in base_data]
-files_data_sf = [f + "_WS_RANDOM_fullBPark" for f in base_data]
+files_data_sf = [f + "WS_fullBPark" for f in base_data]
 #files_data_sf = files_data 
 
 #default: we always run on pre-skimmed files
@@ -332,9 +332,9 @@ if pastNN:
   files_hb   = [f"hb_{nn_model}" ]
   if parts:
     #files_data = [f"data_bph{part}_{nn_model}" for part in parts]
-    files_data = [f"data_bph{part}_RS_RANDOM_{nn_model}" for part in parts]
+    files_data = [f"data_bph{part}_{nn_model}" for part in parts]
     #files_data_sf = [f"data_bph{part}_{nn_model}" for part in parts]
-    files_data_sf = [f"data_bph{part}_WS_RANDOM_{nn_model}" for part in parts]
+    files_data_sf = [f"data_bph{part}WS_{nn_model}" for part in parts]
   else:
     files_data = [f"data_{nn_model}" ]
 
@@ -570,13 +570,11 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
   mass_shifted_smeared = f"(run==1) * 0.9995 * smear * phiPi_m + (run!=1) * phiPi_m"
   #mass_expr    = f"(run==1) * 0.9995 * phiPi_m + (run!=1) * phiPi_m"
 
-  k1_wrong     = f"fabs(phiPi_m_k1_wrong - 1.869)"
-  k2_wrong     = f"fabs(phiPi_m_k2_wrong - 1.869)"
   k1_mu_charge = f"(k1_charge * mu_charge)"
   k2_mu_charge = f"(k2_charge * mu_charge)"
   
-  phiPi_m_wrong_corr = f"( ({k2_mu_charge} < 0) * phiPi_m_k2_wrong + ({k1_mu_charge} < 0) * phiPi_m_k1_wrong)"
-  phi_m_wrong_corr   = f"( ({k2_mu_charge} < 0) * phi_m_k2_wrong   + ({k1_mu_charge} < 0) * phi_m_k1_wrong  )"
+  kPiPi_m_wrong_corr = f"( ({k2_mu_charge} < 0) * kPiPi_m_k2_wrong + ({k1_mu_charge} < 0) * kPiPi_m_k1_wrong)"
+  kPi_m_wrong_corr   = f"( ({k2_mu_charge} < 0) * kPi_m_k2_wrong   + ({k1_mu_charge} < 0) * kPi_m_k1_wrong  )"
 
 
   #if mc :
@@ -662,20 +660,23 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
 
   rdf_filt = rdf\
              .Define("m_shifted",mass_shifted)\
-             .Define("bs_coll"         ,"p4_corr(bs_px_coll,     bs_py_coll,     bs_pz_coll,     5.366, 1.0)")\
-             .Define("bs_lhcb_alt"     ,"p4_corr(bs_px_lhcb_alt, bs_py_lhcb_alt, bs_pz_lhcb_alt, 5.366, 1.0)")\
-             .Define("ds_new"          ,"p4_corr(ds_refitted_px, ds_refitted_py, ds_refitted_pz, 1.968, 0.995)")\
-             .Define("q2_coll_new"     ,"(bs_coll     - ds_new).M2()")\
-             .Define("q2_lhcb_alt_new" ,"(bs_lhcb_alt - ds_new).M2()")\
-             .Define("q2_coll_corr"    ,q2_coll_expr)\
              .Filter(selection)\
              .Define("smear","gRandom->Gaus(1.0, 0.001)")\
              .Define("m_corr"   ,mass_shifted_smeared)\
-             .Define("phiPi_m_wrong_corr"   ,phiPi_m_wrong_corr)\
-             .Define("phi_m_wrong_corr"     ,phi_m_wrong_corr)\
+             .Define("kPiPi_m_wrong_corr"   ,kPiPi_m_wrong_corr)\
+             .Define("kPi_m_wrong_corr"     ,kPi_m_wrong_corr)\
              .Define("k1_corr",k1_expr)\
              .Define("k2_corr",k2_expr)\
-             .Define("q2_lhcb_alt_corr",q2_lhcb_alt_expr)\
+             #.Define("q2_lhcb_alt_corr",q2_lhcb_alt_expr)\
+             #.Define("bs_coll"         ,"p4_corr(bs_px_coll,     bs_py_coll,     bs_pz_coll,     5.366, 1.0)")\
+             #.Define("bs_lhcb_alt"     ,"p4_corr(bs_px_lhcb_alt, bs_py_lhcb_alt, bs_pz_lhcb_alt, 5.366, 1.0)")\
+             #.Define("ds_new"          ,"p4_corr(ds_refitted_px, ds_refitted_py, ds_refitted_pz, 1.968, 0.995)")\
+             #.Define("q2_coll_new"     ,"(bs_coll     - ds_new).M2()")\
+             #.Define("q2_lhcb_alt_new" ,"(bs_lhcb_alt - ds_new).M2()")\
+             #.Define("q2_coll_corr"    ,q2_coll_expr)\
+
+
+
 
   if not mc:
     rdf_filt = rdf_filt.Define("dxy_mu_err_pv_corr","dxy_mu_err_pv")\
@@ -708,7 +709,7 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       #model = special_models_bdt[var + f"_bin{region}" ]
       #model = special_models_score2[var + f"_bin{region}" ]
       #model = special_models_cmsweek[var + f"_bin{region}" ]
-      model = special_models_class[var + f"_bin{region}" ]
+      #model = special_models_class[var + f"_bin{region}" ]
       
 
       ##############################################
@@ -782,13 +783,13 @@ def createHistos(selection, rdf, data = False , variables = None, ff_central = F
       ##############################################
       print(var)
 
-      if   var == "phiPi_m"      : tofill = "m_corr"
-      elif var == "phiPi_m_wrong": tofill = "phiPi_m_wrong_corr"
-      elif var == "phi_m_wrong"  : tofill = "phi_m_wrong_corr"
+      #if   var == "phiPi_m"      : tofill = "m_corr"
+      if   var == "kPiPi_m_wrong": tofill = "kPiPi_m_wrong_corr"
+      elif var == "kPi_m_wrong"  : tofill = "kPi_m_wrong_corr"
       elif var == "k1_pt"        : tofill = "k1_corr"
       elif var == "k2_pt"        : tofill = "k2_corr"
-      elif var == "q2_coll"      : tofill = "q2_coll_corr"
-      elif var == "q2_lhcb_alt"  : tofill = "q2_lhcb_alt_corr"
+      #elif var == "q2_coll"      : tofill = "q2_coll_corr"
+      #elif var == "q2_lhcb_alt"  : tofill = "q2_lhcb_alt_corr"
       elif var == "dxy_mu_err_pv": tofill = "dxy_mu_err_pv_corr"
       elif var == "dxy_mu_sig_pv": tofill = "dxy_mu_sig_pv_corr"
       else: tofill = var
