@@ -48,21 +48,32 @@ if args.model: nn_model = args.model
 # Load datasets 
 chain = ROOT.TChain("tree")
 
-data_path = []
+data_path_ws = []
+data_path_rs = []
 
 #train on data pre-classifier
-#for f in split_by_parts["data_bph1"]:
-#  data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/{f}_fullBPark/*") 
+
+for f in split_by_parts["data_bph1"]:
+
+  f_wrong = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/{f}WS_fullBPark/*"
+  f_right = f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/{f}_fullBPark/*"
+
+  data_path_ws.append(f_wrong) 
+  print(f"appending: {f_wrong}")
+  data_path_rs.append(f_right) 
+  print(f"appending: {f_right}")
+
 #for f in split_by_parts["data_bph2"]:
 #  data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/flatNano/skimmed/with_iso/{f}_fullBPark/*") 
 
 
 #train on data post-classifier
-data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph1_{nn_model}/*") 
-data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph2_{nn_model}/*") 
-data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph3_{nn_model}/*") 
-
-
+#data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph1_{nn_model}/*") 
+#data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph2_{nn_model}/*") 
+#data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph3_{nn_model}/*") 
+#data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph4_{nn_model}/*") 
+#data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph5_{nn_model}/*") 
+#data_path.append(f"/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/score_trees/data_bph6_{nn_model}/*") 
 
 
 #print(f"Training on files: {data_path}")
@@ -81,12 +92,26 @@ dt  = now.strftime("%d_%m_%Y_%H_%M_%S")
 # Load the dataframe                  #
 #######################################
 
+#def load_one_file(name, branches, selection):
+#
+#    f = ROOT.TFile(name)
+#    tree_obj = f.Get("tree")
+#    arr = tree2array(tree_obj, selection=selection, branches=branches)
+#    return pd.DataFrame(arr)
+
 def load_one_file(name, branches, selection):
 
-    f = ROOT.TFile(name)
+    f = ROOT.TFile.Open(name)
     tree_obj = f.Get("tree")
+
     arr = tree2array(tree_obj, selection=selection, branches=branches)
-    return pd.DataFrame(arr)
+    df = pd.DataFrame(arr)
+    print(name, df.shape, f"{df.memory_usage(deep=True).sum()/1024**3:.2f} GB")
+
+    f.Close()
+    del arr
+
+    return df
 
 # top-level helper
 def load_file_for_pool(fn_br_sel):
@@ -115,19 +140,31 @@ def getDf(path, branches = None, selection = None, debug = None):
     files = files[:10]
     print(files)
 
-  pd_list = []
-  total_len = len(files)
+  dfs = []
+  batch_size = 50
 
+  with ProcessPoolExecutor(max_workers=4) as exe:
 
-  # prepare arguments for each worker
-  args = [(fn, branches, selection) for fn in files]
+      for i in range(0, len(files), batch_size):
 
-  with ProcessPoolExecutor(max_workers=8) as exe:
-    results = list(exe.map(load_file_for_pool, args))
+          batch_files = files[i:i+batch_size]
+          args = [(fn, branches, selection) for fn in batch_files]
 
-  df = pd.concat(results, ignore_index=True)
-  #df = df.sample(n=2000000, random_state=42, replace = False)
+          results = list(exe.map(load_file_for_pool, args))
 
+          dfs.append(pd.concat(results, ignore_index=True))
+
+          del results
+          import gc
+          gc.collect()
+
+          print(f"Loaded {min(i+batch_size, len(files))}/{len(files)} files")
+
+  df = pd.concat(dfs, ignore_index=True)
+  df = df.sample(n=20_000_000, random_state=42).reset_index(drop=True)
+
+  del dfs
+  gc.collect()
 
   return df
 
@@ -163,29 +200,33 @@ pimu_wrong   = "&& ((mu_charge*pi_charge > 0) && (k1_charge*k2_charge < 0))" # p
 kk_wrong     = "&& ((k1_charge*k2_charge > 0))"                              # kk wrong 
 correct_sign = "&& ((k1_charge*k2_charge < 0) && (mu_charge*pi_charge < 0))"
 
-#                    # high mass region      # low mass region + sidebands
-#train_region = f"(  (dsMu_m > {bsMass_})  || ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) ) && (bs_pt_coll>10) && (cosMuW_coll > -0.95) "
-#train_region = f"(  ((dsMu_m < {bsMass_}) && ((({mlow3} < phiPi_m) && (phiPi_m < {mlow2})) || (({mhigh2} < phiPi_m) && (phiPi_m < {mhigh3})))) )  "
-#train_region = f"(  ((phiPi_m < 1.92) || (phiPi_m >  2.02)) ) && (score5<0.8) "
-#train_region = check_sf 
-#train_region  = with_iso + f" && ((dsMu_m > {bsMass_})||((phiPi_m < 1.92) || (phiPi_m >  2.02)) )"
-#train_region  = with_iso + f" && (((phiPi_m < 1.92) || (phiPi_m >  2.02)) )"
-#train_region  = base_wout_tv_25 + f" && (((phiPi_m < 1.92) || (phiPi_m >  2.02)) )"
-#train_region  = base_wout_tv_25 + f" && ((dsMu_m > {bsMass_})||((phiPi_m < 1.92) || (phiPi_m >  2.02)) )"
-train_region  = with_iso + f" && ((dsMu_m > {bsMass_})|| ((phiPi_m < 1.92) || (phiPi_m >  2.02)) ) && (score5 < 0.1)"
-#train_region  = with_iso + f" && ((dsMu_m > {bsMass_}))"
-#train_region  = with_iso + f" && ((cosPiK1 < 0.2) && (cosPiK1 > -0.2))"
-#train_region += f"  && ((phiPi_m < 1.92) || (phiPi_m >  2.02)) "
-#train_region = f"( score5 > 0.3 ) && (score5 < 0.98)"
-#train_region = f"( score5 > 0.3)"
+d_plus_window = 0.06
+lambda_window = 0.06
 
-#train_region = f"(  (dsMu_m > {bsMass_}) ) && (bs_pt_coll>10) && (cosMuW_coll > -0.95) "
+#check charge between kaon and muon
+k1_mu_charge = f"(k1_charge * mu_charge)"
+k2_mu_charge = f"(k2_charge * mu_charge)"
+
+d_plus_k1_wrong     = f"fabs(kPiPi_m_k1_wrong - 1.869)"
+d_plus_k2_wrong     = f"fabs(kPiPi_m_k2_wrong - 1.869)"
+lambda_k1_wrong     = f"fabs(pKPi_m_k1_wrong - 2.28646)"
+lambda_k2_wrong     = f"fabs(pKPi_m_k2_wrong - 2.28646)"
+
+train_region  = with_iso + f" && ((phiPi_m < 1.84) || ((phiPi_m > 1.9) && (phiPi_m < 1.93)) || (phiPi_m >  2.02) ) "
+#exclude d+ window
+train_region_rs += f"&& (({k2_mu_charge} < 0) * ({d_plus_k2_wrong} > {d_plus_window}) + ({k1_mu_charge} < 0) * ({d_plus_k1_wrong} > {d_plus_window})) "
+train_region_ws += f"&& (({k2_mu_charge} > 0) * ({d_plus_k2_wrong} > {d_plus_window}) + ({k1_mu_charge} > 0) * ({d_plus_k1_wrong} > {d_plus_window})) "
+#exclude lambda window
+train_region_rs += f"&& (({k2_mu_charge} < 0) * ({lambda_k2_wrong} > {lambda_window}) + ({k1_mu_charge} < 0) * ({lambda_k1_wrong} > {lambda_window})) " 
+train_region_ws += f"&& (({k2_mu_charge} > 0) * ({lambda_k2_wrong} > {lambda_window}) + ({k1_mu_charge} > 0) * ({lambda_k1_wrong} > {lambda_window})) " 
+
 low_mass     = f"&& (dsMu_m < {bsMass_})"
 high_mass    = f"(  (dsMu_m > {bsMass_})  )  "
 
 start_time = time.time()
 
-trigger = " && (mu7_ip4==1)"
+#trigger = " && (mu7_ip4==1)"
+trigger = " "
 
 #######################################
 # Defining training features          #
@@ -193,30 +234,31 @@ trigger = " && (mu7_ip4==1)"
 
 features = [
 
-    "score0",
-    "score1",
-    "score2",
-    "score3",
-    "score4",
-    "score5",
+    #"score0",
+    #"score1",
+    #"score2",
+    #"score3",
+    #"score4",
+    #"score5",
+    #"score6",
 
 
-    "phiPi_deltaR", 
-    "kk_deltaR", 
-    "dsMu_deltaR", 
+    #"phiPi_deltaR", 
+    #"kk_deltaR", 
+    #"dsMu_deltaR", 
 
-    "bs_pt_coll", 
-    "bs_pt_lhcb_alt", 
-    "bs_pt_reco_1", 
-    "bs_pt_reco_2", 
+    #"bs_pt_coll", 
+    #"bs_pt_lhcb_alt", 
+    #"bs_pt_reco_1", 
+    #"bs_pt_reco_2", 
 
     "dsMu_m", 
     "phiPi_m", 
 
-    "q2_coll", 
-    "q2_lhcb_alt", 
-    "q2_reco_1", 
-    "q2_reco_2", 
+    #"q2_coll", 
+    #"q2_lhcb_alt", 
+    #"q2_reco_1", 
+    #"q2_reco_2", 
 
     "pi_pt",
     "pi_eta",
@@ -227,15 +269,15 @@ features = [
     "k2_pt",
     "k2_eta",
 
-    "pt_miss_coll",  
-    "pt_miss_lhcb_alt",  
-    "pt_miss_reco_1",  
-    "pt_miss_reco_2",  
+    #"pt_miss_coll",  
+    #"pt_miss_lhcb_alt",  
+    #"pt_miss_reco_1",  
+    #"pt_miss_reco_2",  
 
-    "m2_miss_coll",  
-    "m2_miss_lhcb_alt",  
-    "m2_miss_reco_1",  
-    "m2_miss_reco_2",  
+    #"m2_miss_coll",  
+    #"m2_miss_lhcb_alt",  
+    #"m2_miss_reco_1",  
+    #"m2_miss_reco_2",  
 
     "cosPiK1", 
 
@@ -244,54 +286,55 @@ features = [
     "cosMuW_reco_1",
     "cosMuW_reco_2",
     
-    "e_star_coll",
-    "e_star_lhcb_alt",
-    "e_star_reco_1",
-    "e_star_reco_2",
+    #"e_star_coll",
+    #"e_star_lhcb_alt",
+    #"e_star_reco_1",
+    #"e_star_reco_2",
 
-    "fv_chi2",
-    "tv_chi2",
-    "sv_chi2",
+    #"fv_chi2",
+    #"tv_chi2",
+    #"sv_chi2",
 
-    "lxy_ds", 
+    #"lxy_ds", 
 
     #"mu_is_global", 
     #"mu_id_medium", 
 
-    "disc_negativity",
-    "ds_vtx_cosine_xyz_pv",
+    #"disc_negativity",
+    #"ds_vtx_cosine_xyz_pv",
     #"kappa",
 
-    'lxy_bs_sig',
-    'lxy_ds_sig',
+    #'lxy_bs_sig',
+    #'lxy_ds_sig',
     
     #'dxy_mu_pv',
-    #'dxy_mu_sig_pv',
+    'dxy_mu_sig_pv',
     #'dxy_mu_err_pv',
     #'dxy_mu_sig_sv',
 
-    'signed_decay_ip3d_mu_ds_sv',
+    #'signed_decay_ip3d_mu_ds_sv',
     #'signed_decay_ip3d_mu_bs_sv',
     
     #'rel_iso_03',
-    'rel_iso_03_pv',
+    #'rel_iso_03_pv',
     #'rel_iso_03_sv',
     #'rel_iso_03_ds_sv',
     #'rel_iso_03_tv',
   
-    'photon_pt',
-    'dsPhoton_m', 
+    #'photon_pt',
+    #'dsPhoton_m', 
 
 ]
 
 branches = [
 
-    "score0",
-    "score1",
-    "score2",
-    "score3",
-    "score4",
-    "score5",
+    #"score0",
+    #"score1",
+    #"score2",
+    #"score3",
+    #"score4",
+    #"score5",
+    #"score6",
 
 
     "q2_coll",
@@ -420,7 +463,7 @@ branches = [
 dfs = {}
 
 # WRONG SIGN EVENTS
-df_wrong   = getDf(data_path, branches = branches, selection = train_region + pimu_wrong   + trigger, debug = debug  ) 
+df_wrong   = getDf(data_path_ws, branches = branches, selection = train_region + pimu_wrong   + trigger, debug = debug  ) 
 
 #split wrong sign events here to get control region
 #df_wrong_active  = df_wrong[df_wrong["event"].astype(int) % 2 == 0].copy()
@@ -428,7 +471,7 @@ df_wrong   = getDf(data_path, branches = branches, selection = train_region + pi
 df_wrong["is_active"] = (df_wrong["event"] % 4 != 0)
 
 # CORRECT SIGN EVENTS
-df_correct  = getDf(data_path, branches = branches, selection = train_region + correct_sign + trigger, debug = debug  ) 
+df_correct  = getDf(data_path_rs, branches = branches, selection = train_region + correct_sign + trigger, debug = debug  ) 
 
 # LOADING TIME
 end_time = time.time()
@@ -483,7 +526,8 @@ params = {
   "objective"  : "binary:logistic",
   "eval_metric": "logloss",
   "max_depth"  : 3, 
-  "eta"        : 0.0005,
+  #"eta"        : 0.0005,
+  "eta"        : 0.001,
   "tree_method": "gpu_hist",
   #"tree_method": "hist",
 }
@@ -493,7 +537,7 @@ evals    = [(dtrain, "train"),   (dtest, "eval")]
 #to save history
 history = {}
 
-rounds = 5000 
+rounds = 10000 
 es = 30
 
 model = xgb.train(
@@ -518,7 +562,6 @@ with open( dt + f"/info_pimu.txt", "w") as f:
 
 model.save_model( dt + '/bdt_model_pimu.json') 
 
-print("=====> training finished")
 
 #######################################
 # Plot ROC curve and prob. histo      #
@@ -801,12 +844,13 @@ df_correct       = predictAndGetWeight(model, df_correct       ,  bdt_bins, binn
 #df_correct     .to_json(dt + "/df_correct.json")
 
 #pdb.set_trace()
-plotHist(df_wrong ,df_correct, "score0", 30,0,  1          , flag = "_pimu", region = "")
-plotHist(df_wrong ,df_correct, "score1", 30,0,  1          , flag = "_pimu", region = "")
-plotHist(df_wrong ,df_correct, "score2", 30,0,  1          , flag = "_pimu", region = "")
-plotHist(df_wrong ,df_correct, "score3", 30,0,  1          , flag = "_pimu", region = "")
-plotHist(df_wrong ,df_correct, "score4", 30,0,  1          , flag = "_pimu", region = "")
-plotHist(df_wrong ,df_correct, "score5", 30,0,  0.1        , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score0", 30,0,  1          , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score1", 30,0,  1          , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score2", 30,0,  1          , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score3", 30,0,  1          , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score4", 30,0,  1          , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score5", 30,0,  1          , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "score6", 30,0,  1          , flag = "_pimu", region = "")
 
 plotHist(df_wrong ,df_correct, "phiPi_deltaR", 20, 0 ,0.5  , flag = "_pimu", region = "")
 plotHist(df_wrong ,df_correct, "dsMu_deltaR", 20, 0 ,1     , flag = "_pimu", region = "")
@@ -817,8 +861,11 @@ plotHist(df_wrong ,df_correct, "bs_pt_lhcb_alt", 20, 0 ,30 , flag = "_pimu", reg
 plotHist(df_wrong ,df_correct, "bs_pt_reco_2", 20, 0 ,30   , flag = "_pimu", region = "")
 plotHist(df_wrong ,df_correct, "bs_pt_reco_1", 20, 0 ,30   , flag = "_pimu", region = "")
 
-plotHist(df_wrong ,df_correct, "dsMu_m", 25,0, 5.366       , flag = "_pimu", region = "")
-plotHist(df_wrong ,df_correct, "phiPi_m", 20, 1.91, 2.028  , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "dsMu_m", 25,2, 5.366       , flag = "_pimu", region = "")
+plotHist(df_wrong ,df_correct, "dsMu_m", 25,2, 5.366       , flag = "_pimu", region = "")
+plotHist(df_wrong ,df_correct, "dsMu_m", 25,5.366, 8.0       , flag = "_pimu", region = "")
+#plotHist(df_wrong ,df_correct, "phiPi_m", 20, 1.91, 2.028  , flag = "_pimu", region = "")
+plotHist(df_wrong ,df_correct, "phiPi_m", 20, 1.8, 2.1  , flag = "_pimu", region = "")
 
 plotHist(df_wrong ,df_correct, "q2_coll", 20, 0 ,12        , flag = "_pimu", region = "")
 plotHist(df_wrong ,df_correct, "q2_lhcb_alt", 20, 0 ,12    , flag = "_pimu", region = "")
@@ -869,6 +916,8 @@ plotHist(df_wrong ,df_correct, "rel_iso_03_pv", 30,0,  1.0        , flag = "_pim
 
 plotHist(df_wrong ,df_correct, "photon_pt" , 30,0,  2.0          , flag = "_pimu", region = "")
 plotHist(df_wrong ,df_correct, "dsPhoton_m", 30,2.0,  2.3        , flag = "_pimu", region = "")
+
+plotHist(df_wrong ,df_correct, "dxy_mu_sig_pv", 30, 0.0,  20        , flag = "_pimu", region = "")
 
 #plotHist(df_wrong ,df_correct, "dsMu_m", 25,0, 8           , flag = "_pimu", region = "")
 #plotHist(df_wrong ,df_correct, "kk_m", 20, 1.0 , 1.035     , flag = "_pimu", region = "")
