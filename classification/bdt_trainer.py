@@ -161,7 +161,7 @@ def getDf(path, branches = None, selection = None, debug = None):
           print(f"Loaded {min(i+batch_size, len(files))}/{len(files)} files")
 
   df = pd.concat(dfs, ignore_index=True)
-  df = df.sample(n=20_000_000, random_state=42).reset_index(drop=True)
+  df = df.sample(n=10_000_000, random_state=42).reset_index(drop=True)
 
   del dfs
   gc.collect()
@@ -212,7 +212,11 @@ d_plus_k2_wrong     = f"fabs(kPiPi_m_k2_wrong - 1.869)"
 lambda_k1_wrong     = f"fabs(pKPi_m_k1_wrong - 2.28646)"
 lambda_k2_wrong     = f"fabs(pKPi_m_k2_wrong - 2.28646)"
 
-train_region  = with_iso + f" && ((phiPi_m < 1.84) || ((phiPi_m > 1.9) && (phiPi_m < 1.93)) || (phiPi_m >  2.02) ) "
+#same base
+train_region_rs = with_iso + f" && ((phiPi_m < 1.84) || ((phiPi_m > 1.9) && (phiPi_m < 1.93)) || (phiPi_m >  2.02) ) "
+train_region_ws = with_iso + f" && ((phiPi_m < 1.84) || ((phiPi_m > 1.9) && (phiPi_m < 1.93)) || (phiPi_m >  2.02) ) "
+
+
 #exclude d+ window
 train_region_rs += f"&& (({k2_mu_charge} < 0) * ({d_plus_k2_wrong} > {d_plus_window}) + ({k1_mu_charge} < 0) * ({d_plus_k1_wrong} > {d_plus_window})) "
 train_region_ws += f"&& (({k2_mu_charge} > 0) * ({d_plus_k2_wrong} > {d_plus_window}) + ({k1_mu_charge} > 0) * ({d_plus_k1_wrong} > {d_plus_window})) "
@@ -253,7 +257,7 @@ features = [
     #"bs_pt_reco_2", 
 
     "dsMu_m", 
-    "phiPi_m", 
+    #"phiPi_m", 
 
     #"q2_coll", 
     #"q2_lhcb_alt", 
@@ -463,7 +467,7 @@ branches = [
 dfs = {}
 
 # WRONG SIGN EVENTS
-df_wrong   = getDf(data_path_ws, branches = branches, selection = train_region + pimu_wrong   + trigger, debug = debug  ) 
+df_wrong   = getDf(data_path_ws, branches = branches, selection = train_region_ws + pimu_wrong   + trigger, debug = debug  ) 
 
 #split wrong sign events here to get control region
 #df_wrong_active  = df_wrong[df_wrong["event"].astype(int) % 2 == 0].copy()
@@ -471,7 +475,7 @@ df_wrong   = getDf(data_path_ws, branches = branches, selection = train_region +
 df_wrong["is_active"] = (df_wrong["event"] % 4 != 0)
 
 # CORRECT SIGN EVENTS
-df_correct  = getDf(data_path_rs, branches = branches, selection = train_region + correct_sign + trigger, debug = debug  ) 
+df_correct  = getDf(data_path_rs, branches = branches, selection = train_region_rs + correct_sign + trigger, debug = debug  ) 
 
 # LOADING TIME
 end_time = time.time()
@@ -518,16 +522,20 @@ bdt_bins = [0.00, 0.4] + list(np.linspace(0.45, 0.6, 20).tolist()) + [0.65, 1.0]
 
 # prepare input as Dmatrix
 dtrain  = xgb.DMatrix(X_train[features], label=y_train, weight=X_train["weights"])
-dtest   = xgb.DMatrix(X_test [features], label=y_test)
+#dtest   = xgb.DMatrix(X_test [features], label=y_test)
+
+w_test = np.where(y_test == 0, len(y_test[y_test==1]) / len(y_test[y_test==0]), 1.0)
+dtest  = xgb.DMatrix(X_test[features], label=y_test, weight=w_test)
 
 
 # define the model here!
 params = {
   "objective"  : "binary:logistic",
   "eval_metric": "logloss",
-  "max_depth"  : 3, 
-  #"eta"        : 0.0005,
-  "eta"        : 0.001,
+  #"max_depth"  : 3, 
+  "max_depth"  : 4, 
+  #"eta"        : 0.001,
+  "eta"        : 0.05,
   "tree_method": "gpu_hist",
   #"tree_method": "hist",
 }
@@ -537,7 +545,7 @@ evals    = [(dtrain, "train"),   (dtest, "eval")]
 #to save history
 history = {}
 
-rounds = 10000 
+rounds = 5000 
 es = 30
 
 model = xgb.train(
